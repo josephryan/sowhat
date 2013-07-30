@@ -14,7 +14,7 @@ DEPENDENCIES
 ------------
 
     This program requires:
-        Perl (comes with most operating systems
+        Perl (comes with most operating systems)
         RAxML v7.7 or higher (https://github.com/stamatak/standard-RAxML)
         Seq-Gen (http://tree.bio.ed.ac.uk/software/seqgen/)
         Statistics::R  (can be installed by running: sudo cpan Statistics::R
