@@ -1,0 +1,15 @@
+Changes
+LICENSE
+Makefile.PL
+MANIFEST
+README.md
+Examples.txt
+sowh.pl
+t/sowh.pl.t
+examples/H0.tre
+examples/H1.tre
+examples/H2.tre
+examples/aa.partitions
+examples/aa.phy
+examples/nt.partitions
+examples/nt.phy
