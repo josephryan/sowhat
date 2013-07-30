@@ -13,11 +13,7 @@ BEGIN { use_ok('Statistics::R') };
 
 #########################
 
-# Insert your test code below, the Test::More module is use()ed here so read
-# its man page ( perldoc Test::More ) for help writing this test script.
-
-# MUST FIGURE THIS TEST OUT
-#my $test = system "perl sowh.pl --constraint=examples/H1.tre --aln=examples/nt.phy --model=GTRGAMMA --dir=OUT_DIR.nt.H1 --name=nt.H1";
-#use_ok($test);
-
+my $cmd = "perl sowh.pl --constraint=examples/H1.tre --aln=examples/nt.phy --model=GTRGAMMA --dir=test.output --name=nt.H1 > /dev/null ";
+my $test = system $cmd;
+is($test, 0, "was able to run example 1");
 
