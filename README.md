@@ -1,5 +1,5 @@
 sowh.pl
-======
+=======
 
 INSTALLATION
 ------------
@@ -20,12 +20,13 @@ DEPENDENCIES
         Statistics::R  (can be installed by running: sudo cpan Statistics::R
 
 EXAMPLES
----
+--------
 
     see Examples.txt and the examples directory 
 
 RUN
 ---
+
     sowh.pl \
     --constraint=NEWICK_CONSTRAINT_TREE \
     --aln=PHYLIP_ALIGNMENT \
@@ -37,13 +38,23 @@ RUN
     [--help] \
     [--version]
 
+DOCUMENTATION
+-------------
+
+Extensive documentation is embedded inside of sowh.pl in POD format and
+can be viewed by running any of the following:
+
+        sowh.pl --help
+        perldoc sowh.pl
+        man sowh.pl
 
 FURTHER READING
-------------
+---------------
+
 Goldman, Nick, Jon P. Anderson, and Allen G. Rodrigo. "Likelihood-based tests of topologies in phylogenetics." Systematic Biology 49.4 (2000): 652-670.
 
 COPYRIGHT AND LICENSE
-------------
+---------------------
 
 Copyright (C) 2013 Samuel H. Church, Joseph F. Ryan, Casey W. Dunn
 
