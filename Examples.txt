@@ -2,31 +2,33 @@
 # sowh.pl is running correctly and provide examples 
 # 
 # To make tests go faster add --reps=10
+# or --rax='raxmlHPC-PTHREADS -T3'
 # this is especially relevant to amino acid tests which take a while
 # 
 
 # TEST1: Nucleotide data under GTRGAMMA without partitions
 # constraint tree is much less likely than tree w/highest likelihood
 # p-value should be 0 or close to 0
-sowh.pl --constraint=examples/H1.tre --aln=examples/nt.phy --model=GTRGAMMA --dir=test.output --name=nt.H1
+sowh.pl --constraint=examples/H1.tre --aln=examples/nt.phy --model=GTRGAMMA --dir=test.output/test1 --name=nt.H1
 
 # TEST2:
-# constraint tree is the tree w/highest likelihood
-# p-value should be 0 or close to 0
-sowh.pl --constraint=examples/H0.tre --aln=examples/nt.phy --model=GTRGAMMA --dir=test.output --name=nt.H0
+# constraint tree is a viable hypothesis but not the tree w/highest likelihood
+# p-value should be > 0.05 
+sowh.pl --constraint=examples/H0.tre --aln=examples/nt.phy --model=GTRGAMMA --dir=test.output/test2 --name=nt.H0
 
 # TEST3:
-# constraint tree is not significantly worse than the tree w/highest likelihood
-# p-value will vary but should be > 0.05
-sowh.pl --constraint=examples/H2.tre --aln=examples/nt.phy --model=GTRGAMMA --dir=test.output --name=nt.H2
+# this is a case where the SOWH test fails to provide a consistent answer
+# as to whether the constraint tree is a viable hypothesis 
+# p-value will vary (run several times and you will see)
+sowh.pl --constraint=examples/H2.tre --aln=examples/nt.phy --model=GTRGAMMA --dir=test.output/test3 --name=nt.H2
 
 # TEST4: Amino acid data under PROTGAMMAWAG with partitions
 # constraint tree is much less likely than tree w/highest likelihood
 # p-value should be 1 or close to 1
-sowh.pl --constraint=examples/H0.tre --aln=examples/aa.phy --partition=examples/aa.partitions --model=PROTGAMMAWAG --dir=test.output --name=aa.H0.parts
+sowh.pl --constraint=examples/H0.tre --aln=examples/aa.phy --partition=examples/aa.partitions --model=PROTGAMMAWAG --dir=test.output/test4 --name=aa.H0.parts
 
 # TEST5: Nucleotide data under GTRCAT with partitions
 # constraint tree is much less likely than tree w/highest likelihood
-# p-value should be 1 or close to 1
-sowh.pl --constraint=examples/H1.tre --aln=examples/nt.phy --partition=examples/nt.partitions --model=GTRCAT --dir=test.output --name=nt.H0.parts
+# p-value should be  or close to 1
+sowh.pl --constraint=examples/H1.tre --aln=examples/nt.phy --partition=examples/nt.partitions --model=GTRCAT --dir=test.output/test5 --name=nt.H0.parts
 
