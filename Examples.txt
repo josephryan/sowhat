@@ -24,11 +24,11 @@ sowh.pl --constraint=examples/H2.tre --aln=examples/nt.phy --model=GTRGAMMA --di
 
 # TEST4: Amino acid data under PROTGAMMAWAG with partitions
 # constraint tree is much less likely than tree w/highest likelihood
-# p-value should be 1 or close to 1
-sowh.pl --constraint=examples/H0.tre --aln=examples/aa.phy --partition=examples/aa.partitions --model=PROTGAMMAWAG --dir=test.output/test4 --name=aa.H0.parts
+# p-value should be 0 or close to 0
+sowh.pl --constraint=examples/H1.tre --aln=examples/aa.phy --partition=examples/aa.partitions --model=PROTGAMMAWAG --dir=test.output/test4 --name=aa.H1.parts
 
 # TEST5: Nucleotide data under GTRCAT with partitions
 # constraint tree is much less likely than tree w/highest likelihood
-# p-value should be  or close to 1
-sowh.pl --constraint=examples/H1.tre --aln=examples/nt.phy --partition=examples/nt.partitions --model=GTRCAT --dir=test.output/test5 --name=nt.H0.parts
+# p-value should be 0 or close to 0
+sowh.pl --constraint=examples/H1.tre --aln=examples/nt.phy --partition=examples/nt.partitions --model=GTRCAT --dir=test.output/test5 --name=nt.H1.parts
 
