@@ -1,6 +1,12 @@
 sowh.pl
 =======
 
+AVAILABILITY
+------------
+
+https://github.com/josephryan/sowh.pl
+    (click the "Download ZIP" button at the bottom of the right column)
+
 INSTALLATION
 ------------
 
@@ -8,6 +14,7 @@ To install this script and documentation type the following:
 
     perl Makefile.PL
     make
+    make test
     make install
 
 DEPENDENCIES
@@ -17,12 +24,12 @@ DEPENDENCIES
         Perl (comes with most operating systems)
         RAxML v7.7 or higher (https://github.com/stamatak/standard-RAxML)
         Seq-Gen (http://tree.bio.ed.ac.uk/software/seqgen/)
-        Statistics::R  (can be installed by running: sudo cpan Statistics::R
+        Statistics::R  (can be installed by running: sudo cpan Statistics::R)
 
 EXAMPLES
 --------
 
-    see Examples.txt and the examples directory 
+    see Examples.txt for commands and the examples directory for data files
 
 RUN
 ---
@@ -69,5 +76,5 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with this program in the file gpl.txt.  If not, see
+along with this program in the file LICENSE.  If not, see
 http://www.gnu.org/licenses/.

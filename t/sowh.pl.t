@@ -3,17 +3,15 @@
 
 #########################
 
-# change 'tests => 1' to 'tests => last_test_to_print';
-
 use strict;
 use warnings;
 
-use Test::More tests => 1;
+use Test::More tests => 2;
 BEGIN { use_ok('Statistics::R') };
 
 #########################
 
-my $cmd = "perl sowh.pl --constraint=examples/H1.tre --aln=examples/nt.phy --model=GTRGAMMA --dir=test.output --name=nt.H1 > /dev/null ";
+my $cmd = "perl sowh.pl --constraint=examples/H1.tre --aln=examples/nt.phy --model=GTRGAMMA --dir=test.output --name=sowh_test > /dev/null ";
 my $test = system $cmd;
 is($test, 0, "was able to run example 1");
 

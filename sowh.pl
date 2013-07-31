@@ -1,5 +1,25 @@
 #!perl 
 
+#    sowh.pl - SOWH test 
+#        (likelihood-based test used to compare tree topologies which
+#         are not specified a priori)
+#
+#    Copyright (C) 2013  Samuel H. Church, Joseph F. Ryan, Casey W. Dunn
+#
+#    This program is free software; you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation; either version 2 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License along
+#    with this program; if not, write to the Free Software Foundation, Inc.,
+#    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
+
 our $VERSION = 0.04;
 
 use strict;
@@ -10,10 +30,7 @@ use Data::Dumper;
 use Cwd;
 use Statistics::R;
 
-# $RAX and $SEQGEN may be adjusted by the user (some examples in comments)
 our $RAX = 'raxmlHPC';
-#our $RAX = 'raxmlHPC-PTHREADS-SSE3 -T 8';
-#our $RAX = 'mpirun -n 8 raxmlHPC-MPI';
 our $SEQGEN = 'seq-gen';
 our $DEFAULT_REPS = 100;
 our $DEVNULL = 1; # change to 0 if you want to see tons of RAxML output
@@ -54,6 +71,8 @@ sub process_options {
     my $rh_opts = {};
     $rh_opts->{'reps'} = $DEFAULT_REPS;
     $rh_opts->{'orig_options'} = [@ARGV];
+    $rh_opts->{'rax'} = $RAX;
+    $rh_opts->{'seqgen'} = $SEQGEN;
 
     my $opt_results = Getopt::Long::GetOptions(
                               "version" => \$rh_opts->{'version'},
@@ -61,11 +80,15 @@ sub process_options {
                                 "aln=s" => \$rh_opts->{'aln'},
                                 "dir=s" => \$rh_opts->{'dir'},
                                "reps=i" => \$rh_opts->{'reps'},
+                             "seqgen=s" => \$rh_opts->{'seqgen'},
+                                "rax=s" => \$rh_opts->{'rax'},
                           "partition=s" => \$rh_opts->{'part'},
                               "model=s" => \$rh_opts->{'mod'},
                                "name=s" => \$rh_opts->{'name'},
                                  "help" => \$rh_opts->{'help'});
 
+    $RAX = $rh_opts->{'rax'} if ($rh_opts->{'rax'});
+    $SEQGEN = $rh_opts->{'seqgen'} if ($rh_opts->{'seqgen'});
     die "$VERSION\n" if ($rh_opts->{'version'});
     pod2usage({-exitval => 0, -verbose => 2}) if $rh_opts->{'help'};
     unless ($rh_opts->{'constraint_tree'} &&
@@ -788,6 +811,8 @@ sub usage {
     --aln=PHYLIP_ALIGNMENT
     --name=NAME_FOR_REPORT
     --model=MODEL
+    [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS]
+    [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS]
     [--reps=NUMBER_OF_REPLICATES]
     [--dir=DIR]
     [--partition=PARTITION_FILE]
@@ -844,6 +869,20 @@ This is the model which will be used to estimate the likelihood scores of the or
 =head1 OPTIONS
 
 =over 2
+
+=item B<--rax>
+
+<default: raxmlHPC>
+This allows the user to specify the RAxML binary to be used in the analysis. It is useful if a user would like to specify the full path to a RAxML binary, but its purpose is mostly to allow users to run a multi-threaded or MPI version of the program, and or pass additional parameters to RAxML. Some examples would be:
+
+    --rax='raxmlHPC-PTHREADS-SSE3 -T 8'
+
+    --rax='mpirun -n 8 raxmlHPC-MPI'
+
+=item B<--seqgen>
+
+<default: seq-gen>
+This allows the user to specify the SeqGen binary or path to the binary to be used in the analysis. It could be useful to pass additional parameters to seq-gen.
 
 =item B<--reps>
 

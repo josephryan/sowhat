@@ -7,26 +7,26 @@
 
 # TEST1: Nucleotide data under GTRGAMMA without partitions
 # constraint tree is much less likely than tree w/highest likelihood
-# p-value should be close to 0
-sowh.pl --constraint=examples/H1.tre --aln=examples/nt.phy --model=GTRGAMMA --dir=OUT_DIR.nt.H1 --name=nt.H1
+# p-value should be 0 or close to 0
+sowh.pl --constraint=examples/H1.tre --aln=examples/nt.phy --model=GTRGAMMA --dir=test.output --name=nt.H1
 
 # TEST2:
 # constraint tree is the tree w/highest likelihood
-# p-value should be close to 0
-sowh.pl --constraint=examples/H0.tre --aln=examples/nt.phy --model=GTRGAMMA --dir=OUT_DIR.nt.H0 --name=nt.H0
+# p-value should be 0 or close to 0
+sowh.pl --constraint=examples/H0.tre --aln=examples/nt.phy --model=GTRGAMMA --dir=test.output --name=nt.H0
 
 # TEST3:
 # constraint tree is not significantly worse than the tree w/highest likelihood
-# p-value may vary but should be > 0.05
-sowh.pl --constraint=examples/H2.tre --aln=examples/nt.phy --model=GTRGAMMA --dir=OUT_DIR.nt.H2 --name=nt.H2
+# p-value will vary but should be > 0.05
+sowh.pl --constraint=examples/H2.tre --aln=examples/nt.phy --model=GTRGAMMA --dir=test.output --name=nt.H2
 
 # TEST4: Amino acid data under PROTGAMMAWAG with partitions
 # constraint tree is much less likely than tree w/highest likelihood
-# p-value should be close to 1
-sowh.pl --constraint=examples/H0.tre --aln=examples/aa.phy --partition=examples/aa.partitions --model=PROTGAMMAWAG --dir=OUT_DIR.aa.H0.parts --name=aa.H0.parts
+# p-value should be 1 or close to 1
+sowh.pl --constraint=examples/H0.tre --aln=examples/aa.phy --partition=examples/aa.partitions --model=PROTGAMMAWAG --dir=test.output --name=aa.H0.parts
 
 # TEST5: Nucleotide data under GTRCAT with partitions
 # constraint tree is much less likely than tree w/highest likelihood
-# p-value should be close to 1
-sowh.pl --constraint=examples/H1.tre --aln=examples/nt.phy --partition=examples/nt.partitions --model=GTRCAT --dir=OUT_DIR.nt.H0.parts --name=nt.H0.parts
+# p-value should be 1 or close to 1
+sowh.pl --constraint=examples/H1.tre --aln=examples/nt.phy --partition=examples/nt.partitions --model=GTRCAT --dir=test.output --name=nt.H0.parts
 
