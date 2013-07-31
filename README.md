@@ -39,6 +39,8 @@ RUN
     --aln=PHYLIP_ALIGNMENT \
     --name=NAME_FOR_REPORT \
     --model=MODEL \
+    [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] \
+    [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] \
     [--reps=NUMBER_OF_REPLICATES] \
     [--dir=DIR] \
     [--partition=PARTITION_FILE] \
@@ -53,7 +55,7 @@ can be viewed by running any of the following:
 
         sowh.pl --help
         perldoc sowh.pl
-        man sowh.pl
+        man sowh.pl  (available after installation)
 
 FURTHER READING
 ---------------
