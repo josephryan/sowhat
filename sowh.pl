@@ -422,6 +422,7 @@ sub _run_seqgen {
             die qq~do not know how to handle type: "$rh_part->{'type'}"\n~;
         }
         $cmd .= " < $DIR" . "$TRE_PREFIX.t1 > $DIR" . "seqgen.$count.out";
+        $cmd .= " 2> /dev/null" if ($QUIET);
         $count++;
         safe_system($cmd);
         if ($rh_part->{'type'} eq 'Multi-State') {
