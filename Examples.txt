@@ -32,3 +32,10 @@ sowh.pl --constraint=examples/H1.tre --aln=examples/aa.phy --partition=examples/
 # p-value should be 0 or close to 0
 sowh.pl --constraint=examples/H1.tre --aln=examples/nt.phy --partition=examples/nt.partitions --model=GTRCAT --dir=test.output/test5 --name=nt.H1.parts
 
+# TEST6: Binary character data 
+# constraint tree is much less likely than tree w/highest likelihood
+# p-value should be 0 or close to 0
+sowh.pl --constraint=examples/H1.tre --aln=examples/char.phy --model=MULTIGAMMA --dir=test.output/test6 --name=char.H1
+
+
+

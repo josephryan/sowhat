@@ -20,7 +20,7 @@
 #    with this program; if not, write to the Free Software Foundation, Inc.,
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-our $VERSION = 0.04;
+our $VERSION = 0.05;
 
 use strict;
 use warnings;
@@ -33,10 +33,9 @@ use Statistics::R;
 our $RAX = 'raxmlHPC';
 our $SEQGEN = 'seq-gen';
 our $DEFAULT_REPS = 100;
-our $DEVNULL = 1; # change to 0 if you want to see tons of RAxML output
+our $QUIET = 1; # change to 0 if you want to see tons of RAxML output
 
-# don't adjust below here
-our $DIR = '.';
+our $DIR = '';
 our $FREQ_BIN_NUMBER = 10;
 our $TRE_PREFIX = 'RAxML_bestTree';
 our $NEW_PARTITION_FILE = 'new.part.txt';
@@ -83,12 +82,14 @@ sub process_options {
                              "seqgen=s" => \$rh_opts->{'seqgen'},
                                 "rax=s" => \$rh_opts->{'rax'},
                           "partition=s" => \$rh_opts->{'part'},
+                                "debug" => \$rh_opts->{'debug'},
                               "model=s" => \$rh_opts->{'mod'},
                                "name=s" => \$rh_opts->{'name'},
                                  "help" => \$rh_opts->{'help'});
 
     $RAX = $rh_opts->{'rax'} if ($rh_opts->{'rax'});
     $SEQGEN = $rh_opts->{'seqgen'} if ($rh_opts->{'seqgen'});
+    $QUIET = 0 if ($rh_opts->{'debug'});
     die "$VERSION\n" if ($rh_opts->{'version'});
     pod2usage({-exitval => 0, -verbose => 2}) if $rh_opts->{'help'};
     unless ($rh_opts->{'constraint_tree'} &&
@@ -108,15 +109,20 @@ sub process_options {
 sub set_out_dir {
     my $opt_dir = shift;
     my $pwd = getcwd();
-    $opt_dir = "$pwd/$opt_dir" if (($opt_dir) && ($opt_dir !~ m/^\//));
-    $opt_dir .= '/' if (($opt_dir) && ($opt_dir !~ m/\/$/));
-    $DIR = $opt_dir if ($opt_dir);
+    if ($opt_dir) {
+        $opt_dir = "$pwd/$opt_dir" if ($opt_dir !~ m/^\//);
+        $opt_dir .= '/' if ($opt_dir !~ m/\/$/);
+        $DIR = $opt_dir if ($opt_dir);
+    } else {
+        warn "missing --dir\n";
+        usage();
+    }
     mkdir $DIR unless (-d $DIR);
 }
 
 sub safe_system {
     my $cmd = shift;
-    warn "\$cmd = $cmd\n";
+    warn "\$cmd = $cmd\n" unless ($QUIET);
     my $error = system $cmd;
     warn "system call failed:\n$cmd\nerror code=$?" if ($error != 0);
 }
@@ -156,7 +162,7 @@ sub _run_best_tree {
     my $cmd = "$RAX -f d -p 1234 -w $DIR -m $mod -s $aln -n $name";
     $cmd .= " -q $part" if ($part);
     $cmd .= " -g $tre" if ($tre);
-    $cmd .= " > /dev/null 2> /dev/null" if ($DEVNULL);
+    $cmd .= " > /dev/null 2> /dev/null" if ($QUIET);
     safe_system($cmd);
 }
 
@@ -175,6 +181,9 @@ sub get_params {
     } elsif ($mod =~ m/^PROT/i) {
         ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) =
            _model_prot($aln,$part,$tre);      
+    } elsif ($mod =~ m/^MULTIGAMMA/i) {
+        ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) =
+           _model_character_data($aln,$part,$tre);
     } else {
         ($ra_aln_len,$codon_flag,$ra_params) =
            _model_non_gtr($aln,$part,$tre);        
@@ -213,6 +222,15 @@ sub _model_prot {
         $ra_params = _get_params_from_const_rax($DIR . 'RAxML_info.par');
     }
     return ($ra_aln_len,$codon_flag,$ra_params,$ra_rates);      
+}
+
+sub _model_character_data {
+    my $aln = shift;
+    my $part = shift;
+    my $tre = shift;
+    my ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,$part);
+    my ($ra_params) = _get_params_from_const_rax($DIR . 'RAxML_info.t1');
+    return ($ra_aln_len,$codon_flag,$ra_params);
 }
 
 sub _model_non_gtr {
@@ -390,19 +408,53 @@ sub _run_seqgen {
         my $cmd = "$SEQGEN -or ";
         $cmd .= "-l$ra_part_lens->[$i] ";
         $cmd .= "-a$rh_part->{'alpha'} ";
+        $cmd .= "-n$reps ";
         if ($rh_part->{'type'} eq 'DNA') {
-            $cmd .= "-m$model -n$reps ";
+            $cmd .= "-m$model ";
             $cmd .= _get_dna_params($rh_part);
         } elsif ($rh_part->{'type'} eq 'AA') {
-            $cmd .= "-mGENERAL -n$reps ";
+            $cmd .= "-mGENERAL ";
             $cmd .= _get_aa_params($rh_part,$ra_rates->[$i]);
+        } elsif ($rh_part->{'type'} eq 'Multi-State') {
+            $cmd .= "-mGTR ";
+            $cmd .= _get_char_params($rh_part);
         } else {
             die qq~do not know how to handle type: "$rh_part->{'type'}"\n~;
         }
         $cmd .= " < $DIR" . "$TRE_PREFIX.t1 > $DIR" . "seqgen.$count.out";
         $count++;
         safe_system($cmd);
+        if ($rh_part->{'type'} eq 'Multi-State') {
+            my $file = "seqgen." . ($count - 1) . ".out";
+            _convert_AT_to_01($DIR . $file, $ra_part_lens->[$i]);
+        }
     }
+}
+
+sub _convert_AT_to_01 {
+    my $file  = shift;
+    my $num_cols = shift;
+    my $updated = '';
+    open IN, $file or die "cannot open $file:$!";
+    while (my $line = <IN>) {
+        chomp $line;
+        if ($line =~ m/^(\S+\s+)(\S+)$/) {
+            my $id = $1;
+            my $seq = $2;
+            if (length($seq) == $num_cols) {
+                $seq =~ tr/AT/01/;
+                $updated .= "$id$seq\n";
+            } else {
+                $updated .= "$line\n";
+            }
+        } else {
+            $updated .= "$line\n";
+        }
+    }
+    close IN;
+    open OUT, ">$file" or die "cannot open >$file:$!";
+    print OUT $updated;
+    close OUT;
 }
 
 sub _get_dna_params {
@@ -435,6 +487,20 @@ sub _get_aa_params {
             $cmd .= "$ra_r->[$i]->[$k], ";
         }
     }
+    return $cmd;
+}
+
+sub _get_char_params {
+    my $rh_part = shift;
+    my $cmd = '';
+    die "unexpected freq" unless ($rh_part->{'freqs'});
+    $rh_part->{'freqs'} =~ s/^\s*//;
+    $rh_part->{'freqs'} =~ s/\s*$//;
+    my @freqs = split /\s+/, $rh_part->{'freqs'};
+    unless (scalar(@freqs) == 2) {
+        die "expecting 2 frequencies. Multi-State only works w/binary matrix\n";
+    }
+    $cmd .= "-f$freqs[0],0.0,0.0,$freqs[1] ";
     return $cmd;
 }
 
@@ -610,7 +676,7 @@ sub _run_rax_on_genset {
         if ($part) {
            $cmd .= " -q $part ";
         }
-        $cmd .= " > /dev/null 2> /dev/null" if ($DEVNULL);
+        $cmd .= " > /dev/null 2> /dev/null" if ($QUIET);
         print ".";
         safe_system($cmd);
     }
@@ -808,11 +874,12 @@ sub usage {
     --aln=PHYLIP_ALIGNMENT
     --name=NAME_FOR_REPORT
     --model=MODEL
+    --dir=DIR
     [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS]
     [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS]
     [--reps=NUMBER_OF_REPLICATES]
-    [--dir=DIR]
     [--partition=PARTITION_FILE]
+    [--debug=do not redirect system calls to /dev/null]
     [--help]
     [--version]\n";
 }
@@ -829,7 +896,7 @@ Samuel H. Church <samuel_church@brown.edu>, Joseph F. Ryan <josephryan@yahoo.com
 
 =head1 SYNOPSIS 
 
-sowh.pl --constraint=NEWICK_CONSTRAINT_TREE --aln=PHYLIP_ALIGNMENT --name=NAME_FOR_REPORT --model=MODEL [--reps=NUMBER_OF_REPLICATES] [--dir=DIR] [--partition=PARTITION_FILE] [--help] [--version]
+sowh.pl --constraint=NEWICK_CONSTRAINT_TREE --aln=PHYLIP_ALIGNMENT --name=NAME_FOR_REPORT --model=MODEL --dir=DIR [--reps=NUMBER_OF_REPLICATES] [--partition=PARTITION_FILE] [--debug] [--help] [--version]
 
 =head1 constraint
 
@@ -863,6 +930,12 @@ This is the model which will be used to estimate the likelihood scores of the or
 
 =back
 
+=head1 dir
+
+This is the directory where ouput files will be sent.
+
+=back
+
 =head1 OPTIONS
 
 =over 2
@@ -886,14 +959,13 @@ This allows the user to specify the SeqGen binary or path to the binary to be us
 <default: 100>
 This is the number of datasets which will be generated according to the estimated parameters. This number represents the sample size of the distribution. Each dataset will be evaluated twice for a likelihood score, once with and once without the topology constrained.
 
-=item B<--dir>
-
-<default: current directory>
-This is the directory where ouput files will be sent.
-
 =item B<--partition>
 
 This can be a partition file which applies to the dataset. It must be in a format recognizable by RAxML version 7.7.0.
+
+=item B<--debug>
+
+do not redirect standard out and standard error to /dev/null. RAxML in particular will produce lots of output with this option. Can be useful for debugging problems like, for example, bad tree format.
 
 =item B<--help>
 
@@ -907,13 +979,18 @@ Print the version. Overrides all other options.
 
 =head1 DESCRIPTION
 
-This program calculates the statistical plausability of a hypothesized topology using maximum likelihood analyses. This is known as a parametric test of topologies or a SOWH test (Goldman et al, 2000).
+This program automates the steps required for the SOWH test (as described by Goldman et. al., 2000. It depends on the freely available seq-gen and RAxML software packages. It works on amino acid, nucleotide, and binary character state datasets. Partitions can be specified.
+
 The program calculates the difference between two likelihood scores: that of the best tree, and the best tree constrained by the hypothesized topology. The maximum likelihodd analyses are run using RAxML, a phylogenetic tool written by Alexandros Stamatakis, and freely available under GNU GPL lisence. See:
 https://github.com/stamatak/RAxML-Light-1.0.5
+
 This program then generates new alignments based on the hypothesized topology and the maximum number of free parameters from the constrained topology, including branch lengths as well as the frequencies, transtition rates, and alpha values (if available, partitions are taken into account). These datasets are generated using seq-gen, written by Andrew Rambaut and Nick C. Grassly. It is freely available under BSD license, see: 
 http://tree.bio.ed.ac.uk/software/seqgen/
+
 The program then calculates the likelihood scores of each of these alignments both with and without the topology constrained according to the hypothesis. The differences between these scores become the distributions against which the test value will be evaluated.
+
 The p-value of the test statistic is calculated using R, using the pnorm function.
+
 R is freely available under the GPL-2 license.
 
 Nick Goldman, Jon P. Anderson, and Allen G. Rodrigo
