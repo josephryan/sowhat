@@ -131,10 +131,10 @@ sub get_version {
         last;
     }
     if ($version < 7.7) {
-                warn "sowh.pl ERROR:\n";
-                warn "You are running version $version of RAxML\n";
-                die  "sowh.pl requires version 7.7 or higher\n";
-            }
+        warn "sowh.pl ERROR:\n";
+        warn "You are running version $version of RAxML\n";
+        die  "sowh.pl requires version 7.7 or higher\n";
+    }
     return $version;
 }
 
