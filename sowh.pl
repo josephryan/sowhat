@@ -907,12 +907,12 @@ Print the version. Overrides all other options.
 
 =head1 DESCRIPTION
 
-This script will calculate the plausability of a likelihood score measured against the likelihood value of the best tree as obtained through a maximum likelihood evaluation. This is known as a parametric test of topologies or a SOWH test (Goldman et al, 2000).
-This test runs two trees on the original alignment file, one using the given constraint topology and one without. The difference in the likelihood scores of these trees is the value which will be tested against the distribution obtained from the script. The maximum likelihodd analyses are run using RAxML, a phylogenetic tool written by Alexandros Stamatakis, and freely available under GNU GPL lisence. See:
+This program calculates the statistical plausability of a hypothesized topology using maximum likelihood analyses. This is known as a parametric test of topologies or a SOWH test (Goldman et al, 2000).
+The program calculates the difference between two likelihood scores: that of the best tree, and the best tree constrained by the hypothesized topology. The maximum likelihodd analyses are run using RAxML, a phylogenetic tool written by Alexandros Stamatakis, and freely available under GNU GPL lisence. See:
 https://github.com/stamatak/RAxML-Light-1.0.5
-This script then generates new alignments based on the hypothesized topology and the maximum number of free parameters available. If the original model does not maximize free parameters, a new tree is run using the constrained topology. These datasets incorporate the constrained topology, including partitions if available, as well as the frequencies, transtition rates, and alpha values from the constrained optimization. The datasets are generated using seq-gen, written by Andrew Rambaut and Nick C. Grassly. It is freely available under BSD license, see: 
+This program then generates new alignments based on the hypothesized topology and the maximum number of free parameters from the constrained topology, including branch lengths as well as the frequencies, transtition rates, and alpha values (if available, partitions are taken into account). These datasets are generated using seq-gen, written by Andrew Rambaut and Nick C. Grassly. It is freely available under BSD license, see: 
 http://tree.bio.ed.ac.uk/software/seqgen/
-This script then calculated the likelihood scores of each of these alignments both with and without the topology constrained according to the hypothesis. The differences between these scores become the distributions against which the test value will be evaluated.
+The program then calculates the likelihood scores of each of these alignments both with and without the topology constrained according to the hypothesis. The differences between these scores become the distributions against which the test value will be evaluated.
 The p-value of the test statistic is calculated using R, using the pnorm function.
 R is freely available under the GPL-2 license.
 
