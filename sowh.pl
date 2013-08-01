@@ -44,12 +44,12 @@ our $PART_RATE_MATRIX_PREFIX = 'RAxML_proteinGTRmodel.par_Partition_';
 
 MAIN: {
     my $rh_opts = process_options();
+    
+    my $ver = get_version();
 
     run_initial_trees($rh_opts->{'aln'},$rh_opts->{'part'},
         $rh_opts->{'mod'},$rh_opts->{'constraint_tree'});
 
-    my $ver = get_version($DIR . 'RAxML_info.t1');
-    
     my ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) = 
         get_params($rh_opts->{'aln'},$rh_opts->{'part'},
         $rh_opts->{'mod'},$rh_opts->{'constraint_tree'},);
@@ -121,6 +121,23 @@ sub safe_system {
     warn "system call failed:\n$cmd\nerror code=$?" if ($error != 0);
 }
 
+sub get_version {
+    my $version_st = `$RAX -v`;
+    my @lines= split /\n/, $version_st;
+    my $version = '';
+    foreach my $l (@lines) {
+        next unless $l =~ m/^This is RAxML version (\d+\.\d+)/;
+        $version = $1;
+        last;
+    }
+    if ($version < 7.7) {
+                warn "sowh.pl ERROR:\n";
+                warn "You are running version $version of RAxML\n";
+                die  "sowh.pl requires version 7.7 or higher\n";
+            }
+    return $version;
+}
+
 sub run_initial_trees {
     my $aln = shift;
     my $part = shift;
@@ -141,26 +158,6 @@ sub _run_best_tree {
     $cmd .= " -g $tre" if ($tre);
     $cmd .= " > /dev/null 2> /dev/null" if ($DEVNULL);
     safe_system($cmd);
-}
-
-sub get_version {
-    my $file = shift;
-    my $version = 0;
-    my @fields = ();
-    open IN, "$file" or die "cannot open $file:$!";
-    while (my $line = <IN>) {
-        if ($line =~ m/^This is RAxML version ((\d+\.\d+)\S+)/) {
-            $version =  $2;
-            my $whole_version =  $1;
-            if ($version < 7.7) {
-                unlink ($DIR . 'RAxML_info.t1');
-                warn "sowh.pl ERROR:\n";
-                warn "You are running version $whole_version of RAxML\n";
-                die  "sowh.pl requires version 7.7 or higher\n";
-            }
-        }
-    }
-    return $version;
 }
 
 sub get_params {
