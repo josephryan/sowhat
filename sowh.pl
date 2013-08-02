@@ -56,13 +56,16 @@ MAIN: {
     my $ra_alns = generate_alignments($ra_aln_len,$ra_params,
         $ra_rates,$rh_opts->{'mod'},$rh_opts->{'reps'});
 
-    run_raxml_on_gen_alns($ra_alns,$rh_opts->{'part'},
+    my ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) = ();
+    for (my $i = 0; $i < @{$ra_alns}; $i++) {
+        run_raxml_on_gen_alns($ra_alns,$rh_opts->{'part'},
         $rh_opts->{'mod'},$rh_opts->{'constraint_tree'},
-        $ra_aln_len,$codon_flag);
+        $ra_aln_len,$codon_flag,$i);
 
-    my ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) =
-            evaluate_distribution($rh_opts->{'reps'},$rh_opts->{'name'});
+        ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) =
+        evaluate_distribution($rh_opts->{'reps'},$rh_opts->{'name'},$i);
 
+    }
     print_report($best_ml,$best_t1,$rh_stats,$ra_diff,$rh_opts,$fd_file,$ver);
 }
 
@@ -607,16 +610,15 @@ sub run_raxml_on_gen_alns {
     my $tre = shift;
     my $ra_aln_len = shift;
     my $codon_flag = shift;
+    my $i = shift;
     if ($codon_flag) {
         my $new_part = $DIR . $NEW_PARTITION_FILE;
         my $ra_part_titles = _get_part_titles($part);
         my $ra_ranges = _print_ranges($ra_aln_len);
         _print_new_part_file($ra_part_titles,$ra_ranges,$new_part);
-        _run_rax_on_genset($ra_alns,$mod,$new_part,'');
-        _run_rax_on_genset($ra_alns,$mod,$new_part,$tre);
+        _run_rax_on_genset($ra_alns,$mod,$new_part,$tre,$i);
     } else {
-        _run_rax_on_genset($ra_alns,$mod,$part,'');
-        _run_rax_on_genset($ra_alns,$mod,$part,$tre);
+        _run_rax_on_genset($ra_alns,$mod,$part,$tre,$i);
     }
 }
 
@@ -666,45 +668,52 @@ sub _run_rax_on_genset {
     my $ra_alns = shift;
     my $mod     = shift;
     my $part    = shift;
+    my $cmd     = '';
     my $tre     = shift;
-    for (my $i = 0; $i < @{$ra_alns}; $i++) {
-        my $cmd  = "$RAX -p 1234 -w $DIR -m $mod -s $ra_alns->[$i] ";
-        if ($tre) {
-           $cmd .= "-n $i.t1 -g $tre";
-        } else {
-           $cmd .= "-n $i.ml";
-        }
-        if ($part) {
-           $cmd .= " -q $part ";
-        }
-        $cmd .= " > /dev/null 2> /dev/null" if ($QUIET);
-        print ".";
-        safe_system($cmd);
+    my $i       = shift;
+    $cmd  = "$RAX -p 1234 -w $DIR -m $mod -s $ra_alns->[$i] ";
+    $cmd .= "-n $i.ml";
+    if ($part) {
+        $cmd .= " -q $part ";
     }
-    print "\n";
+    $cmd .= " > /dev/null 2> /dev/null" if ($QUIET);
+    print "$i";
+    safe_system($cmd);
+    $cmd  = "$RAX -p 1234 -w $DIR -m $mod -s $ra_alns->[$i] ";
+    $cmd .= "-n $i.t1 -g $tre";
+    if ($part) {
+        $cmd .= " -q $part ";
+    }
+    $cmd .= " > /dev/null 2> /dev/null" if ($QUIET);
+    print ": ";
+    safe_system($cmd);
 }
 
 sub evaluate_distribution {
     my $reps = shift;
     my $name = shift;
-    my $opts = shift;
-    my $ra_dist = _get_distribution($reps,0);
-    my $ra_const_dist = _get_distribution($reps,1);
-    my $ra_diff_dist = _get_diff_dist($ra_dist,$ra_const_dist);
-    my $best_ml_score = _get_best_score($DIR . 'RAxML_info.ml');
-    my $best_t1_score = _get_best_score($DIR . 'RAxML_info.t1');
-    my $rh_stats = _get_stats($ra_diff_dist,
-        $best_ml_score,$best_t1_score);
-    my $fd_file = _print_freq_dist($ra_diff_dist,$name);
-    return ($best_ml_score,$best_t1_score, $rh_stats,
-            $ra_diff_dist,$fd_file);
+    my $i = shift;
+    if ($i > 10) {
+        my $ra_dist = _get_distribution($reps,0,$i);
+        my $ra_const_dist = _get_distribution($reps,1,$i);
+        my $ra_diff_dist = _get_diff_dist($ra_dist,$ra_const_dist);
+        my $best_ml_score = _get_best_score($DIR . 'RAxML_info.ml');
+        my $best_t1_score = _get_best_score($DIR . 'RAxML_info.t1');
+        my $rh_stats = _get_stats($ra_diff_dist,
+            $best_ml_score,$best_t1_score);
+        my $fd_file = _print_freq_dist($ra_diff_dist,$name);
+        print "current p-value = $rh_stats->{'p'}\n";
+        return ($best_ml_score,$best_t1_score, $rh_stats,
+                $ra_diff_dist,$fd_file);
+    }
 }
 
 sub _get_distribution {
     my $reps = shift;
     my $w_const = shift;
+    my $j = shift;
     my @dist = ();
-    for (my $i = 0; $i < $reps; $i++) {
+    for (my $i = 0; $i < $j; $i++) {
         my $file = '';
         if ($w_const) {
             $file = $DIR . "RAxML_info.$i.t1";
