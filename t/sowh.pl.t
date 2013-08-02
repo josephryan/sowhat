@@ -11,8 +11,8 @@ BEGIN { use_ok('Statistics::R') };
 
 #########################
 
-diag("\nNow running a SOWH test. This will take less than a minute usually");
-my $cmd = "perl sowh.pl --constraint=examples/H1.tre --aln=examples/nt.phy --model=GTRGAMMA --dir=test.output --name=sowh_test > /dev/null ";
+diag("\nNow running a SOWH test. This usually takes less than a minute...");
+my $cmd = "perl sowh.pl --constraint=examples/H1.tre --aln=examples/nt.phy --model=GTRGAMMA --dir=test.output --name=sowh_test --reps=20 > /dev/null ";
 my $test = system $cmd;
 is($test, 0, "was able to run example 1");
 
