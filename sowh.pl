@@ -20,7 +20,7 @@
 #    with this program; if not, write to the Free Software Foundation, Inc.,
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-our $VERSION = 0.05;
+our $VERSION = 0.06;
 
 use strict;
 use warnings;
@@ -33,34 +33,32 @@ use Statistics::R;
 our $RAX = 'raxmlHPC';
 our $SEQGEN = 'seq-gen';
 our $DEFAULT_REPS = 100;
-our $QUIET = 1; # change to 0 if you want to see tons of RAxML output
-
+our $QUIET = 1;
 our $DIR = '';
 our $FREQ_BIN_NUMBER = 10;
 our $TRE_PREFIX = 'RAxML_bestTree';
 our $NEW_PARTITION_FILE = 'new.part.txt';
 our $PART_RATE_MATRIX_PREFIX = 'RAxML_proteinGTRmodel.par_Partition_';
+our $NAME = '';
 
 MAIN: {
     my $rh_opts = process_options();
     
     my $ver = get_version();
 
-    run_initial_trees($rh_opts->{'aln'},$rh_opts->{'part'},
-        $rh_opts->{'mod'},$rh_opts->{'constraint_tree'});
+    run_initial_trees($rh_opts);
 
     my ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) = 
         get_params($rh_opts->{'aln'},$rh_opts->{'part'},
         $rh_opts->{'mod'},$rh_opts->{'constraint_tree'},);
 
     my $ra_alns = generate_alignments($ra_aln_len,$ra_params,
-        $ra_rates,$rh_opts->{'mod'},$rh_opts->{'reps'});
+        $ra_rates,$rh_opts->{'mod'},$rh_opts->{'reps'},$rh_opts->{'name'});
 
     my ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) = ();
     for (my $i = 0; $i < @{$ra_alns}; $i++) {
         run_raxml_on_gen_alns($ra_alns,$rh_opts->{'part'},
-        $rh_opts->{'mod'},$rh_opts->{'constraint_tree'},
-        $ra_aln_len,$codon_flag,$i);
+        $rh_opts->{'mod'},$rh_opts->{'constraint_tree'});
 
         ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) =
         evaluate_distribution($rh_opts->{'reps'},$rh_opts->{'name'},$i);
@@ -105,6 +103,7 @@ sub process_options {
         warn "missing --model\n" unless ($rh_opts->{'mod'});
         usage();
     }
+    $NAME = $rh_opts->{'name'};
     set_out_dir($rh_opts->{'dir'});
     return $rh_opts;
 }
@@ -148,24 +147,31 @@ sub get_version {
 }
 
 sub run_initial_trees {
-    my $aln = shift;
-    my $part = shift;
-    my $mod = shift;
-    my $tre = shift;
+    my $rh_opts = shift;
+
+    my $aln = $rh_opts->{'aln'};
+    my $part = $rh_opts->{'part'};
+    my $mod = $rh_opts->{'mod'};
+    my $tre = $rh_opts->{'constraint_tree'};
+
     _run_best_tree('ml',$aln,$part,$mod);
     _run_best_tree('t1',$aln,$part,$mod,$tre);
 }
 
 sub _run_best_tree {
-    my $name = shift;
-    my $aln = shift;
-    my $part = shift;
-    my $mod  = shift;
-    my $tre = shift;
-    my $cmd = "$RAX -f d -p 1234 -w $DIR -m $mod -s $aln -n $name";
+    my $title = shift;
+    my $aln   = shift;
+    my $part  = shift;
+    my $mod   = shift;
+    my $tre   = shift;
+
+    my $cmd = "$RAX -f d -p 1234 -w $DIR -m $mod -s $aln -n $title";
     $cmd .= " -q $part" if ($part);
     $cmd .= " -g $tre" if ($tre);
-    $cmd .= " > /dev/null 2> /dev/null" if ($QUIET);
+    if ($QUIET) {
+        $cmd .= " >> ${DIR}sowh_stdout_$NAME.txt ";
+        $cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
+    }
     safe_system($cmd);
 }
 
@@ -252,7 +258,7 @@ sub _get_partition_lengths {
     my $codon_flag = 0;
     my @lens = ();
     if ($part) {
-        open IN, $part or die "cannot open $part:$!";
+        open IN, $part or _my_die("cannot open $part:$!");
         while (my $line = <IN>) {
             chomp $line;
             next if ($line =~ m/^\s*$/);
@@ -264,16 +270,16 @@ sub _get_partition_lengths {
                 push @lens, $len;
                 $codon_flag = 1;
             } else {
-                die "unexpected line in $part";
+                _my_die("unexpected line in $part");
             }
         }
     } else {
-        open IN, $aln or die "cannot open $aln:$!";
+        open IN, $aln or _my_die("cannot open $aln:$!");
         my $line = <IN>;
         if ($line =~ m/^\s*\d+\s+(\d+)\s*$/) {
             @lens = $1;
         } else {
-            die "Alignment file should be in PHYLIP format\n";
+            _my_die("Alignment file should be in PHYLIP format\n");
         }
     }
     return (\@lens,$codon_flag);
@@ -282,7 +288,7 @@ sub _get_partition_lengths {
 sub _get_params_from_const_rax {
     my $file = shift;
     my @data = ();
-    open IN, "$file" or die "cannot open $file:$!";
+    open IN, "$file" or _my_die("cannot open $file:$!");
     my $part_num = 0;
     my @fields = ();
     my $lflag = 0;
@@ -319,7 +325,7 @@ sub _get_params_from_const_rax {
                 $data[$lflag - 1]->{'type'} = $1;
                 $lflag = 0;
             } else {
-                die "unexpected line: $line";
+                _my_die("unexpected line: $line");
             }
         }
     }
@@ -336,7 +342,7 @@ sub _make_unlinked_partition_file {
 
 sub _get_aa_part_info {
     my $part = shift;
-    open IN, $part or die "cannot open $part:$!";
+    open IN, $part or _my_die("cannot open $part:$!");
     my @fields = ();
     my @part_info = ();
     my @names = ();
@@ -344,10 +350,10 @@ sub _get_aa_part_info {
         chomp $line;
         next if ($line =~ m/^\s*$/);
         @fields = split/\,/, $line;
-        $fields[1] or die "unexpected line in part file:$line\nexpecting comma";
+        $fields[1] or _my_die("unexpected line in part file:$line\nexpecting comma");
         push @part_info, $fields[1];
         my @name_range = split /=/, $fields[1];
-        $name_range[1] or die "unexpected line in part file:$line\nexpecting =";
+        $name_range[1] or _my_die("unexpected line in part file:$line\nexpecting =");
         $name_range[0] =~ s/\s//g;
         push @names, $name_range[0];
    }
@@ -357,7 +363,7 @@ sub _get_aa_part_info {
 sub _print_unlinked_part {
     my $part_info = shift;
     my $new_part = shift;
-    open OUT, ">$new_part" or die "cannot open $new_part:$!";
+    open OUT, ">$new_part" or _my_die("cannot open $new_part:$!");
     for (my $i = 0; $i < @{$part_info}; $i++) {
        print OUT "GTR_UNLINKED," . "$part_info->[$i]\n";
     }
@@ -370,7 +376,7 @@ sub _parse_rates {
         foreach my $pn (@{$ra_part_names}) {
             my @local_rates = ();
             my $matrix = $DIR . $PART_RATE_MATRIX_PREFIX . $pn;
-            open IN, "$matrix" or die "cannot open $matrix:$!";
+            open IN, "$matrix" or _my_die("cannot open $matrix:$!");
             while (my $line = <IN>) {
                 my @fields = split/\s/, $line;
                 push @local_rates, \@fields;
@@ -379,7 +385,7 @@ sub _parse_rates {
         }
     } else {
         my $matrix = $DIR . $PART_RATE_MATRIX_PREFIX . 'No Name Provided';
-        open IN, "$matrix" or die "cannot open $matrix:$!";
+        open IN, "$matrix" or _my_die("cannot open $matrix:$!");
         while (my $line = <IN>) {
             my @fields = split/\s/, $line;
             push @{$rates[0]}, \@fields;
@@ -402,10 +408,10 @@ sub generate_alignments {
 sub _run_seqgen {
     my $ra_part_lens = shift;
     my $ra_params = shift;
-    my $ra_rates = shift;
-    my $model = shift;
-    my $reps  = shift;
-    my $count = 0;
+    my $ra_rates  = shift;
+    my $model     = shift;
+    my $reps      = shift;
+    my $count     = 0;
     for (my $i = 0; $i < @{$ra_params}; $i++) {
         my $rh_part = $ra_params->[$i];
         my $cmd = "$SEQGEN -or ";
@@ -422,10 +428,10 @@ sub _run_seqgen {
             $cmd .= "-mGTR ";
             $cmd .= _get_char_params($rh_part);
         } else {
-            die qq~do not know how to handle type: "$rh_part->{'type'}"\n~;
+            _my_die(qq~do not know how to handle type: "$rh_part->{'type'}"\n~);
         }
         $cmd .= " < $DIR" . "$TRE_PREFIX.t1 > $DIR" . "seqgen.$count.out";
-        $cmd .= " 2> /dev/null" if ($QUIET);
+        $cmd .= " 2>> ${DIR}sowh_stderr_$NAME.txt" if ($QUIET);
         $count++;
         safe_system($cmd);
         if ($rh_part->{'type'} eq 'Multi-State') {
@@ -439,7 +445,7 @@ sub _convert_AT_to_01 {
     my $file  = shift;
     my $num_cols = shift;
     my $updated = '';
-    open IN, $file or die "cannot open $file:$!";
+    open IN, $file or _my_die("cannot open $file:$!");
     while (my $line = <IN>) {
         chomp $line;
         if ($line =~ m/^(\S+\s+)(\S+)$/) {
@@ -456,7 +462,7 @@ sub _convert_AT_to_01 {
         }
     }
     close IN;
-    open OUT, ">$file" or die "cannot open >$file:$!";
+    open OUT, ">$file" or _my_die("cannot open >$file:$!");
     print OUT $updated;
     close OUT;
 }
@@ -464,8 +470,8 @@ sub _convert_AT_to_01 {
 sub _get_dna_params {
     my $rh_part = shift;
     my $cmd = '';
-    die "unexpected freq" unless ($rh_part->{'freqs'});
-    die "unexpected rate" unless ($rh_part->{'rates'}->{'ac'} &&
+    _my_die("unexpected freq") unless ($rh_part->{'freqs'});
+    _my_die("unexpected rate") unless ($rh_part->{'rates'}->{'ac'} &&
           $rh_part->{'rates'}->{'ag'} && $rh_part->{'rates'}->{'ct'} &&
           $rh_part->{'rates'}->{'cg'} && $rh_part->{'rates'}->{'at'} &&
           $rh_part->{'rates'}->{'gt'} );
@@ -480,8 +486,8 @@ sub _get_aa_params {
     my $rh_part = shift;
     my $ra_r = shift;
     my $cmd = '';
-    die "unexpected freq" unless ($rh_part->{'freqs'});
-    die "unexpected rates" unless (scalar(@{$ra_r}) == 21);
+    _my_die("unexpected freq") unless ($rh_part->{'freqs'});
+    _my_die("unexpected rates") unless (scalar(@{$ra_r}) == 21);
     $cmd .= "-f$rh_part->{'freqs'} ";
     my $j = 0;
     $cmd .= "-r";
@@ -497,12 +503,12 @@ sub _get_aa_params {
 sub _get_char_params {
     my $rh_part = shift;
     my $cmd = '';
-    die "unexpected freq" unless ($rh_part->{'freqs'});
+    _my_die("unexpected freq") unless ($rh_part->{'freqs'});
     $rh_part->{'freqs'} =~ s/^\s*//;
     $rh_part->{'freqs'} =~ s/\s*$//;
     my @freqs = split /\s+/, $rh_part->{'freqs'};
     unless (scalar(@freqs) == 2) {
-        die "expecting 2 frequencies. Multi-State only works w/binary matrix\n";
+        _my_die("expecting 2 frequencies. Multi-State only works w/binary matrix\n");
     }
     $cmd .= "-f$freqs[0],0.0,0.0,$freqs[1] ";
     return $cmd;
@@ -524,7 +530,7 @@ sub _build_datasets {
 sub _get_ids_from_seqgen_out {
     my $file = shift;
     my @ids = ();
-    open IN, $file or die "cannot open $file:$!";
+    open IN, $file or _my_die("cannot open $file:$!");
     my $topline = <IN>;
     while (my $line = <IN>) {
         next if ($line =~ m/^\s*$/);
@@ -538,7 +544,7 @@ sub _get_ids_from_seqgen_out {
 sub _get_seqs_from_seqgen_out {
     my $file = shift;
     my @seqs = ();
-    open IN, $file or die "cannot open $file:$!";
+    open IN, $file or _my_die("cannot open $file:$!");
     my $topline = <IN>;
     my $count = 0;
     while (my $line = <IN>) {
@@ -596,7 +602,7 @@ sub _make_alns {
     my @files = ();
     for (my $i = 0; $i < @{$ra_ds}; $i++) {
         my $file = $DIR . "aln.$i.phy";
-        open OUT, ">$file" or die "cannot open >$file:$!";
+        open OUT, ">$file" or _my_die("cannot open >$file:$!");
         print OUT $ra_ds->[$i];
         push @files, $file;
     }
@@ -625,7 +631,7 @@ sub run_raxml_on_gen_alns {
 sub _get_part_titles {
     my $part = shift;
     my @titles = ();
-    open IN, $part or die "cannot open $part:$!";
+    open IN, $part or _my_die("cannot open $part:$!");
     while (my $line = <IN>) {
         chomp $line;
         next if ($line =~ m/^\s*$/);
@@ -633,7 +639,7 @@ sub _get_part_titles {
             my $title = $1;
             push @titles, $title;
         } else {
-            die "unexpected line in $part";
+            _my_die("unexpected line in $part");
         }
     }
     return \@titles;
@@ -657,7 +663,7 @@ sub _print_new_part_file {
     my $ra_part_titles = shift;
     my $ra_ranges = shift;
     my $file = shift;
-    open OUT, ">$file" or die "cannot open $file:$!";
+    open OUT, ">$file" or _my_die("cannot open $file:$!");
     for (my $i = 0; $i < @{$ra_ranges}; $i++) {
         print OUT "$ra_part_titles->[$i]";
         print OUT "$ra_ranges->[$i]\n";
@@ -676,7 +682,10 @@ sub _run_rax_on_genset {
     if ($part) {
         $cmd .= " -q $part ";
     }
-    $cmd .= " > /dev/null 2> /dev/null" if ($QUIET);
+    if ($QUIET) {
+        $cmd .= " >> ${DIR}sowh_stdout_$NAME.txt ";
+        $cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
+    }
     print "$i";
     safe_system($cmd);
     $cmd  = "$RAX -p 1234 -w $DIR -m $mod -s $ra_alns->[$i] ";
@@ -684,7 +693,10 @@ sub _run_rax_on_genset {
     if ($part) {
         $cmd .= " -q $part ";
     }
-    $cmd .= " > /dev/null 2> /dev/null" if ($QUIET);
+    if ($QUIET) {
+        $cmd .= " >> ${DIR}sowh_stdout_$NAME.txt ";
+        $cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
+    }
     print ": ";
     safe_system($cmd);
 }
@@ -720,11 +732,11 @@ sub _get_distribution {
         } else {
             $file = $DIR . "RAxML_info.$i.ml";
         }
-        open IN, $file or die "cannot open $file:$!";
+        open IN, $file or _my_die("cannot open $file:$!");
         while (my $line = <IN>) {
             if ($line =~ m/^Inference\[0\] final[^:]+: ([-0-9.]+)/) {
                 my $likelihood = $1;
-                die "unexpected multiple matches in $file" if ($dist[$i]);
+                _my_die("unexpected multiple matches in $file") if ($dist[$i]);
                 $dist[$i] = $likelihood;
             }
             chomp $line;
@@ -750,7 +762,7 @@ sub _get_diff_dist {
 sub _get_best_score {
     my $file = shift;
     my $ml_score = '';
-    open IN, $file or die "cannot open $file:$!";
+    open IN, $file or _my_die("cannot open $file:$!");
     while (my $line = <IN>) {
         chomp $line;
         if ($line =~ m/^Final GAMMA-based Score of best tree (\S+)/) {
@@ -826,7 +838,7 @@ sub _print_freq_dist {
         $i++;
     }
     my $d_file = $DIR . "sowh.$name.dist";
-    open OUT, ">$d_file" or die "cannot open >$d_file:$!";
+    open OUT, ">$d_file" or _my_die("cannot open >$d_file:$!");
     foreach my $bin (sort {$a <=> $b} keys %bins) {
         print OUT "$bin\t$bins{$bin}\n";
     }
@@ -878,6 +890,17 @@ sub print_report {
     print "  The p-value is the probability that the test value is plausible\n";
 }
 
+sub _my_die {
+    my $msg  = shift;
+    my $file = "${DIR}sowh_stderr_$NAME.txt";
+    open IN, $file or warn "cannot open $file:$!";
+    while (my $line = <IN>) {
+        warn $line;
+    }
+    warn "sowh.pl died unexpectedly\n";
+    die $msg;
+}
+
 sub usage {
     die "usage: $0
     --constraint=NEWICK_CONSTRAINT_TREE
@@ -889,7 +912,7 @@ sub usage {
     [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS]
     [--reps=NUMBER_OF_REPLICATES]
     [--partition=PARTITION_FILE]
-    [--debug=do not redirect system calls to /dev/null]
+    [--debug]
     [--help]
     [--version]\n";
 }
@@ -975,7 +998,7 @@ This can be a partition file which applies to the dataset. It must be in a forma
 
 =item B<--debug>
 
-do not redirect standard out and standard error to /dev/null. RAxML in particular will produce lots of output with this option. Can be useful for debugging problems like, for example, bad tree format.
+do not redirect standard out and standard error. RAxML in particular will produce lots of output with this option. Can be useful for debugging problems like, for example, bad tree format.
 
 =item B<--help>
 
