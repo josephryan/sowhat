@@ -22,3 +22,10 @@
 * print the command line that was run to standard output straight away 
   or at least upon death
 
+* make figures - flow of the program & graph of the distribution
+
+* add in protein (PHYML) dataset for replacement of H0
+
+* print running initial trees, estimating parameters
+
+
