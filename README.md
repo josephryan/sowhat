@@ -4,7 +4,9 @@ sowh.pl
 DESCRIPTION
 ------------
 
-This program automates the steps required for the SOWH test (as described by Goldman et. al., 2000; See FURTHER READING BELOW). It depends on the freely available seq-gen and RAxML software packages. It works on amino acid, nucleotide, and binary character state datasets. Partitions can be specified.
+sowh.pl has not been tested extensively and is being actively developed. Please use with caution. We appreciate hearing about your experience with the program.
+
+This program automates the steps required for the SOWH test (as described by Goldman et. al., 2000; See FURTHER READING BELOW). It depends on the freely available Seq-Gen and RAxML software packages. It works on amino acid, nucleotide, and binary character state datasets. Partitions (including codon position partitioning) can be specified.
 
 AVAILABILITY
 ------------
