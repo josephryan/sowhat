@@ -20,7 +20,7 @@
 #    with this program; if not, write to the Free Software Foundation, Inc.,
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-our $VERSION = 0.06;
+our $VERSION = 0.07;
 
 use strict;
 use warnings;
@@ -32,6 +32,11 @@ use Statistics::R;
 
 our $RAX = 'raxmlHPC';
 our $SEQGEN = 'seq-gen';
+our $PB = 'pb -f';
+our $PPRED = 'ppred';
+our $PB_SAMPLING_FREQ = 5;
+our $PB_SAVING_FREQ   = 1;
+our $PB_BURN   = 10;
 our $DEFAULT_REPS = 100;
 our $QUIET = 1;
 our $DIR = '';
@@ -48,21 +53,27 @@ MAIN: {
 
     run_initial_trees($rh_opts);
 
-    my ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) = 
-        get_params($rh_opts->{'aln'},$rh_opts->{'part'},
-        $rh_opts->{'mod'},$rh_opts->{'constraint_tree'},);
+    my $ra_alns = [ ];
+    my $ra_aln_len = 0;
+    my $codon_flag = 0;
+    if ($rh_opts->{'usepb'}) {
+        $ra_alns = generate_alignments_w_pb($rh_opts);
+    } else {
+        my $ra_params = [ ];
+        my $ra_rates  = [ ];
+        ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) = 
+            get_params($rh_opts->{'aln'},$rh_opts->{'part'},
+            $rh_opts->{'mod'},$rh_opts->{'constraint_tree'},);
 
-    my $ra_alns = generate_alignments($ra_aln_len,$ra_params,
-        $ra_rates,$rh_opts->{'mod'},$rh_opts->{'reps'},$rh_opts->{'name'});
-
+        $ra_alns = generate_alignments($ra_aln_len,$ra_params,
+            $ra_rates,$rh_opts->{'mod'},$rh_opts->{'reps'},$rh_opts->{'name'});
+    } 
     my ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) = ();
     for (my $i = 0; $i < @{$ra_alns}; $i++) {
-        run_raxml_on_gen_alns($ra_alns,$rh_opts->{'part'},
-        $rh_opts->{'mod'},$rh_opts->{'constraint_tree'});
+        run_raxml_on_gen_alns($ra_alns,$rh_opts,$ra_aln_len,$codon_flag,$i);
 
         ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) =
         evaluate_distribution($rh_opts->{'reps'},$rh_opts->{'name'},$i);
-
     }
     print_report($best_ml,$best_t1,$rh_stats,$ra_diff,$rh_opts,$fd_file,$ver);
 }
@@ -76,6 +87,10 @@ sub process_options {
 
     my $opt_results = Getopt::Long::GetOptions(
                               "version" => \$rh_opts->{'version'},
+                                "usepb" => \$rh_opts->{'usepb'},
+                              "ppred=s" => \$rh_opts->{'ppred'},
+                            "pb_burn=i" => \$rh_opts->{'pb_burn'},
+                                 "pb=s" => \$rh_opts->{'pb'},
                          "constraint=s" => \$rh_opts->{'constraint_tree'},
                                 "aln=s" => \$rh_opts->{'aln'},
                                 "dir=s" => \$rh_opts->{'dir'},
@@ -88,6 +103,9 @@ sub process_options {
                                "name=s" => \$rh_opts->{'name'},
                                  "help" => \$rh_opts->{'help'});
 
+    $PPRED = $rh_opts->{'ppred'} if ($rh_opts->{'ppred'});
+    $PB = $rh_opts->{'pb'} if ($rh_opts->{'pb'});
+    $PB_BURN = $rh_opts->{'pb_burn'} if ($rh_opts->{'pb_burn'});
     $RAX = $rh_opts->{'rax'} if ($rh_opts->{'rax'});
     $SEQGEN = $rh_opts->{'seqgen'} if ($rh_opts->{'seqgen'});
     $QUIET = 0 if ($rh_opts->{'debug'});
@@ -173,6 +191,30 @@ sub _run_best_tree {
         $cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
     }
     safe_system($cmd);
+}
+
+sub generate_alignments_w_pb {
+    my @alns = ();
+    my $rh_opts = shift;
+    my $id = $DIR . $rh_opts->{'name'} . '.pb';
+    my $pb_reps = $rh_opts->{'reps'} * $PB_SAMPLING_FREQ + $PB_BURN;
+    my $pb_cmd = "$PB -d $rh_opts->{'aln'} -T $rh_opts->{'constraint_tree'} ";
+    $pb_cmd .= "-x $PB_SAVING_FREQ $pb_reps $id";
+    if ($QUIET) {
+        $pb_cmd .= " >> ${DIR}sowh_stdout_$NAME.txt ";
+        $pb_cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
+    }
+    safe_system($pb_cmd);
+    my $ppred_cmd = "$PPRED -x $PB_BURN $PB_SAMPLING_FREQ $id";
+    if ($QUIET) {
+        $ppred_cmd .= " >> ${DIR}sowh_stdout_$NAME.txt ";
+        $ppred_cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
+    }
+    safe_system($ppred_cmd);
+    for (my $i = 0; $i < $rh_opts->{'reps'}; $i++) {
+        push @alns, "${id}_sample_${i}.ali"; 
+    }
+    return \@alns;
 }
 
 sub get_params {
@@ -611,12 +653,13 @@ sub _make_alns {
 
 sub run_raxml_on_gen_alns {
     my $ra_alns = shift;
-    my $part = shift;
-    my $mod = shift;
-    my $tre = shift;
+    my $rh_opts = shift;
     my $ra_aln_len = shift;
     my $codon_flag = shift;
     my $i = shift;
+    my $part = $rh_opts->{'part'};
+    my $mod = $rh_opts->{'mod'};
+    my $tre = $rh_opts->{'constraint_tree'};
     if ($codon_flag) {
         my $new_part = $DIR . $NEW_PARTITION_FILE;
         my $ra_part_titles = _get_part_titles($part);
@@ -705,7 +748,7 @@ sub evaluate_distribution {
     my $reps = shift;
     my $name = shift;
     my $i = shift;
-    if ($i > 10) {
+    if ($i > 9) {
         my $ra_dist = _get_distribution($reps,0,$i);
         my $ra_const_dist = _get_distribution($reps,1,$i);
         my $ra_diff_dist = _get_diff_dist($ra_dist,$ra_const_dist);
@@ -910,6 +953,9 @@ sub usage {
     --dir=DIR
     [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS]
     [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS]
+    [--usepb]
+    [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS]
+    [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS]
     [--reps=NUMBER_OF_REPLICATES]
     [--partition=PARTITION_FILE]
     [--debug]
@@ -929,7 +975,7 @@ Samuel H. Church <samuel_church@brown.edu>, Joseph F. Ryan <josephryan@yahoo.com
 
 =head1 SYNOPSIS 
 
-sowh.pl --constraint=NEWICK_CONSTRAINT_TREE --aln=PHYLIP_ALIGNMENT --name=NAME_FOR_REPORT --model=MODEL --dir=DIR [--reps=NUMBER_OF_REPLICATES] [--partition=PARTITION_FILE] [--debug] [--help] [--version]
+sowh.pl --constraint=NEWICK_CONSTRAINT_TREE --aln=PHYLIP_ALIGNMENT --name=NAME_FOR_REPORT --model=MODEL --dir=DIR [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] [--usepb] [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS] [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] [--reps=NUMBER_OF_REPLICATES] [--partition=PARTITION_FILE] [--debug] [--help] [--version]\n";
 
 =head1 constraint
 
@@ -985,7 +1031,26 @@ This allows the user to specify the RAxML binary to be used in the analysis. It 
 =item B<--seqgen>
 
 <default: seq-gen>
-This allows the user to specify the SeqGen binary or path to the binary to be used in the analysis. It could be useful to pass additional parameters to seq-gen.
+This allows the user to specify the SeqGen binary or path to the binary to be used in the analysis. It could be useful to pass additional parameters to seq-gen
+
+=item B<--usepb>
+
+Use PhyloBayes (pb and ppred programs) to calculate null distribution parameters and generate data sets instead of using RAxML and Seq-Gen. Only works for amino acid and nucleotide datasets (not character data)
+
+=item B<--pb>
+
+<default: pb>
+This allows the user to specify the pb binary or path to the binary to be used in the analysis. It could be useful to pass additional parameters to pb (only useful with --usepb)
+
+=item B<--ppred>
+
+<default: ppred>
+This allows the user to specify the ppred binary or path to the binary to be used in the analysis. It could be useful to pass additional parameters to ppred (only useful with --usepb)
+
+=item B<--pb_burn>
+
+<default: 10>
+This allows the user to specify the burn-in value used for the phylobayes analysis (only useful with --usepb)
 
 =item B<--reps>
 
@@ -1012,7 +1077,7 @@ Print the version. Overrides all other options.
 
 =head1 DESCRIPTION
 
-This program automates the steps required for the SOWH test (as described by Goldman et. al., 2000. It depends on the freely available seq-gen and RAxML software packages. It works on amino acid, nucleotide, and binary character state datasets. Partitions can be specified.
+This program automates the steps required for the SOWH test (as described by Goldman et. al., 2000. It depends on the freely available seq-gen and RAxML software packages. It works on amino acid, nucleotide, and binary character state datasets. Partitions can be specified. It can also use PhyloBayes to simulate the null distribution.
 
 The program calculates the difference between two likelihood scores: that of the best tree, and the best tree constrained by the hypothesized topology. The maximum likelihodd analyses are run using RAxML, a phylogenetic tool written by Alexandros Stamatakis, and freely available under GNU GPL lisence. See:
 https://github.com/stamatak/RAxML-Light-1.0.5
