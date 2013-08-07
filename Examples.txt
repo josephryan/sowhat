@@ -37,5 +37,7 @@ sowh.pl --constraint=examples/H1.tre --aln=examples/nt.phy --partition=examples/
 # p-value should be 0 or close to 0
 sowh.pl --constraint=examples/H1.tre --aln=examples/char.phy --model=MULTIGAMMA --dir=test.output/test6 --name=char.H1
 
+# TEST7: Nucleotide data using PhyloBayes for the null distribution
+sowh.pl --constraint=examples/H1.tre --aln=examples/nt.phy --model=GTRGAMMA --dir=test.output/test1 --name=nt.H1.pb --usepb
 
 
