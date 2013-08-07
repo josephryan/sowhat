@@ -6,7 +6,7 @@ DESCRIPTION
 
 sowh.pl has not been tested extensively and is being actively developed. Please use with caution. We appreciate hearing about your experience with the program.
 
-This program automates the steps required for the SOWH test (as described by Goldman et. al., 2000; See FURTHER READING BELOW). It depends on the freely available Seq-Gen and RAxML software packages. It works on amino acid, nucleotide, and binary character state datasets. Partitions (including codon position partitioning) can be specified.
+This program automates the steps required for the SOWH test (as described by Goldman et. al., 2000; See FURTHER READING BELOW). It depends on the freely available Seq-Gen and RAxML software packages. It works on amino acid, nucleotide, and binary character state datasets. Partitions (including codon position partitioning) can be specified. It is also possible to use PhyloBayes to generate the null distribution for nucleotide and amino acid data.
 
 AVAILABILITY
 ------------
@@ -32,6 +32,8 @@ DEPENDENCIES
         RAxML v7.7 or higher (https://github.com/stamatak/standard-RAxML)
         Seq-Gen (http://tree.bio.ed.ac.uk/software/seqgen/)
         Statistics::R  (can be installed by running: sudo cpan Statistics::R)
+    Optional
+        PhyloBayes (http://www.phylobayes.org)
 
 EXAMPLES
 --------
@@ -46,10 +48,13 @@ RUN
     --aln=PHYLIP_ALIGNMENT \
     --name=NAME_FOR_REPORT \
     --model=MODEL \
+    --dir=DIR \
     [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] \
     [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] \
+    [--usepb] \
+    [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS] \
+    [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] \
     [--reps=NUMBER_OF_REPLICATES] \
-    [--dir=DIR] \
     [--partition=PARTITION_FILE] \
     [--debug] \
     [--help] \
