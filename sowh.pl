@@ -1005,7 +1005,7 @@ This is the name of the output files.
 
 =over 2
 
-This is the model which will be used to estimate the likelihood scores of the original dataset the scores of each of the generated datasets with and without the topology constrained according to the hypothesis.
+This is the model which will be used to estimate the likelihood scores of the original dataset the scores of each of the generated datasets with and without the topology constrained according to the hypothesis. GammaGTR is used to generate parameters for null dataset regardless of the model specified (unless --usepb is specified, in which case phylobayes is used to generate parameters).
 
 =back
 
