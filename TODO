@@ -1,6 +1,9 @@
-# in cases where seq-gen produces 2 of the same sequences in a dataset
-# there will be a failure in RAxML. Should we test for duplicate generated seqs?# will this slow down?  Perhaps just a more informative warning message
-# explaining the errors?
+* need better error messages (e.g., when wrong model is specified, or when tree taxa and alignment taxa don't match)
+
+* in cases where seq-gen produces 2 of the same sequences in a dataset
+  there will be a failure in RAxML. Should we test for duplicate generated
+  seqs? will this slow down?  Perhaps just a more informative warning
+  message explaining the errors?
 
 * default 1000 ?
 
