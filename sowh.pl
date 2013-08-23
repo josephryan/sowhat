@@ -172,6 +172,7 @@ sub run_initial_trees {
     my $mod = $rh_opts->{'mod'};
     my $tre = $rh_opts->{'constraint_tree'};
 
+    print "Running initial trees, estimating paramters\n";
     _run_best_tree('ml',$aln,$part,$mod);
     _run_best_tree('t1',$aln,$part,$mod,$tre);
 }
@@ -920,6 +921,7 @@ sub print_report {
         print "  this can happen if seq-gen produces 2 of the same sequences ";
         print "in a dataset,\n";
         print "  which will cause RAxML to fail on that dataset\n";
+        print "  WARNING: p-value may not be consistent for multiple runs\n";
     }
     print "Mean of this distribution: $rh_s->{'mean'}\n";
     print "Standard deviation of distribution: $rh_s->{'stdev'}\n\n";

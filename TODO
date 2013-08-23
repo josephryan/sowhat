@@ -2,12 +2,12 @@
 
 * in cases where seq-gen produces 2 of the same sequences in a dataset
   there will be a failure in RAxML. Should we test for duplicate generated
-  seqs? will this slow down?  Perhaps just a more informative warning
+  seqs? will this slow down? DONE: Perhaps just a more informative warning
   message explaining the errors?
 
 * default 1000 ?
 
-* change all occurrences of t1 to H0 (or vice versa)
+* DONE in program: change all occurrences of t1 to H0 (or vice versa)
 
 * print $DIR/sowh_info_$name.txt with all output
 
@@ -33,6 +33,6 @@
 
 * add in protein (PHYML) dataset for replacement of H0
 
-* print running initial trees, estimating parameters
+*DONE: print running initial trees, estimating parameters
 
 
