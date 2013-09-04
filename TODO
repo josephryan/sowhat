@@ -1,5 +1,9 @@
 * need better error messages (e.g., when wrong model is specified, or when tree taxa and alignment taxa don't match)
 
+*** I think the warning about reduced reps is incorrect now, because it is always 99, not the full 100. I am not sure. We need to verify this.
+
+* need to check that constraint tree, dataset share taxa - names are consistent. The error that currently is output is a confusing message from RAxML.
+
 * in cases where seq-gen produces 2 of the same sequences in a dataset
   there will be a failure in RAxML. Should we test for duplicate generated
   seqs? will this slow down? DONE: Perhaps just a more informative warning
