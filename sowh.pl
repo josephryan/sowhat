@@ -1013,6 +1013,8 @@ This is the model which will be used to estimate the likelihood scores of the or
 
 =head1 dir
 
+=over 2
+
 This is the directory where ouput files will be sent.
 
 =back
