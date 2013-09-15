@@ -31,7 +31,9 @@ DEPENDENCIES
         Perl (comes with most operating systems)
         RAxML v7.7 or higher (https://github.com/stamatak/standard-RAxML)
         Seq-Gen (http://tree.bio.ed.ac.uk/software/seqgen/)
-        Statistics::R  (can be installed by running: sudo cpan Statistics::R)
+        Statistics::R  (http://search.cpan.org/dist/Statistics-R/)
+            Statistics::R has additional requirements
+            See http://search.cpan.org/dist/Statistics-R/README 
     Optional
         PhyloBayes (http://www.phylobayes.org)
 
