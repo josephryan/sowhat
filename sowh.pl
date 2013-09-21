@@ -20,7 +20,7 @@
 #    with this program; if not, write to the Free Software Foundation, Inc.,
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-our $VERSION = 0.07;
+our $VERSION = 0.08;
 
 use strict;
 use warnings;
@@ -28,6 +28,7 @@ use Getopt::Long;
 use Pod::Usage;
 use Data::Dumper;
 use Cwd;
+use local::lib;
 use Statistics::R;
 
 our $RAX = 'raxmlHPC';
@@ -172,7 +173,7 @@ sub run_initial_trees {
     my $mod = $rh_opts->{'mod'};
     my $tre = $rh_opts->{'constraint_tree'};
 
-    print "Running initial trees, estimating paramters\n";
+    print "Running initial trees, estimating parameters\n";
     _run_best_tree('ml',$aln,$part,$mod);
     _run_best_tree('t1',$aln,$part,$mod,$tre);
 }
@@ -749,19 +750,30 @@ sub evaluate_distribution {
     my $reps = shift;
     my $name = shift;
     my $i = shift;
-    if ($i > 9) {
-        my $ra_dist = _get_distribution($reps,0,$i);
-        my $ra_const_dist = _get_distribution($reps,1,$i);
-        my $ra_diff_dist = _get_diff_dist($ra_dist,$ra_const_dist);
-        my $best_ml_score = _get_best_score($DIR . 'RAxML_info.ml');
-        my $best_t1_score = _get_best_score($DIR . 'RAxML_info.t1');
-        my $rh_stats = _get_stats($ra_diff_dist,
-            $best_ml_score,$best_t1_score);
-        my $fd_file = _print_freq_dist($ra_diff_dist,$name);
-        print "current p-value = $rh_stats->{'p'}\n";
-        return ($best_ml_score,$best_t1_score, $rh_stats,
-                $ra_diff_dist,$fd_file);
-    }
+    if ($reps < 2) {
+         my $delta = 0;
+         my $deltaprime = 0;
+         my $ra_dist = _get_distribution($reps,0,$i);
+         my $ra_const_dist = _get_distribution($reps,1,$i);
+         my $best_ml_score = _get_best_score($DIR . 'RAxML_info.ml');
+         my $best_t1_score = _get_best_score($DIR . 'RAxML_info.t1');
+          $delta = $best_ml_score - $best_t1_score;
+         print "\ndelta = $delta\n";
+         $deltaprime = $ra_dist->[$i] - $ra_const_dist->[$i];
+         print "deltprime = $deltaprime\n";
+         exit;
+     } else {        
+         my $ra_dist = _get_distribution($reps,0,$i);
+         my $ra_const_dist = _get_distribution($reps,1,$i);
+         my $ra_diff_dist = _get_diff_dist($ra_dist,$ra_const_dist);
+         my $best_ml_score = _get_best_score($DIR . 'RAxML_info.ml');
+         my $best_t1_score = _get_best_score($DIR . 'RAxML_info.t1');
+         my $rh_stats = _get_stats($ra_diff_dist,$best_ml_score,$best_t1_score);
+         my $fd_file = _print_freq_dist($ra_diff_dist,$name);
+         print "current p-value = $rh_stats->{'p'}\n";
+         return ($best_ml_score,$best_t1_score, $rh_stats,
+               $ra_diff_dist,$fd_file);
+     }
 }
 
 sub _get_distribution {
@@ -769,7 +781,7 @@ sub _get_distribution {
     my $w_const = shift;
     my $j = shift;
     my @dist = ();
-    for (my $i = 0; $i < $j; $i++) {
+    for (my $i = 0; $i <= $j; $i++) {
         my $file = '';
         if ($w_const) {
             $file = $DIR . "RAxML_info.$i.t1";
@@ -875,7 +887,7 @@ sub _print_freq_dist {
     my $i = 0;
     while ($i < @sorted) {
         if ($sorted[$i] > ($current_bin + $div)) {
-            $current_bin += $div
+           $current_bin += $div
         } else {
             $bins{$current_bin}++;
         }
@@ -915,14 +927,14 @@ sub print_report {
     }
     print "REPS: $rh_opts->{'reps'}\n";
     print "\nSize of this distribution: $rh_s->{'sample_size'}\n";
-    if ($rh_s->{'sample_size'} != $rh_opts->{'reps'}) {
-        print "NOTE: size of the distribution ($rh_s->{'sample_size'}) ";
-        print "differs from reps ($rh_opts->{'reps'})\n";
-        print "  this can happen if seq-gen produces 2 of the same sequences ";
-        print "in a dataset,\n";
-        print "  which will cause RAxML to fail on that dataset\n";
-        print "  WARNING: p-value may not be consistent for multiple runs\n";
-    }
+#    if ($rh_s->{'sample_size'} != $rh_opts->{'reps'}) {
+#        print "NOTE: size of the distribution ($rh_s->{'sample_size'}) ";
+#        print "differs from reps ($rh_opts->{'reps'})\n";
+#        print "  this can happen if seq-gen produces 2 of the same sequences ";
+#        print "in a dataset,\n";
+#        print "  which will cause RAxML to fail on that dataset\n";
+#        print "  WARNING: p-value may not be consistent for multiple runs\n";
+#    }
     print "Mean of this distribution: $rh_s->{'mean'}\n";
     print "Standard deviation of distribution: $rh_s->{'stdev'}\n\n";
     print "Frequency distribution printed to:\n  $fd_file\n\n";
@@ -1012,8 +1024,6 @@ This is the model which will be used to estimate the likelihood scores of the or
 =back
 
 =head1 dir
-
-=over 2
 
 This is the directory where ouput files will be sent.
 
