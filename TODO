@@ -1,4 +1,4 @@
-* need better error messages (e.g., when wrong model is specified, or when tree taxa and alignment taxa don't match)
+* add in hash which checks the model
 
 *** I think the warning about reduced reps is incorrect now, because it is always 99, not the full 100. I am not sure. We need to verify this.
 
@@ -9,9 +9,7 @@
   seqs? will this slow down? DONE: Perhaps just a more informative warning
   message explaining the errors?
 
-* default 1000 ?
-
-* DONE in program: change all occurrences of t1 to H0 (or vice versa)
+* change all hypotheses to t1, t2, in published. Tidy up published directories, example directories.
 
 * print $DIR/sowh_info_$name.txt with all output
 
@@ -20,23 +18,8 @@
   #cycle  #treegen        time    loglik  length  alpha   nmode   stat
   1       940     2836    -889000 21.9549 0.585788        4885    0.933128  
 
-* obtain rodent-12s, bird-mtDNA datasets used in Buckley 2002
-
-* obtain bird morphology character dataset used in Cracraft, 2001
-
 * run consel on cnidarian Hox analyses
-
-* redirect STDOUT to $DIR/sowh_stdout_$name.txt
-  redirect STDERR to $DIR/sowh_stderr_$name.txt
-  open and print $DIR/sowh_stderr_$name.txt to STDOUT before a die
 
 * print the command line that was run to standard output straight away 
   or at least upon death
-
-* make figures - flow of the program & graph of the distribution
-
-* add in protein (PHYML) dataset for replacement of H0
-
-*DONE: print running initial trees, estimating parameters
-
 
