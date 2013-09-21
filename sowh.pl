@@ -28,7 +28,8 @@ use Getopt::Long;
 use Pod::Usage;
 use Data::Dumper;
 use Cwd;
-use local::lib;
+# use local lib if installing Statistics::R without sudo cpan
+#use local::lib;
 use Statistics::R;
 
 our $RAX = 'raxmlHPC';

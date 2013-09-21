@@ -4,7 +4,8 @@ use strict;
 use warnings;
 use Data::Dumper;
 use Getopt::Long;
-use local::lib;
+#use local lib if installing Statistics::R without sudeo cpan
+#use local::lib;
 use Statistics::R;
 
 MAIN : {
