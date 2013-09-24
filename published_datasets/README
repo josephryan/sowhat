@@ -1,5 +1,18 @@
-These datasets were tested in Buckley, 2002. Please see references therein
+Protein.benchmark
+
+This data set was tested in Guindon, (2010) as proteic_M1384_11x391_2003.phy. Please see references therein for more information regarding their origin. 
+
+Guindon, S., Dufayard, J.-F., Lefort, V., Anisimova, M., Hordijk, W., & Gascuel, O. (2010). New Algorithms and Methods to Estimate Maximum-Likelihood Phylogenies: Assessing the Performance of PhyML 3.0. Systematic Biology, 59(3), 307–321. 
+
+Sullivan12S
+
+This data set was tested in Buckley, 2002. Please see references therein
 for more information regarding their origin.
 
 Buckley, Thomas R. "Model misspecification and probabilistic tests of topology: evidence from empirical data sets." Systematic Biology 51.3 (2002): 509-523.
+
+Hox 
+
+This data set was tested in Ryan et al ...
+
 

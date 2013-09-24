@@ -1,15 +1,17 @@
 * add in hash which checks the model
 
-*** I think the warning about reduced reps is incorrect now, because it is always 99, not the full 100. I am not sure. We need to verify this.
+* add in documentation about using local::lib - bootstrapping the package in and using that to cpan R
+
+DONE - - -  I think the warning about reduced reps is incorrect now, because it is always 99, not the full 100. I am not sure. We need to verify this.
 
 * need to check that constraint tree, dataset share taxa - names are consistent. The error that currently is output is a confusing message from RAxML.
 
-* in cases where seq-gen produces 2 of the same sequences in a dataset
+DONE - SOWHAT make this irrelevant - - - in cases where seq-gen produces 2 of the same sequences in a dataset
   there will be a failure in RAxML. Should we test for duplicate generated
   seqs? will this slow down? DONE: Perhaps just a more informative warning
   message explaining the errors?
 
-* change all hypotheses to t1, t2, in published. Tidy up published directories, example directories.
+DONE - - - DELETED UNNECESSARY DATA SETS - - - CHANGED ALL H0 -> t1, H1 -> t2change all hypotheses to t1, t2, in published. Tidy up published directories, example directories.
 
 * print $DIR/sowh_info_$name.txt with all output
 

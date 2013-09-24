@@ -1,0 +1,29 @@
+#Commands used in the analysis of each data set:
+
+#protein.benchmark
+#ANALYSIS 1 -100 times
+perl sowh.pl --constraint=published_datasets/protein.t1.tre --aln=published_datasets/protein.benchmark.phy --model=PROTGAMMAWAG --dir=test.output/protein.t1 --name=protein.t1 >analysis.output/protein.t1.repeat
+
+#ANALYSIS 2 -100 times
+perl sowh.pl --constraint=published_datasets/protein.t2.tre --aln=published_datasets/protein.benchmark.phy --model=PROTGAMMAWAG --dir=test.output/protein.t2 --name=protein.t2 >analysis.output/protein.t2.repeat
+
+#ANALYSIS 3
+perl sowhat.pl --constraint=published_datasets/protein.t1.tre --aln=published_datasets/protein.benchmark.phy --model=PROTGAMMAWAG --dir=test.output/protein.sowhat.t1 --output=analysis.output/protein.sowhat.t1.output --reps=10000 >analysis.output/protein.sowhat.t1
+
+#Sullivan12S
+#ANALYSIS 4 -100 times
+perl sowh.pl --constraint=published_datasets/Sullivan12S.t1.tre--aln=published_datasets/Sullivan12S.phy --model=GTRGAMMA --dir=test.output/sullivan.t1 --name=sullivan.t1 >analysis.output/sullivan.t1.repeat
+
+#ANALYSIS 5 -100 times
+perl sowh.pl --constraint=published_datasets/Sullivan12S.t2.tre--aln=published_datasets/Sullivan12S.phy --model=GTRGAMMA --dir=test.output/sullivan.t2 --name=sullivan.t2 >analysis.ouput/sullivan.t2.repeat
+
+#ANALYSIS 6 -100 times
+perl sowh.pl --constraint=published_datasets/Sullivan12S.t2.tre--aln=published_datasets/Sullivan12S.phy --model=GTRGAMMA --dir=test.output/sullivan.t2.pb --name=sullivan.t2.pb >analysis.output/sullivan.t2.pb.repeat
+
+#ANALYSIS 7
+perl sowhat.pl --constraint=published_datasets/protein.t1.tre --aln=published_datasets/protein.benchmark.phy --model=PROTGAMMAWAG --dir=test.output/protein.sowhat.t1 --output=analysis.output/protein.sowhat.t1.output --reps=10000 >analysis.output/sullivan.sowhat.t1
+
+#HOX
+#ANALYSIS 8
+perl sowhat.pl --constraint=published_datasets/NVHD065.full.constraint --aln=published_datasets/NvHox_from_Ryan_et_al.phy --model=PROTGAMMALG --dir=test.output/Hox.NV --output=analysis.output/Hox.NV.output --reps=10000 >analysis.output/Hox.NV 
+
