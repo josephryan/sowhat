@@ -21,7 +21,7 @@ perl sowh.pl --constraint=published_datasets/Sullivan12S.t2.tre--aln=published_d
 perl sowh.pl --constraint=published_datasets/Sullivan12S.t2.tre--aln=published_datasets/Sullivan12S.phy --model=GTRGAMMA --dir=test.output/sullivan.t2.pb --name=sullivan.t2.pb >analysis.output/sullivan.t2.pb.repeat
 
 #ANALYSIS 7
-perl sowhat.pl --constraint=published_datasets/protein.t1.tre --aln=published_datasets/protein.benchmark.phy --model=PROTGAMMAWAG --dir=test.output/protein.sowhat.t1 --output=analysis.output/protein.sowhat.t1.output --reps=10000 >analysis.output/sullivan.sowhat.t1
+perl sowhat.pl --constraint=published_datasets/Sullivan12S.t2.tre --aln=published_datasets/Sullivan12S.phy --model=GTRGAMMA --dir=test.output/sullivan.sowhat.t2 --output=analysis.output/sullivan.sowhat.t2.output --reps=10000 >analysis.output/sullivan.sowhat.t1
 
 #HOX
 #ANALYSIS 8
