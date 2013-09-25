@@ -30,17 +30,19 @@ GetOptions(
     "rax=s" => \$rax,
     "seqgen=s" => \$seqgen);
 
+    # you need to test that the program was called with all the required opts
+
+    my @delta_dist = ();
+    my @deltprime_dist = ();
     for (my $i = 0; $i < $reps; $i++) {
-        mkdir $output;
-        mkdir $dir;
+        mkdir $output or die "cannot mkdir $output:$!" unless (-d $output);
+        mkdir $dir or die "cannot mkdir $dir:$!" unless (-d $dir);
         run_sowh($const,$model,$aln,$reps,$dir,$output,$usepb,$rax,$seqgen,$i);
         
-        my $ra_delta_dist = [ ];
-        my $ra_delt_prime_dist = [ ];        
-        ($ra_delta_dist,$ra_delt_prime_dist)=get_deltas($output,$i);
+        get_deltas($output,$i,\@delta_dist,\@deltprime_dist);
         
         my $rh_stats = [ ];
-        $rh_stats=get_stats($ra_delta_dist,$ra_delt_prime_dist,$i);
+        $rh_stats=get_stats(\@delta_dist,\@deltprime_dist,$i);
     
         print "================================\n";
         print "current sample size = $i \n";
@@ -78,24 +80,20 @@ sub safe_system {
 sub get_deltas {
     my $output = shift;
     my $i = shift;
-    my @deltadist = ();
-    my @deltprimedist = ();
-    for (my $j = 0; $j <= $i; $j++) {
-        my $file = '';
-        $file = $output . "/repeat.$j";
-        open IN, $file or die "cannot open $file:$!";
-        while (my $line = <IN>) {
-            if ($line =~ m/delta\s=\s(-?[0-9.]+)/) {
-                my $delta = $1;
-                $deltadist[$j] = $delta;
-            } if ($line =~ m/deltprime\s=\s(-?[0-9.]+)/) {
-                my $deltprime = $1;
-                $deltprimedist[$j] = $deltprime;
-            }
-            chomp $line;
+    my $ra_delta_dist = shift;
+    my $ra_deltprimedist = shift;
+
+    my $file = $output . "/repeat.$i";
+    open IN, $file or die "cannot open $file:$!";
+    while (my $line = <IN>) {
+        chomp $line;
+        if ($line =~ m/delta\s=\s(-?[0-9.]+)/) {
+            $ra_delta_dist->[$i] = $1;
         }
-     }
-     return (\@deltadist,\@deltprimedist);
+        if ($line =~ m/deltprime\s=\s(-?[0-9.]+)/) {
+            $ra_deltprimedist->[$i] = $1;
+        }
+    }
 }
 
 sub get_stats {
