@@ -20,7 +20,7 @@
 #    with this program; if not, write to the Free Software Foundation, Inc.,
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-our $VERSION = 0.08;
+our $VERSION = 0.09;
 
 use strict;
 use warnings;
@@ -40,6 +40,7 @@ our $PB_SAMPLING_FREQ = 5;
 our $PB_SAVING_FREQ   = 1;
 our $PB_BURN   = 10;
 our $DEFAULT_REPS = 100;
+our $TEST_RUNS = 1;
 our $QUIET = 1;
 our $DIR = '';
 our $FREQ_BIN_NUMBER = 10;
@@ -53,31 +54,45 @@ MAIN: {
     
     my $ver = get_version();
 
-    run_initial_trees($rh_opts);
-
-    my $ra_alns = [ ];
-    my $ra_aln_len = 0;
-    my $codon_flag = 0;
-    if ($rh_opts->{'usepb'}) {
-        $ra_alns = generate_alignments_w_pb($rh_opts);
-    } else {
-        my $ra_params = [ ];
-        my $ra_rates  = [ ];
-        ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) = 
-            get_params($rh_opts->{'aln'},$rh_opts->{'part'},
-            $rh_opts->{'mod'},$rh_opts->{'constraint_tree'},);
-
-        $ra_alns = generate_alignments($ra_aln_len,$ra_params,
-            $ra_rates,$rh_opts->{'mod'},$rh_opts->{'reps'},$rh_opts->{'name'});
-    } 
-    my ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) = ();
-    for (my $i = 0; $i < @{$ra_alns}; $i++) {
-        run_raxml_on_gen_alns($ra_alns,$rh_opts,$ra_aln_len,$codon_flag,$i);
-
-        ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) =
-        evaluate_distribution($rh_opts->{'reps'},$rh_opts->{'name'},$i);
+    if ($rh_opts->{'sowhat'}) {
+        $rh_opts->{'test_runs'} = $rh_opts->{'reps'};
+        $rh_opts->{'reps'} = '1';
     }
-    print_report($best_ml,$best_t1,$rh_stats,$ra_diff,$rh_opts,$fd_file,$ver);
+    
+    my @delta_dist = ();
+    my @deltaprime_dist = ();
+    my @variance = (); 
+    
+    for (my $ts = 0; $ts < $rh_opts->{'test_runs'}; $ts++) {
+        run_initial_trees($rh_opts,$ts);
+        my $ra_alns = [ ];
+        my $ra_aln_len = 0;
+        my $codon_flag = 0;
+        if ($rh_opts->{'usepb'}) {
+            $ra_alns = generate_alignments_w_pb($rh_opts,$ts);
+        } else {
+            my $ra_params = [ ];
+            my $ra_rates  = [ ];
+            ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) = 
+                get_params($rh_opts->{'aln'},$rh_opts->{'part'},
+                $rh_opts->{'mod'},$rh_opts->{'constraint_tree'},$ts);
+
+            $ra_alns = generate_alignments($ra_aln_len,$ra_params,$ra_rates,
+            $rh_opts->{'mod'},$rh_opts->{'reps'},$ts);
+        } 
+        my ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) = ();
+        for (my $i = 0; $i < @{$ra_alns}; $i++) {
+            run_raxml_on_gen_alns($ra_alns,$rh_opts,$ra_aln_len,
+            $codon_flag,$i,$ts);
+
+            ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) =
+            evaluate_distribution($rh_opts->{'reps'},$rh_opts->{'name'},
+            \@delta_dist,\@deltaprime_dist,\@variance,$i,$ts);
+        }
+        plot_variance(\@variance);
+        print_report($ts,$best_ml,$best_t1,$rh_stats,$ra_diff,
+                     $rh_opts,$fd_file,$ver);
+     }
 }
 
 sub process_options {
@@ -85,10 +100,12 @@ sub process_options {
     $rh_opts->{'reps'} = $DEFAULT_REPS;
     $rh_opts->{'orig_options'} = [@ARGV];
     $rh_opts->{'rax'} = $RAX;
+    $rh_opts->{'test_runs'} = $TEST_RUNS;
     $rh_opts->{'seqgen'} = $SEQGEN;
 
     my $opt_results = Getopt::Long::GetOptions(
                               "version" => \$rh_opts->{'version'},
+                               "sowhat" => \$rh_opts->{'sowhat'},
                                 "usepb" => \$rh_opts->{'usepb'},
                               "ppred=s" => \$rh_opts->{'ppred'},
                             "pb_burn=i" => \$rh_opts->{'pb_burn'},
@@ -97,6 +114,7 @@ sub process_options {
                                 "aln=s" => \$rh_opts->{'aln'},
                                 "dir=s" => \$rh_opts->{'dir'},
                                "reps=i" => \$rh_opts->{'reps'},
+                              "tests=i" => \$rh_opts->{'test_runs'},
                              "seqgen=s" => \$rh_opts->{'seqgen'},
                                 "rax=s" => \$rh_opts->{'rax'},
                           "partition=s" => \$rh_opts->{'part'},
@@ -168,15 +186,15 @@ sub get_version {
 
 sub run_initial_trees {
     my $rh_opts = shift;
-
+    my $ts = shift;
     my $aln = $rh_opts->{'aln'};
     my $part = $rh_opts->{'part'};
     my $mod = $rh_opts->{'mod'};
     my $tre = $rh_opts->{'constraint_tree'};
 
     print "Running initial trees, estimating parameters\n";
-    _run_best_tree('ml',$aln,$part,$mod);
-    _run_best_tree('t1',$aln,$part,$mod,$tre);
+    _run_best_tree('ml',$aln,$part,$mod,$ts);
+    _run_best_tree('t1',$aln,$part,$mod,$ts,$tre);
 }
 
 sub _run_best_tree {
@@ -184,9 +202,10 @@ sub _run_best_tree {
     my $aln   = shift;
     my $part  = shift;
     my $mod   = shift;
+    my $ts = shift;
     my $tre   = shift;
 
-    my $cmd = "$RAX -f d -p 1234 -w $DIR -m $mod -s $aln -n $title";
+    my $cmd = "$RAX -f d -p 1234 -w $DIR -m $mod -s $aln -n $title.test.$ts";
     $cmd .= " -q $part" if ($part);
     $cmd .= " -g $tre" if ($tre);
     if ($QUIET) {
@@ -199,7 +218,8 @@ sub _run_best_tree {
 sub generate_alignments_w_pb {
     my @alns = ();
     my $rh_opts = shift;
-    my $id = $DIR . $rh_opts->{'name'} . '.pb';
+    my $ts = shift;
+    my $id = $DIR . $rh_opts->{'name'} . ".pb.test.$ts";
     my $pb_reps = $rh_opts->{'reps'} * $PB_SAMPLING_FREQ + $PB_BURN;
     my $pb_cmd = "$PB -d $rh_opts->{'aln'} -T $rh_opts->{'constraint_tree'} ";
     $pb_cmd .= "-x $PB_SAVING_FREQ $pb_reps $id";
@@ -225,22 +245,23 @@ sub get_params {
     my $part = shift;
     my $mod = shift;
     my $tre = shift;
+    my $ts = shift;
     my $ra_aln_len = ();
     my $codon_flag = 0;
     my $ra_params = ();
     my $ra_rates = ();
     if ($mod =~ m/^GTRGAMMA/i) {
         ($ra_aln_len,$codon_flag,$ra_params) =
-           _model_gtrgamma($aln,$part,$tre);
+           _model_gtrgamma($aln,$part,$tre,$ts);
     } elsif ($mod =~ m/^PROT/i) {
         ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) =
-           _model_prot($aln,$part,$tre);      
+           _model_prot($aln,$part,$tre,$ts);      
     } elsif ($mod =~ m/^MULTIGAMMA/i) {
         ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) =
-           _model_character_data($aln,$part,$tre);
+           _model_character_data($aln,$part,$tre,$ts);
     } else {
         ($ra_aln_len,$codon_flag,$ra_params) =
-           _model_non_gtr($aln,$part,$tre);        
+           _model_non_gtr($aln,$part,$tre,$ts);        
     }
     return ($ra_aln_len,$codon_flag,$ra_params,$ra_rates);   
 }
@@ -249,8 +270,9 @@ sub _model_gtrgamma {
     my $aln = shift;
     my $part = shift;
     my $tre = shift;
+    my $ts = shift;
     my ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,$part);
-    my ($ra_params) = _get_params_from_const_rax($DIR . 'RAxML_info.t1');
+    my ($ra_params) = _get_params_from_const_rax($DIR ."RAxML_info.t1.test.$ts");
     return ($ra_aln_len,$codon_flag,$ra_params);
 }
 
@@ -258,6 +280,7 @@ sub _model_prot {
     my $aln = shift;
     my $part = shift;
     my $tre = shift;
+    my $ts = shift;
     my $ra_aln_len = ();
     my $codon_flag = 0;
     my $ra_params = ();
@@ -268,12 +291,12 @@ sub _model_prot {
         _run_best_tree('par',$aln,$new_part,'PROTGAMMAGTR_UNLINKED',$tre);
         $ra_rates = _parse_rates($ra_part_names);
         ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,$part);
-        $ra_params = _get_params_from_const_rax($DIR . 'RAxML_info.par');
+        $ra_params = _get_params_from_const_rax($DIR ."RAxML_info.par.test.$ts");
     } else {
         _run_best_tree('par',$aln,$part,'PROTGAMMAGTR_UNLINKED',$tre);
         $ra_rates = _parse_rates();
         ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,$part);
-        $ra_params = _get_params_from_const_rax($DIR . 'RAxML_info.par');
+        $ra_params = _get_params_from_const_rax($DIR ."RAxML_info.par.test.$ts");
     }
     return ($ra_aln_len,$codon_flag,$ra_params,$ra_rates);      
 }
@@ -282,8 +305,9 @@ sub _model_character_data {
     my $aln = shift;
     my $part = shift;
     my $tre = shift;
+    my $ts = shift;
     my ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,$part);
-    my ($ra_params) = _get_params_from_const_rax($DIR . 'RAxML_info.t1');
+    my ($ra_params) = _get_params_from_const_rax($DIR ."RAxML_info.t1.test.$ts");
     return ($ra_aln_len,$codon_flag,$ra_params);
 }
 
@@ -291,9 +315,10 @@ sub _model_non_gtr {
     my $aln = shift;
     my $part = shift;
     my $tre = shift;
+    my $ts = shift;
     _run_best_tree('par',$aln,$part,'GTRGAMMA',$tre);
     my ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,$part);
-    my $ra_params = _get_params_from_const_rax($DIR . 'RAxML_info.par');
+    my $ra_params = _get_params_from_const_rax($DIR . "RAxML_info.par.test.$ts");
     return ($ra_aln_len,$codon_flag,$ra_params);
 }
 
@@ -445,9 +470,10 @@ sub generate_alignments {
     my $ra_rates = shift;
     my $mod = shift;
     my $reps = shift;
-    _run_seqgen($ra_aln_len,$ra_params,$ra_rates,$mod,$reps);
-    my $ra_ds = _build_datasets(scalar(@{$ra_params}));
-    my $ra_alns = _make_alns($ra_ds);
+    my $ts = shift;
+    _run_seqgen($ra_aln_len,$ra_params,$ra_rates,$mod,$reps,$ts);
+    my $ra_ds = _build_datasets(scalar(@{$ra_params}),$ts);
+    my $ra_alns = _make_alns($ra_ds,$ts);
 }
 
 sub _run_seqgen {
@@ -456,6 +482,7 @@ sub _run_seqgen {
     my $ra_rates  = shift;
     my $model     = shift;
     my $reps      = shift;
+    my $ts         = shift;
     my $count     = 0;
     for (my $i = 0; $i < @{$ra_params}; $i++) {
         my $rh_part = $ra_params->[$i];
@@ -475,7 +502,7 @@ sub _run_seqgen {
         } else {
             _my_die(qq~do not know how to handle type: "$rh_part->{'type'}"\n~);
         }
-        $cmd .= " < $DIR" . "$TRE_PREFIX.t1 > $DIR" . "seqgen.$count.out";
+        $cmd .= " < $DIR" . "$TRE_PREFIX.t1.test.$ts > $DIR" . "seqgen.$count.out.test.$ts";
         $cmd .= " 2>> ${DIR}sowh_stderr_$NAME.txt" if ($QUIET);
         $count++;
         safe_system($cmd);
@@ -561,11 +588,12 @@ sub _get_char_params {
 
 sub _build_datasets {
     my $num = shift;
+    my $ts = shift;
     my @allseqs = ();
-    my $ra_ids = _get_ids_from_seqgen_out($DIR . "seqgen.0.out");
+    my $ra_ids = _get_ids_from_seqgen_out($DIR . "seqgen.0.out.test.$ts");
 
     for (my $i = 0; $i < $num; $i++) {
-        my $ra_seqs = _get_seqs_from_seqgen_out($DIR . "seqgen.$i.out");
+        my $ra_seqs = _get_seqs_from_seqgen_out($DIR . "seqgen.$i.out.test.$ts");
         push @allseqs, $ra_seqs;
     }
     my $ra_ds = _make_datasets_from_allseqs($ra_ids,\@allseqs);
@@ -644,9 +672,10 @@ sub _get_len_from_id_lens {
 
 sub _make_alns {
     my $ra_ds = shift;
+    my $ts = shift;
     my @files = ();
     for (my $i = 0; $i < @{$ra_ds}; $i++) {
-        my $file = $DIR . "aln.$i.phy";
+        my $file = $DIR . "aln.$i.phy.test.$ts";
         open OUT, ">$file" or _my_die("cannot open >$file:$!");
         print OUT $ra_ds->[$i];
         push @files, $file;
@@ -660,6 +689,7 @@ sub run_raxml_on_gen_alns {
     my $ra_aln_len = shift;
     my $codon_flag = shift;
     my $i = shift;
+    my $ts = shift;
     my $part = $rh_opts->{'part'};
     my $mod = $rh_opts->{'mod'};
     my $tre = $rh_opts->{'constraint_tree'};
@@ -668,9 +698,9 @@ sub run_raxml_on_gen_alns {
         my $ra_part_titles = _get_part_titles($part);
         my $ra_ranges = _print_ranges($ra_aln_len);
         _print_new_part_file($ra_part_titles,$ra_ranges,$new_part);
-        _run_rax_on_genset($ra_alns,$mod,$new_part,$tre,$i);
+        _run_rax_on_genset($ra_alns,$mod,$new_part,$tre,$i,$ts);
     } else {
-        _run_rax_on_genset($ra_alns,$mod,$part,$tre,$i);
+        _run_rax_on_genset($ra_alns,$mod,$part,$tre,$i,$ts);
     }
 }
 
@@ -723,8 +753,9 @@ sub _run_rax_on_genset {
     my $cmd     = '';
     my $tre     = shift;
     my $i       = shift;
+    my $ts       = shift;
     $cmd  = "$RAX -p 1234 -w $DIR -m $mod -s $ra_alns->[$i] ";
-    $cmd .= "-n $i.ml";
+    $cmd .= "-n $i.ml.test.$ts";
     if ($part) {
         $cmd .= " -q $part ";
     }
@@ -732,10 +763,10 @@ sub _run_rax_on_genset {
         $cmd .= " >> ${DIR}sowh_stdout_$NAME.txt ";
         $cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
     }
-    print "$i";
+    print "test.$ts - $i";
     safe_system($cmd);
     $cmd  = "$RAX -p 1234 -w $DIR -m $mod -s $ra_alns->[$i] ";
-    $cmd .= "-n $i.t1 -g $tre";
+    $cmd .= "-n $i.t1.test.$ts -g $tre";
     if ($part) {
         $cmd .= " -q $part ";
     }
@@ -750,44 +781,48 @@ sub _run_rax_on_genset {
 sub evaluate_distribution {
     my $reps = shift;
     my $name = shift;
+    my $ra_delta_dist = shift;
+    my $ra_deltaprime_dist = shift;
+    my $ra_variance = shift;
     my $i = shift;
+    my $ts = shift;
     if ($reps < 2) {
-         my $delta = 0;
-         my $deltaprime = 0;
-         my $ra_dist = _get_distribution($reps,0,$i);
-         my $ra_const_dist = _get_distribution($reps,1,$i);
-         my $best_ml_score = _get_best_score($DIR . 'RAxML_info.ml');
-         my $best_t1_score = _get_best_score($DIR . 'RAxML_info.t1');
-          $delta = $best_ml_score - $best_t1_score;
-         print "\ndelta = $delta\n";
-         $deltaprime = $ra_dist->[$i] - $ra_const_dist->[$i];
-         print "deltprime = $deltaprime\n";
-         exit;
-     } else {        
-         my $ra_dist = _get_distribution($reps,0,$i);
-         my $ra_const_dist = _get_distribution($reps,1,$i);
-         my $ra_diff_dist = _get_diff_dist($ra_dist,$ra_const_dist);
-         my $best_ml_score = _get_best_score($DIR . 'RAxML_info.ml');
-         my $best_t1_score = _get_best_score($DIR . 'RAxML_info.t1');
-         my $rh_stats = _get_stats($ra_diff_dist,$best_ml_score,$best_t1_score);
-         my $fd_file = _print_freq_dist($ra_diff_dist,$name);
-         print "current p-value = $rh_stats->{'p'}\n";
-         return ($best_ml_score,$best_t1_score, $rh_stats,
+        my $ra_dist = _get_distribution($reps,0,$i,$ts);
+        my $ra_const_dist = _get_distribution($reps,1,$i,$ts);
+        my $best_ml_score = _get_best_score($DIR . "RAxML_info.ml.test.$ts");
+        my $best_t1_score = _get_best_score($DIR . "RAxML_info.t1.test.$ts");
+        $ra_delta_dist->[$ts] = $best_ml_score - $best_t1_score;
+        $ra_deltaprime_dist->[$ts] = $ra_dist->[$i] - $ra_const_dist->[$i];
+        my $rh_stats = _get_sowhat_stats($ra_delta_dist,$ra_deltaprime_dist);
+        $ra_variance->[$ts] = $rh_stats->{'var'};
+        return ($best_ml_score,$best_t1_score,$rh_stats);
+    } else {        
+        my $ra_dist = _get_distribution($reps,0,$i,$ts);
+        my $ra_const_dist = _get_distribution($reps,1,$i,$ts);
+        my $ra_diff_dist = _get_diff_dist($ra_dist,$ra_const_dist);
+        my $best_ml_score = _get_best_score($DIR . "RAxML_info.ml.test.$ts");
+        my $best_t1_score = _get_best_score($DIR . "RAxML_info.t1.test.$ts");
+        my $rh_stats = _get_stats($ra_diff_dist,$best_ml_score,$best_t1_score);
+        $ra_variance->[$i] = $rh_stats->{'var'};
+        my $fd_file = _print_freq_dist($ra_diff_dist,$name,$ts);
+        print "current p-value = $rh_stats->{'p'}\n";
+        return ($best_ml_score,$best_t1_score, $rh_stats,
                $ra_diff_dist,$fd_file);
-     }
+   }
 }
 
 sub _get_distribution {
     my $reps = shift;
     my $w_const = shift;
     my $j = shift;
+    my $ts = shift;
     my @dist = ();
     for (my $i = 0; $i <= $j; $i++) {
         my $file = '';
         if ($w_const) {
-            $file = $DIR . "RAxML_info.$i.t1";
+            $file = $DIR . "RAxML_info.$i.t1.test.$ts";
         } else {
-            $file = $DIR . "RAxML_info.$i.ml";
+            $file = $DIR . "RAxML_info.$i.ml.test.$ts";
         }
         open IN, $file or _my_die("cannot open $file:$!");
         while (my $line = <IN>) {
@@ -849,18 +884,54 @@ n <- $num
 xbar <- $diff
 z <- (xbar-a)/(s/sqrt(n))
 p <-  pnorm(z, lower.tail = FALSE)
+v <- var(c($dist_str))
 a
 s
 n
 xbar
 z
 p
+v
 EOF
     my $r_out = $R->run($cmds);
     $R->stopR();
     my $rh_stats = _parse_stats($r_out);
     return $rh_stats;
 }
+
+sub _get_sowhat_stats {
+    my $ra_delta_dist = shift;
+    my $ra_deltaprime_dist = shift;
+    my $ts = scalar(@{$ra_deltaprime_dist});
+    my $delta_string = @{$ra_delta_dist};
+    my $deltaprime_string = @{$ra_deltaprime_dist};
+    my $R = Statistics::R->new();
+    if($ts > 1) {
+        $delta_string = join ', ', @{$ra_delta_dist};
+        $deltaprime_string = join ', ', @{$ra_deltaprime_dist};
+    }
+    $R->startR();
+
+my $cmds = <<EOF;
+a <- mean(c($deltaprime_string))
+s <- sd(c($deltaprime_string))
+n <- $ts
+delta <- c($delta_string)
+deltaprime <- c($deltaprime_string)
+b <- suppressWarnings(ks.test(delta,deltaprime))
+v <- var(c($deltaprime_string))
+a
+s
+n
+b
+v
+EOF
+    my $r_out = $R->run($cmds);
+    $R->stopR();
+    my $rh_stats = _parse_sowhat_stats($r_out);
+    return $rh_stats;
+}
+
 
 sub _parse_stats {
     my $str = shift;
@@ -873,12 +944,27 @@ sub _parse_stats {
     $stats{'diff'} = $data[3];
     $stats{'z'} = $data[4];
     $stats{'p'} = $data[5];
+    $stats{'var'} = $data[6];
+    return \%stats;
+}
+
+sub _parse_sowhat_stats {
+    my $str = shift;
+    my %stats = ();
+    $str =~ s/^\[\d+\] // or warn "unexpected output from R";
+    my @data = split /\n\[\d+\]|D\s*=\s*[0-9.]+,|\n/, $str;
+    $stats{'mean'} = $data[0];
+    $stats{'stdev'} = $data[1];
+    $stats{'sample_size'} = $data[2];
+    $stats{'ks'} = $data[8];
+    $stats{'var'} = $data[11];
     return \%stats;
 }
 
 sub _print_freq_dist {
     my $ra_d = shift;
     my $name = shift;
+    my $ts = shift;
     my %bins = ();
     my @sorted = sort {$a <=> $b} @{$ra_d};
     my $low  = $sorted[0];
@@ -894,7 +980,7 @@ sub _print_freq_dist {
         }
         $i++;
     }
-    my $d_file = $DIR . "sowh.$name.dist";
+    my $d_file = $DIR . "sowh.$name.dist.test.$ts";
     open OUT, ">$d_file" or _my_die("cannot open >$d_file:$!");
     foreach my $bin (sort {$a <=> $b} keys %bins) {
         print OUT "$bin\t$bins{$bin}\n";
@@ -903,7 +989,26 @@ sub _print_freq_dist {
     return $d_file;
 }
 
+sub plot_variance {
+    my $ra_variance = shift;
+    my $R = Statistics::R->new();  
+    if(scalar(@{$ra_variance}) > 1) {
+        my $variance_str = join ', ', @{$ra_variance};
+        $R->startR();
+  
+        my $cmds = <<EOF;
+variance <- c($variance_str)
+png(filename="$DIR/variance.png", height=295, width=300, bg="white")
+plot(variance, type="o", col="blue")
+dev.off()
+EOF
+        my $r_out = $R->run($cmds);
+        $R->stopR();
+    }
+}
+
 sub print_report {
+    my $ts = shift;
     my $best_ml = shift;
     my $const_ml = shift;
     my $rh_s = shift;
@@ -911,41 +1016,40 @@ sub print_report {
     my $rh_opts = shift;
     my $fd_file = shift;
     my $version = shift;
-    print "\n\n";
+    my $file = $DIR . "sowh.info.test";
+    $file .= ".$ts" unless($rh_opts->{'sowhat'});
+    print "current KS test: $rh_s->{'ks'}\n" if($rh_opts->{'sowhat'});
     print "=============================================================\n";
-    print "                   sowh.pl OUTPUT\n";
-    print "=============================================================\n\n";
-    print "\n\nProgram was called as follows:\n$0 \\\n";
+    open OUT, ">$file" or _my_die("cannot open >$file:$!");
+    print OUT "\n\n";
+    print OUT "=============================================================\n";
+    print OUT "                   sowh.pl OUTPUT\n";
+    print OUT "=============================================================\n\n";
+    print OUT "\n\nProgram was called as follows:\n$0 \\\n";
     foreach my $arg (@{$rh_opts->{'orig_options'}}) {
-        print "  $arg \\\n";
+        print OUT "  $arg \\\n";
     }
-    print "\n  \$SEQGEN variable set to $SEQGEN\n";
-    print "  \$RAX variable set to $RAX\n";
-    print "  RAxML was version $version\n\n";
-    print "Distribution of differences between ML vals of simulated sets:\n";
+    print OUT "\n  \$SEQGEN variable set to $SEQGEN\n";
+    print OUT "  \$RAX variable set to $RAX\n";
+    print OUT "  RAxML was version $version\n\n";
+    print OUT "Distribution of differences between ML vals of simulated sets:\n";
     foreach my $val (@{$ra_d}) {
-       print "$val\n";
+       print OUT "$val\n";
     }
-    print "REPS: $rh_opts->{'reps'}\n";
-    print "\nSize of this distribution: $rh_s->{'sample_size'}\n";
-#    if ($rh_s->{'sample_size'} != $rh_opts->{'reps'}) {
-#        print "NOTE: size of the distribution ($rh_s->{'sample_size'}) ";
-#        print "differs from reps ($rh_opts->{'reps'})\n";
-#        print "  this can happen if seq-gen produces 2 of the same sequences ";
-#        print "in a dataset,\n";
-#        print "  which will cause RAxML to fail on that dataset\n";
-#        print "  WARNING: p-value may not be consistent for multiple runs\n";
-#    }
-    print "Mean of this distribution: $rh_s->{'mean'}\n";
-    print "Standard deviation of distribution: $rh_s->{'stdev'}\n\n";
-    print "Frequency distribution printed to:\n  $fd_file\n\n";
-    print "ML value of best tree: $best_ml\n";
-    print "ML value of best tree w/constraint: $const_ml\n";
-    print "Difference between $best_ml and $const_ml: $rh_s->{'diff'}\n";
-    print "  (this is the value being tested)\n\n";
-    print "z-Score: $rh_s->{'z'}\n";
-    print "p-value: $rh_s->{'p'}\n";
-    print "  The p-value is the probability that the test value is plausible\n";
+    print OUT "REPS: $rh_opts->{'reps'}\n";
+    print OUT "\nSize of null distribution: $rh_s->{'sample_size'}\n";
+    print OUT "Mean of null distribution: $rh_s->{'mean'}\n";
+    print OUT "Standard deviation of distribution: $rh_s->{'stdev'}\n\n";
+    print OUT "Frequency distribution printed to:\n $fd_file\n\n" if($fd_file);
+    print OUT "ML value of best tree: $best_ml\n";
+    print OUT "ML value of best tree w/constraint: $const_ml\n";
+    print OUT "Difference between $best_ml and $const_ml: $rh_s->{'diff'}\n" unless($rh_opts->{'sowhat'});
+    print OUT "  (this is the value being tested)\n\n";
+    print OUT "z-Score: $rh_s->{'z'}\n" unless($rh_opts->{'sowhat'});
+    print OUT "p-value: $rh_s->{'p'}\n" unless($rh_opts->{'sowhat'});
+    print OUT "KS test p-value: $rh_s->{'ks'}\n" if($rh_opts->{'sowhat'});
+    print OUT "  The p-value is the probability that the test value is plausible\n";
+    close OUT;
 }
 
 sub _my_die {
