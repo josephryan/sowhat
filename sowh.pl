@@ -46,7 +46,7 @@ our $DIR = '';
 our $FREQ_BIN_NUMBER = 10;
 our $TRE_PREFIX = 'RAxML_bestTree';
 our $NEW_PARTITION_FILE = 'new.part.txt';
-our $PART_RATE_MATRIX_PREFIX = 'RAxML_proteinGTRmodel.par_Partition_';
+our $PART_RATE_MATRIX_PREFIX = 'RAxML_proteinGTRmodel.par';
 our $NAME = '';
 
 MAIN: {
@@ -88,8 +88,8 @@ MAIN: {
             ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) =
             evaluate_distribution($rh_opts->{'reps'},$rh_opts->{'name'},
             \@delta_dist,\@deltaprime_dist,\@variance,$i,$ts);
+            plot_variance(\@variance);
         }
-        plot_variance(\@variance);
         print_report($ts,$best_ml,$best_t1,$rh_stats,$ra_diff,
                      $rh_opts,$fd_file,$ver);
      }
@@ -202,7 +202,7 @@ sub _run_best_tree {
     my $aln   = shift;
     my $part  = shift;
     my $mod   = shift;
-    my $ts = shift;
+    my $ts    = shift;
     my $tre   = shift;
 
     my $cmd = "$RAX -f d -p 1234 -w $DIR -m $mod -s $aln -n $title.test.$ts";
@@ -288,13 +288,13 @@ sub _model_prot {
     my $new_part = $DIR . $NEW_PARTITION_FILE;
     if ($part) {
         my $ra_part_names = _make_unlinked_partition_file($part,$new_part);
-        _run_best_tree('par',$aln,$new_part,'PROTGAMMAGTR_UNLINKED',$tre);
-        $ra_rates = _parse_rates($ra_part_names);
+        _run_best_tree('par',$aln,$new_part,'PROTGAMMAGTR_UNLINKED',$ts,$tre);
+        $ra_rates = _parse_rates($ts,$ra_part_names);
         ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,$part);
         $ra_params = _get_params_from_const_rax($DIR ."RAxML_info.par.test.$ts");
     } else {
-        _run_best_tree('par',$aln,$part,'PROTGAMMAGTR_UNLINKED',$tre);
-        $ra_rates = _parse_rates();
+        _run_best_tree('par',$aln,$part,'PROTGAMMAGTR_UNLINKED',$ts,$tre);
+        $ra_rates = _parse_rates($ts);
         ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,$part);
         $ra_params = _get_params_from_const_rax($DIR ."RAxML_info.par.test.$ts");
     }
@@ -316,7 +316,7 @@ sub _model_non_gtr {
     my $part = shift;
     my $tre = shift;
     my $ts = shift;
-    _run_best_tree('par',$aln,$part,'GTRGAMMA',$tre);
+    _run_best_tree('par',$aln,$part,'GTRGAMMA',$ts,$tre);
     my ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,$part);
     my $ra_params = _get_params_from_const_rax($DIR . "RAxML_info.par.test.$ts");
     return ($ra_aln_len,$codon_flag,$ra_params);
@@ -440,12 +440,13 @@ sub _print_unlinked_part {
 }
 
 sub _parse_rates {
+    my $ts = shift;
     my $ra_part_names = shift;
     my @rates = ();
     if ($ra_part_names) {
         foreach my $pn (@{$ra_part_names}) {
             my @local_rates = ();
-            my $matrix = $DIR . $PART_RATE_MATRIX_PREFIX . $pn;
+            my $matrix = $DIR . $PART_RATE_MATRIX_PREFIX . ".test.$ts" . "_Partition_" . $pn;
             open IN, "$matrix" or _my_die("cannot open $matrix:$!");
             while (my $line = <IN>) {
                 my @fields = split/\s/, $line;
@@ -454,7 +455,7 @@ sub _parse_rates {
             push @rates, \@local_rates;
         }
     } else {
-        my $matrix = $DIR . $PART_RATE_MATRIX_PREFIX . 'No Name Provided';
+        my $matrix = $DIR . $PART_RATE_MATRIX_PREFIX . ".test.$ts" . "_Partition_No Name Provided";
         open IN, "$matrix" or _my_die("cannot open $matrix:$!");
         while (my $line = <IN>) {
             my @fields = split/\s/, $line;
@@ -1044,7 +1045,7 @@ sub print_report {
     print OUT "ML value of best tree: $best_ml\n";
     print OUT "ML value of best tree w/constraint: $const_ml\n";
     print OUT "Difference between $best_ml and $const_ml: $rh_s->{'diff'}\n" unless($rh_opts->{'sowhat'});
-    print OUT "  (this is the value being tested)\n\n";
+    print OUT "  (this is the value being tested)\n\n" unless($rh_opts->{'sowhat'});
     print OUT "z-Score: $rh_s->{'z'}\n" unless($rh_opts->{'sowhat'});
     print OUT "p-value: $rh_s->{'p'}\n" unless($rh_opts->{'sowhat'});
     print OUT "KS test p-value: $rh_s->{'ks'}\n" if($rh_opts->{'sowhat'});
