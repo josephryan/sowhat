@@ -20,7 +20,7 @@
 #    with this program; if not, write to the Free Software Foundation, Inc.,
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-our $VERSION = 0.09;
+our $VERSION = 0.10;
 
 use strict;
 use warnings;
@@ -90,8 +90,7 @@ MAIN: {
             \@delta_dist,\@deltaprime_dist,\@variance,$i,$ts);
             plot_variance(\@variance);
         }
-        print_report($ts,$best_ml,$best_t1,$rh_stats,$ra_diff,
-                     $rh_opts,$fd_file,$ver);
+        print_report($ts,$best_ml,$best_t1,$rh_stats,$ra_diff,\@delta_dist,                          $rh_opts,$fd_file,$ver);
      }
 }
 
@@ -796,7 +795,9 @@ sub evaluate_distribution {
         $ra_deltaprime_dist->[$ts] = $ra_dist->[$i] - $ra_const_dist->[$i];
         my $rh_stats = _get_sowhat_stats($ra_delta_dist,$ra_deltaprime_dist);
         $ra_variance->[$ts] = $rh_stats->{'var'};
-        return ($best_ml_score,$best_t1_score,$rh_stats);
+        my $fd_file = _print_freq_dist($ra_deltaprime_dist,$name,$reps);
+        print "current p-value = $rh_stats->{'p'}\n";
+        return ($best_ml_score,$best_t1_score,$rh_stats,$ra_deltaprime_dist,$fd_file);
     } else {        
         my $ra_dist = _get_distribution($reps,0,$i,$ts);
         my $ra_const_dist = _get_distribution($reps,1,$i,$ts);
@@ -807,8 +808,7 @@ sub evaluate_distribution {
         $ra_variance->[$i] = $rh_stats->{'var'};
         my $fd_file = _print_freq_dist($ra_diff_dist,$name,$ts);
         print "current p-value = $rh_stats->{'p'}\n";
-        return ($best_ml_score,$best_t1_score, $rh_stats,
-               $ra_diff_dist,$fd_file);
+        return ($best_ml_score,$best_t1_score,$rh_stats,$ra_diff_dist,$fd_file);
    }
 }
 
@@ -917,22 +917,23 @@ my $cmds = <<EOF;
 a <- mean(c($deltaprime_string))
 s <- sd(c($deltaprime_string))
 n <- $ts
-delta <- c($delta_string)
-deltaprime <- c($deltaprime_string)
-b <- suppressWarnings(ks.test(delta,deltaprime))
+xbar <- mean(c($delta_string))
+z <- (xbar-a)/(s/sqrt(n))
+p <-  pnorm(z, lower.tail = FALSE)
 v <- var(c($deltaprime_string))
 a
 s
 n
-b
+xbar
+z
+p
 v
 EOF
     my $r_out = $R->run($cmds);
     $R->stopR();
-    my $rh_stats = _parse_sowhat_stats($r_out);
+    my $rh_stats = _parse_stats($r_out);
     return $rh_stats;
 }
-
 
 sub _parse_stats {
     my $str = shift;
@@ -946,19 +947,6 @@ sub _parse_stats {
     $stats{'z'} = $data[4];
     $stats{'p'} = $data[5];
     $stats{'var'} = $data[6];
-    return \%stats;
-}
-
-sub _parse_sowhat_stats {
-    my $str = shift;
-    my %stats = ();
-    $str =~ s/^\[\d+\] // or warn "unexpected output from R";
-    my @data = split /\n\[\d+\]|D\s*=\s*[0-9.]+,|\n/, $str;
-    $stats{'mean'} = $data[0];
-    $stats{'stdev'} = $data[1];
-    $stats{'sample_size'} = $data[2];
-    $stats{'ks'} = $data[8];
-    $stats{'var'} = $data[11];
     return \%stats;
 }
 
@@ -981,7 +969,7 @@ sub _print_freq_dist {
         }
         $i++;
     }
-    my $d_file = $DIR . "sowh.$name.dist.test.$ts";
+    my $d_file = $DIR . "sowh.$name.dist.$ts";
     open OUT, ">$d_file" or _my_die("cannot open >$d_file:$!");
     foreach my $bin (sort {$a <=> $b} keys %bins) {
         print OUT "$bin\t$bins{$bin}\n";
@@ -1014,12 +1002,12 @@ sub print_report {
     my $const_ml = shift;
     my $rh_s = shift;
     my $ra_d = shift;
+    my $ra_delta_dist = shift;
     my $rh_opts = shift;
     my $fd_file = shift;
     my $version = shift;
     my $file = $DIR . "sowh.info.test";
     $file .= ".$ts" unless($rh_opts->{'sowhat'});
-    print "current KS test: $rh_s->{'ks'}\n" if($rh_opts->{'sowhat'});
     print "=============================================================\n";
     open OUT, ">$file" or _my_die("cannot open >$file:$!");
     print OUT "\n\n";
@@ -1033,22 +1021,25 @@ sub print_report {
     print OUT "\n  \$SEQGEN variable set to $SEQGEN\n";
     print OUT "  \$RAX variable set to $RAX\n";
     print OUT "  RAxML was version $version\n\n";
-    print OUT "Distribution of differences between ML vals of simulated sets:\n";
+    print OUT "Null Distribution:\n";
     foreach my $val (@{$ra_d}) {
+       print OUT "$val\n";
+    }
+    print OUT "\nDistribution of Test Statistics\n\n" if($ra_delta_dist);
+    foreach my $val (@{$ra_delta_dist}) {
        print OUT "$val\n";
     }
     print OUT "REPS: $rh_opts->{'reps'}\n";
     print OUT "\nSize of null distribution: $rh_s->{'sample_size'}\n";
     print OUT "Mean of null distribution: $rh_s->{'mean'}\n";
     print OUT "Standard deviation of distribution: $rh_s->{'stdev'}\n\n";
-    print OUT "Frequency distribution printed to:\n $fd_file\n\n" if($fd_file);
+    print OUT "Frequency distribution printed to:\n $fd_file\n\n";
     print OUT "ML value of best tree: $best_ml\n";
     print OUT "ML value of best tree w/constraint: $const_ml\n";
-    print OUT "Difference between $best_ml and $const_ml: $rh_s->{'diff'}\n" unless($rh_opts->{'sowhat'});
-    print OUT "  (this is the value being tested)\n\n" unless($rh_opts->{'sowhat'});
-    print OUT "z-Score: $rh_s->{'z'}\n" unless($rh_opts->{'sowhat'});
-    print OUT "p-value: $rh_s->{'p'}\n" unless($rh_opts->{'sowhat'});
-    print OUT "KS test p-value: $rh_s->{'ks'}\n" if($rh_opts->{'sowhat'});
+    print OUT "Difference between $best_ml and $const_ml: $rh_s->{'diff'}\n";
+    print OUT "  (this is the value being tested)\n\n";
+    print OUT "z-Score: $rh_s->{'z'}\n";
+    print OUT "p-value: $rh_s->{'p'}\n";
     print OUT "  The p-value is the probability that the test value is plausible\n";
     close OUT;
 }
