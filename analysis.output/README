@@ -1,29 +1,47 @@
 #Commands used in the analysis of each data set:
 
 #protein.benchmark
-#ANALYSIS 1 -100 times
-perl sowh.pl --constraint=published_datasets/protein.t1.tre --aln=published_datasets/protein.benchmark.phy --model=PROTGAMMAWAG --dir=test.output/protein.t1 --name=protein.t1 >analysis.output/protein.t1.repeat
+#ANALYSIS 1
+perl sowh.pl --constraint=published_datasets/protein.t2.tre --aln=published_datasets/protein.benchmark.phy --model=PROTGAMMAWAG --dir=test.output/9.protein.t2 --name=9.protein.t2 --tests=100 >output.9.prot.sowh.t2
 
-#ANALYSIS 2 -100 times
-perl sowh.pl --constraint=published_datasets/protein.t2.tre --aln=published_datasets/protein.benchmark.phy --model=PROTGAMMAWAG --dir=test.output/protein.t2 --name=protein.t2 >analysis.output/protein.t2.repeat
+#ANALYSIS 2
+perl sowh.pl --constraint=published_datasets/protein.t1.tre --aln=published_datasets/protein.benchmark.phy --model=PROTGAMMAWAG --dir=test.output/1.protein.t1 --name=1.protein.t1 --tests=100 >output.1.prot.sowh.t1
 
 #ANALYSIS 3
-perl sowhat.pl --constraint=published_datasets/protein.t1.tre --aln=published_datasets/protein.benchmark.phy --model=PROTGAMMAWAG --dir=test.output/protein.sowhat.t1 --output=analysis.output/protein.sowhat.t1.output --reps=10000 >analysis.output/protein.sowhat.t1
+perl sowh.pl --constraint=published_datasets/protein.t2.tre --aln=published_datasets/protein.benchmark.phy --model=PROTGAMMAWAG --dir=test.output/9.protein.t2 --name=9.protein.t2 --tests=100 >output.9.prot.sowh.t2
+
+#ANALYSIS 4
+perl sowh.pl --constraint=published_datasets/protein.t2.tre --aln=published_datasets/protein.benchmark.phy --model=PROTGAMMAWAG --dir=test.output/10.protein.t2 --name=10.protein.t2 --reps=1000  --sowhat >output.10.prot.sowhat.t2
 
 #Sullivan12S
-#ANALYSIS 4 -100 times
-perl sowh.pl --constraint=published_datasets/Sullivan12S.t1.tre--aln=published_datasets/Sullivan12S.phy --model=GTRGAMMA --dir=test.output/sullivan.t1 --name=sullivan.t1 >analysis.output/sullivan.t1.repeat
+#ANALYSIS 5 
+perl sowh.pl --constraint=published_datasets/Sullivan12S.t1.tre --aln=published_datasets/Sullivan12S.phy --model=GTRGAMMA --dir=test.output/3.sullivan.t1 --name=3.sullivan.t1 --tests=100  >output.3.sullivan.t1
 
-#ANALYSIS 5 -100 times
-perl sowh.pl --constraint=published_datasets/Sullivan12S.t2.tre--aln=published_datasets/Sullivan12S.phy --model=GTRGAMMA --dir=test.output/sullivan.t2 --name=sullivan.t2 >analysis.ouput/sullivan.t2.repeat
-
-#ANALYSIS 6 -100 times
-perl sowh.pl --constraint=published_datasets/Sullivan12S.t2.tre--aln=published_datasets/Sullivan12S.phy --model=GTRGAMMA --dir=test.output/sullivan.t2.pb --name=sullivan.t2.pb >analysis.output/sullivan.t2.pb.repeat
+#ANALYSIS 6
+module load R/3.0.0;
+perl sowh.pl --constraint=published_datasets/Sullivan12S.t1.tre --aln=published_datasets/Sullivan12S.phy --model=GTRGAMMA --dir=test.output/4.sullivan.t1 --name=4.sullivan.t1 --reps=1000 --sowhat >output.4.sullivan.sowhat.t1
 
 #ANALYSIS 7
-perl sowhat.pl --constraint=published_datasets/Sullivan12S.t2.tre --aln=published_datasets/Sullivan12S.phy --model=GTRGAMMA --dir=test.output/sullivan.sowhat.t2 --output=analysis.output/sullivan.sowhat.t2.output --reps=10000 >analysis.output/sullivan.sowhat.t1
+perl sowh.pl --constraint=published_datasets/Sullivan12S.t2.tre --aln=published_datasets/Sullivan12S.phy --model=GTRGAMMA --dir=test.output/5.sullivan.t2 --name=5.sullivan.t2 --tests=100 >output.5.sullivan.t2
 
-#HOX
 #ANALYSIS 8
-perl sowhat.pl --constraint=published_datasets/NVHD065.full.constraint --aln=published_datasets/NvHox_from_Ryan_et_al.phy --model=PROTGAMMALG --dir=test.output/Hox.NV --output=analysis.output/Hox.NV.output --reps=10000 >analysis.output/Hox.NV 
+perl sowh.pl --constraint=published_datasets/Sullivan12S.t2.tre --aln=published_datasets/Sullivan12S.phy --model=GTRGAMMA --dir=test.output/6.sullivan.t2 --name=6.sullivan.t2 --reps=1000 --sowhat  >output.6.sullivan.sowhat.t2
 
+#ANALYSIS 9
+perl sowh.pl --constraint=published_datasets/Sullivan12S.t2.tre --aln=published_datasets/Sullivan12S.phy --model=GTRGAMMA --dir=test.output/13.sullivan.t2 --name=13.sullivan.t2 --tests=100 --usepb >output.13.sullivan.pb.sowh.t2
+
+#ANALYSIS 10
+perl sowh.pl --constraint=published_datasets/Sullivan12S.t2.tre --aln=published_datasets/Sullivan12S.phy --model=GTRGAMMA --dir=test.output/11.sullivan.t2 --name=11.sullivan.t2 --reps=1000 --sowhat --usepb >output.11.sullivan.pb.sowhat.t2
+
+#Hox
+#ANALYSIS 11
+perl sowh.pl --constraint=published_datasets/ax1a.constraint.tre --aln=published_datasets/NvHox_from_Ryan_et_al.phy --model=PROTGAMMAJTT --dir=test.output/12.hox.ax1a.jtt --name=12.hox.ax1a.jtt --tests=100 >output.12.hox.sowh.ax1a.jtt
+
+#ANALYSIS 12
+perl sowh.pl --constraint=published_datasets/hox.jtt.constraint.tre --aln=published_datasets/NvHox_from_Ryan_et_al.phy --model=PROTGAMMALG --dir=test.output/14.hox.jtt.lg --name=14.hox.jtt.lg --tests=100 >output.14.hox.sowh.jtt.lg
+
+#ANALYSIS 13
+perl sowh.pl --constraint=published_datasets/ax1a.constraint.tre --aln=published_datasets/NvHox_from_Ryan_et_al.phy --model=PROTGAMMAJTT --dir=test.output/15.hox.ax1a.jtt --name=15.hox.ax1a.jtt --reps=1000 --sowhat >output.15.hox.sowhat.ax1a.jtt
+
+#ANALYSIS 14
+perl sowh.pl --constraint=published_datasets/hox.jtt.constraint.tre --aln=published_datasets/NvHox_from_Ryan_et_al.phy --model=PROTGAMMALG --dir=test.output/16.hox.jtt.lg --name=16.hox.jtt.lg --reps=1000 --sowhat >output.16.hox.sowhat.jtt.lg

@@ -1,0 +1,7 @@
+pvals<-read.table("analysis.output/14.pvals")
+meanval<-mean(pvals$V2)
+rangeval<-range(pvals$V2)
+sorted<-sort(pvals$V2)
+write(sorted,file="analysis.output/14.sortedpvals",1)
+write(meanval,file="analysis.output/14.mean",1)
+write(rangeval,file="analysis.output/14.range",1)
