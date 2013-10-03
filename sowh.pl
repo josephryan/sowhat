@@ -28,7 +28,7 @@ use Getopt::Long;
 use Pod::Usage;
 use Data::Dumper;
 use Cwd;
-# use local lib if installing Statistics::R without sudo cpan
+#use local lib if installing Statistics::R without sudo cpan
 #use local::lib;
 use Statistics::R;
 
@@ -1068,7 +1068,9 @@ sub usage {
     [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS]
     [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS]
     [--reps=NUMBER_OF_REPLICATES]
+    [--tests=NUMBER_OF_TESTS]
     [--partition=PARTITION_FILE]
+    [--sowhat]
     [--debug]
     [--help]
     [--version]\n";
@@ -1086,7 +1088,7 @@ Samuel H. Church <samuel_church@brown.edu>, Joseph F. Ryan <josephryan@yahoo.com
 
 =head1 SYNOPSIS 
 
-sowh.pl --constraint=NEWICK_CONSTRAINT_TREE --aln=PHYLIP_ALIGNMENT --name=NAME_FOR_REPORT --model=MODEL --dir=DIR [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] [--usepb] [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS] [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] [--reps=NUMBER_OF_REPLICATES] [--partition=PARTITION_FILE] [--debug] [--help] [--version]\n";
+sowh.pl --constraint=NEWICK_CONSTRAINT_TREE --aln=PHYLIP_ALIGNMENT --name=NAME_FOR_REPORT --model=MODEL --dir=DIR [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] [--usepb] [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS] [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] [--reps=NUMBER_OF_REPLICATES] [--tests=NUMBER_OF_TESTS] [--partition=PARTITION_FILE] [--sowhat] [--debug] [--help] [--version]\n";
 
 =head1 constraint
 
@@ -1166,11 +1168,19 @@ This allows the user to specify the burn-in value used for the phylobayes analys
 =item B<--reps>
 
 <default: 100>
-This is the number of datasets which will be generated according to the estimated parameters. This number represents the sample size of the distribution. Each dataset will be evaluated twice for a likelihood score, once with and once without the topology constrained.
+This is the number of datasets which will be generated according to the estimated parameters. This number represents the sample size of the distribution. Each dataset will be evaluated twice for a likelihood score, once with and once without the topology constrained. If using the SOWHat alternative, this is the number of test statistics that will be calculated, the number of times the parameters will be optimized, as well as the number of new alignments that will be generated.
+
+=item B<--tests>
+<default: 1>
+This is the number of tests which will be performed. If reps are set to 100 and test are set to 10, then there will be 10 separate SOWH tests performed each containing 100 data sets. If using the SOWHat alternative, this will not change the sample size - use the reps option instead.
 
 =item B<--partition>
 
 This can be a partition file which applies to the dataset. It must be in a format recognizable by RAxML version 7.7.0.
+
+=item B<--sowhat>
+
+This option will adjust the SOWH test to account for variability in the maximum likelihood search. In this option, the test statistic and parameters will be recalculated for each alignment generated. The mean test statistic will then be tested against the null distribution using a one tailed test, similar to the SOWH test.
 
 =item B<--debug>
 
@@ -1198,7 +1208,7 @@ http://tree.bio.ed.ac.uk/software/seqgen/
 
 The program then calculates the likelihood scores of each of these alignments both with and without the topology constrained according to the hypothesis. The differences between these scores become the distributions against which the test value will be evaluated.
 
-The p-value of the test statistic is calculated using R, using the pnorm function.
+The p-value of the test statistic is calculated using R, using the pnorm function. Information about the test is printed to the file sowh.info.test in the directory specified by the user. The variance of the null distribution is printed to variance.png.
 
 R is freely available under the GPL-2 license.
 
