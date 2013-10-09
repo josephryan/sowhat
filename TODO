@@ -1,3 +1,6 @@
+* true support for multistate. Will require running seq-gen in aminoacid mode and up to 20 substitutions.
+  - multistate currently craps out with: "expecting 2 frequencies. Multi-State only works w/binary matrix"
+
 * add in hash which checks the model
 
 * add in documentation about using local::lib - bootstrapping the package in and using that to cpan R
