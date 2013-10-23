@@ -987,7 +987,8 @@ sub plot_variance {
   
         my $cmds = <<EOF;
 variance <- c($variance_str)
-png(filename="$DIR/variance.png", height=295, width=300, bg="white")
+postscript("$DIR/variance.eps",horizontal = FALSE, onefile = FALSE, paper = "special",width=4.0,height=4.0)
+par(mar=c(5, 4, 4, 2) + 0.1)
 plot(variance, type="o", col="blue")
 dev.off()
 EOF
@@ -1032,6 +1033,7 @@ sub print_report {
     print OUT "REPS: $rh_opts->{'reps'}\n";
     print OUT "\nSize of null distribution: $rh_s->{'sample_size'}\n";
     print OUT "Mean of null distribution: $rh_s->{'mean'}\n";
+    print OUT "Variance of distribution: $rh_s->{'var'}\n\n";
     print OUT "Standard deviation of distribution: $rh_s->{'stdev'}\n\n";
     print OUT "Frequency distribution printed to:\n $fd_file\n\n";
     print OUT "ML value of best tree: $best_ml\n";

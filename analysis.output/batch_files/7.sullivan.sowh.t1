@@ -1,0 +1,7 @@
+#!/bin/bash
+
+#SBATCH -t 14-00:00:00
+
+module load R/3.0.0;
+perl sowh.pl --constraint=published_datasets/Sullivan12S.t1.tre --aln=published_datasets/Sullivan12S.phy --model=GTRGAMMA --dir=test.output/7.sullivan.sowh.t1 --name=7.sullivan.sowh.t1 --tests=100 --rax=~/data/shchurch/SOWH/src/raxmlHPC --seqgen=~/data/shchurch/SOWH/src/Seq-Gen.v1.3.3/source/seq-gen >output.7.sullivan.sowh.t1
+
