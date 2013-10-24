@@ -98,7 +98,7 @@ MAIN: {
             }
             print_report($ch,$best_ml,$best_t1,$rh_stats,$ra_diff,\@delta_dist,                          $rh_opts,$fd_file,$ver);
             if ($ch) {
-                calculate_chain_split(\@current_mean,$ch,$tag);
+                calculate_chain_split(\@current_mean,\@mean,$ch,$tag);
             }
         }
     }
@@ -1080,12 +1080,19 @@ sub print_report {
 
 sub calculate_chain_split {
     my $ra_current_mean = shift;
+    my $ra_mean = shift;
     my $ch = shift;
     my $tag = shift;
     my $file = $DIR . "sowh.chain.info";
     open OUT, ">$file" or _my_die("cannot open >$file:$!");
+    foreach my $ra_m (@{$ra_mean}) {
+        print OUT "\nMean of null distribution of chain $ch as sample increases: \n";
+        foreach my $val (@{$ra_m}) {
+            print OUT "$val\n\n";
+        }
+    }
     foreach my $val (@{$ra_current_mean}) { 
-        print OUT "Mean of Chain = $val\n";
+        print OUT "Final Mean of Chain = $val\n";
     }
     for (my $i = 1; $i <= $ch; $i++) {
         my $diff = $ra_current_mean->[$i] - $ra_current_mean ->[($i - 1)];
