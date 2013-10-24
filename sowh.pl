@@ -20,7 +20,7 @@
 #    with this program; if not, write to the Free Software Foundation, Inc.,
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-our $VERSION = 0.10;
+our $VERSION = 0.11;
 
 use strict;
 use warnings;
@@ -40,7 +40,7 @@ our $PB_SAMPLING_FREQ = 5;
 our $PB_SAVING_FREQ   = 1;
 our $PB_BURN   = 10;
 our $DEFAULT_REPS = 100;
-our $TEST_RUNS = 1;
+our $DEFAULT_CHAINS = 1;
 our $QUIET = 1;
 our $DIR = '';
 our $FREQ_BIN_NUMBER = 10;
@@ -53,58 +53,68 @@ MAIN: {
     my $rh_opts = process_options();
     
     my $ver = get_version();
-
-    if ($rh_opts->{'sowhat'}) {
-        $rh_opts->{'test_runs'} = $rh_opts->{'reps'};
-        $rh_opts->{'reps'} = '1';
-    }
     
-    my @delta_dist = ();
-    my @deltaprime_dist = ();
-    my @variance = (); 
+    my (@delta_dist,@deltaprime_dist,@mean,@current_mean) = ();
+    my $tag = 0;    
+    my $alns_to_gen = 1;
+    my ($ra_params,$ra_recalc_flag,$ra_alns,$ra_rates,$ra_aln_len) = [ ];
+    my $codon_flag = 0;
     
-    for (my $ts = 0; $ts < $rh_opts->{'test_runs'}; $ts++) {
-        run_initial_trees($rh_opts,$ts);
-        my $ra_alns = [ ];
-        my $ra_aln_len = 0;
-        my $codon_flag = 0;
-        if ($rh_opts->{'usepb'}) {
-            $ra_alns = generate_alignments_w_pb($rh_opts,$ts);
-        } else {
-            my $ra_params = [ ];
-            my $ra_rates  = [ ];
-            ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) = 
-                get_params($rh_opts->{'aln'},$rh_opts->{'part'},
-                $rh_opts->{'mod'},$rh_opts->{'constraint_tree'},$ts);
+    print "SOWH:\n";
+    print "Number of Chains = $rh_opts->{'chains'}. Values printed to $DIR" . "sowh.chain.info\n" if($rh_opts->{'chains'} > 1);
+    print "Sample: ";
+    
+    for (my $ts = 0; $ts < $rh_opts->{'reps'}; $ts++) {
+        for (my $ch = 0; $ch < $rh_opts->{'chains'}; $ch++) {
+            $tag = "$ch.$ts";
+            if (($ts < 1) || ($rh_opts->{'recalculate'})) {
+                run_initial_trees($rh_opts,$ch,$tag);
+       
+                if ($rh_opts->{'usepb'}) {
+                    get_params_w_pb($rh_opts,$alns_to_gen,$tag);
+                } else {
+                    ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) = 
+                    get_params($rh_opts->{'aln'},$rh_opts->{'part'},
+                    $rh_opts->{'mod'},$rh_opts->{'constraint_tree'},$tag);
+                }
+            }
+            my ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) = ();
+            if ($rh_opts->{'usepb'}) {
+                $ra_alns = generate_alignment_w_pb($rh_opts,$alns_to_gen,$tag);
+            } else {
+                $ra_alns = generate_alignments($ra_aln_len,$ra_params,
+                $ra_rates,$rh_opts->{'mod'},$alns_to_gen,
+                $rh_opts->{'recalculate'},$tag);
+            }
+            for (my $i = 0; $i < @{$ra_alns}; $i++) {
+                run_raxml_on_gen_alns($ra_alns,$rh_opts,$ra_aln_len,
+                $codon_flag,$i,$tag);
 
-            $ra_alns = generate_alignments($ra_aln_len,$ra_params,$ra_rates,
-            $rh_opts->{'mod'},$rh_opts->{'reps'},$ts);
-        } 
-        my ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) = ();
-        for (my $i = 0; $i < @{$ra_alns}; $i++) {
-            run_raxml_on_gen_alns($ra_alns,$rh_opts,$ra_aln_len,
-            $codon_flag,$i,$ts);
-
-            ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) =
-            evaluate_distribution($rh_opts->{'reps'},$rh_opts->{'name'},
-            \@delta_dist,\@deltaprime_dist,\@variance,$i,$ts);
-            plot_variance(\@variance);
+                ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) =
+                evaluate_distribution($alns_to_gen,$rh_opts->{'name'},
+                $rh_opts->{'recalculate'},\@delta_dist,\@deltaprime_dist,
+                \@mean,\@current_mean,$i,$ts,$ch,$tag);
+                plot_null_mean(\@mean,$ch);
+            }
+            print_report($ch,$best_ml,$best_t1,$rh_stats,$ra_diff,\@delta_dist,                          $rh_opts,$fd_file,$ver);
+            if ($ch) {
+                calculate_chain_split(\@current_mean,$ch,$tag);
+            }
         }
-        print_report($ts,$best_ml,$best_t1,$rh_stats,$ra_diff,\@delta_dist,                          $rh_opts,$fd_file,$ver);
-     }
+    }
 }
 
 sub process_options {
     my $rh_opts = {};
     $rh_opts->{'reps'} = $DEFAULT_REPS;
+    $rh_opts->{'chains'} = $DEFAULT_CHAINS;
     $rh_opts->{'orig_options'} = [@ARGV];
     $rh_opts->{'rax'} = $RAX;
-    $rh_opts->{'test_runs'} = $TEST_RUNS;
     $rh_opts->{'seqgen'} = $SEQGEN;
 
     my $opt_results = Getopt::Long::GetOptions(
                               "version" => \$rh_opts->{'version'},
-                               "sowhat" => \$rh_opts->{'sowhat'},
+                          "recalculate" => \$rh_opts->{'recalculate'},
                                 "usepb" => \$rh_opts->{'usepb'},
                               "ppred=s" => \$rh_opts->{'ppred'},
                             "pb_burn=i" => \$rh_opts->{'pb_burn'},
@@ -113,7 +123,7 @@ sub process_options {
                                 "aln=s" => \$rh_opts->{'aln'},
                                 "dir=s" => \$rh_opts->{'dir'},
                                "reps=i" => \$rh_opts->{'reps'},
-                              "tests=i" => \$rh_opts->{'test_runs'},
+                             "chains=i" => \$rh_opts->{'chains'},
                              "seqgen=s" => \$rh_opts->{'seqgen'},
                                 "rax=s" => \$rh_opts->{'rax'},
                           "partition=s" => \$rh_opts->{'part'},
@@ -185,15 +195,15 @@ sub get_version {
 
 sub run_initial_trees {
     my $rh_opts = shift;
-    my $ts = shift;
+    my $ch = shift;
+    my $tag = shift;
     my $aln = $rh_opts->{'aln'};
     my $part = $rh_opts->{'part'};
     my $mod = $rh_opts->{'mod'};
     my $tre = $rh_opts->{'constraint_tree'};
 
-    print "Running initial trees, estimating parameters\n";
-    _run_best_tree('ml',$aln,$part,$mod,$ts);
-    _run_best_tree('t1',$aln,$part,$mod,$ts,$tre);
+    _run_best_tree('ml',$aln,$part,$mod,$tag);
+    _run_best_tree('t1',$aln,$part,$mod,$tag,$tre);
 }
 
 sub _run_best_tree {
@@ -201,10 +211,10 @@ sub _run_best_tree {
     my $aln   = shift;
     my $part  = shift;
     my $mod   = shift;
-    my $ts    = shift;
+    my $tag    = shift;
     my $tre   = shift;
 
-    my $cmd = "$RAX -f d -p 1234 -w $DIR -m $mod -s $aln -n $title.test.$ts";
+    my $cmd = "$RAX -f d -p 1234 -w $DIR -m $mod -s $aln -n $title.$tag";
     $cmd .= " -q $part" if ($part);
     $cmd .= " -g $tre" if ($tre);
     if ($QUIET) {
@@ -214,12 +224,12 @@ sub _run_best_tree {
     safe_system($cmd);
 }
 
-sub generate_alignments_w_pb {
-    my @alns = ();
+sub get_params_w_pb {
     my $rh_opts = shift;
-    my $ts = shift;
-    my $id = $DIR . $rh_opts->{'name'} . ".pb.test.$ts";
-    my $pb_reps = $rh_opts->{'reps'} * $PB_SAMPLING_FREQ + $PB_BURN;
+    my $reps = shift;
+    my $tag = shift;
+    my $id = $DIR . $rh_opts->{'name'} . ".pb.$tag";
+    my $pb_reps = $reps * $PB_SAMPLING_FREQ + $PB_BURN;
     my $pb_cmd = "$PB -d $rh_opts->{'aln'} -T $rh_opts->{'constraint_tree'} ";
     $pb_cmd .= "-x $PB_SAVING_FREQ $pb_reps $id";
     if ($QUIET) {
@@ -227,13 +237,21 @@ sub generate_alignments_w_pb {
         $pb_cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
     }
     safe_system($pb_cmd);
+}
+    
+sub generate_alignments_w_pb {
+    my @alns = ();
+    my $rh_opts = shift;
+    my $reps = shift;
+    my $tag = shift;
+    my $id = $DIR . $rh_opts->{'name'} . ".pb.$tag";
     my $ppred_cmd = "$PPRED -x $PB_BURN $PB_SAMPLING_FREQ $id";
     if ($QUIET) {
         $ppred_cmd .= " >> ${DIR}sowh_stdout_$NAME.txt ";
         $ppred_cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
     }
     safe_system($ppred_cmd);
-    for (my $i = 0; $i < $rh_opts->{'reps'}; $i++) {
+    for (my $i = 0; $i < $reps; $i++) {
         push @alns, "${id}_sample_${i}.ali"; 
     }
     return \@alns;
@@ -244,23 +262,23 @@ sub get_params {
     my $part = shift;
     my $mod = shift;
     my $tre = shift;
-    my $ts = shift;
+    my $tag = shift;
     my $ra_aln_len = ();
     my $codon_flag = 0;
     my $ra_params = ();
     my $ra_rates = ();
     if ($mod =~ m/^GTRGAMMA/i) {
         ($ra_aln_len,$codon_flag,$ra_params) =
-           _model_gtrgamma($aln,$part,$tre,$ts);
+           _model_gtrgamma($aln,$part,$tre,$tag);
     } elsif ($mod =~ m/^PROT/i) {
         ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) =
-           _model_prot($aln,$part,$tre,$ts);      
+           _model_prot($aln,$part,$tre,$tag);      
     } elsif ($mod =~ m/^MULTIGAMMA/i) {
         ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) =
-           _model_character_data($aln,$part,$tre,$ts);
+           _model_character_data($aln,$part,$tre,$tag);
     } else {
         ($ra_aln_len,$codon_flag,$ra_params) =
-           _model_non_gtr($aln,$part,$tre,$ts);        
+           _model_non_gtr($aln,$part,$tre,$tag);        
     }
     return ($ra_aln_len,$codon_flag,$ra_params,$ra_rates);   
 }
@@ -269,9 +287,9 @@ sub _model_gtrgamma {
     my $aln = shift;
     my $part = shift;
     my $tre = shift;
-    my $ts = shift;
+    my $tag = shift;
     my ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,$part);
-    my ($ra_params) = _get_params_from_const_rax($DIR ."RAxML_info.t1.test.$ts");
+    my ($ra_params) = _get_params_from_const_rax($DIR ."RAxML_info.t1.$tag");
     return ($ra_aln_len,$codon_flag,$ra_params);
 }
 
@@ -279,7 +297,7 @@ sub _model_prot {
     my $aln = shift;
     my $part = shift;
     my $tre = shift;
-    my $ts = shift;
+    my $tag = shift;
     my $ra_aln_len = ();
     my $codon_flag = 0;
     my $ra_params = ();
@@ -287,15 +305,15 @@ sub _model_prot {
     my $new_part = $DIR . $NEW_PARTITION_FILE;
     if ($part) {
         my $ra_part_names = _make_unlinked_partition_file($part,$new_part);
-        _run_best_tree('par',$aln,$new_part,'PROTGAMMAGTR_UNLINKED',$ts,$tre);
-        $ra_rates = _parse_rates($ts,$ra_part_names);
+        _run_best_tree('par',$aln,$new_part,'PROTGAMMAGTR_UNLINKED',$tag,$tre);
+        $ra_rates = _parse_rates($tag,$ra_part_names);
         ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,$part);
-        $ra_params = _get_params_from_const_rax($DIR ."RAxML_info.par.test.$ts");
+        $ra_params = _get_params_from_const_rax($DIR ."RAxML_info.par.$tag");
     } else {
-        _run_best_tree('par',$aln,$part,'PROTGAMMAGTR_UNLINKED',$ts,$tre);
-        $ra_rates = _parse_rates($ts);
+        _run_best_tree('par',$aln,$part,'PROTGAMMAGTR_UNLINKED',$tag,$tre);
+        $ra_rates = _parse_rates($tag);
         ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,$part);
-        $ra_params = _get_params_from_const_rax($DIR ."RAxML_info.par.test.$ts");
+        $ra_params = _get_params_from_const_rax($DIR ."RAxML_info.par.$tag");
     }
     return ($ra_aln_len,$codon_flag,$ra_params,$ra_rates);      
 }
@@ -304,9 +322,9 @@ sub _model_character_data {
     my $aln = shift;
     my $part = shift;
     my $tre = shift;
-    my $ts = shift;
+    my $tag = shift;
     my ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,$part);
-    my ($ra_params) = _get_params_from_const_rax($DIR ."RAxML_info.t1.test.$ts");
+    my ($ra_params) = _get_params_from_const_rax($DIR ."RAxML_info.t1.$tag");
     return ($ra_aln_len,$codon_flag,$ra_params);
 }
 
@@ -314,10 +332,10 @@ sub _model_non_gtr {
     my $aln = shift;
     my $part = shift;
     my $tre = shift;
-    my $ts = shift;
-    _run_best_tree('par',$aln,$part,'GTRGAMMA',$ts,$tre);
+    my $tag = shift;
+    _run_best_tree('par',$aln,$part,'GTRGAMMA',$tag,$tre);
     my ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,$part);
-    my $ra_params = _get_params_from_const_rax($DIR . "RAxML_info.par.test.$ts");
+    my $ra_params = _get_params_from_const_rax($DIR . "RAxML_info.par.$tag");
     return ($ra_aln_len,$codon_flag,$ra_params);
 }
 
@@ -439,13 +457,13 @@ sub _print_unlinked_part {
 }
 
 sub _parse_rates {
-    my $ts = shift;
+    my $tag = shift;
     my $ra_part_names = shift;
     my @rates = ();
     if ($ra_part_names) {
         foreach my $pn (@{$ra_part_names}) {
             my @local_rates = ();
-            my $matrix = $DIR . $PART_RATE_MATRIX_PREFIX . ".test.$ts" . "_Partition_" . $pn;
+            my $matrix = $DIR . $PART_RATE_MATRIX_PREFIX . ".$tag" . "_Partition_" . $pn;
             open IN, "$matrix" or _my_die("cannot open $matrix:$!");
             while (my $line = <IN>) {
                 my @fields = split/\s/, $line;
@@ -454,7 +472,7 @@ sub _parse_rates {
             push @rates, \@local_rates;
         }
     } else {
-        my $matrix = $DIR . $PART_RATE_MATRIX_PREFIX . ".test.$ts" . "_Partition_No Name Provided";
+        my $matrix = $DIR . $PART_RATE_MATRIX_PREFIX . ".$tag" . "_Partition_No Name Provided";
         open IN, "$matrix" or _my_die("cannot open $matrix:$!");
         while (my $line = <IN>) {
             my @fields = split/\s/, $line;
@@ -470,10 +488,11 @@ sub generate_alignments {
     my $ra_rates = shift;
     my $mod = shift;
     my $reps = shift;
-    my $ts = shift;
-    _run_seqgen($ra_aln_len,$ra_params,$ra_rates,$mod,$reps,$ts);
-    my $ra_ds = _build_datasets(scalar(@{$ra_params}),$ts);
-    my $ra_alns = _make_alns($ra_ds,$ts);
+    my $recalc = shift;
+    my $tag = shift;
+    _run_seqgen($ra_aln_len,$ra_params,$ra_rates,$mod,$reps,$recalc,$tag);
+    my $ra_ds = _build_datasets(scalar(@{$ra_params}),$tag);
+    my $ra_alns = _make_alns($ra_ds,$tag);
 }
 
 sub _run_seqgen {
@@ -482,7 +501,8 @@ sub _run_seqgen {
     my $ra_rates  = shift;
     my $model     = shift;
     my $reps      = shift;
-    my $ts         = shift;
+    my $recalc    = shift;
+    my $tag       = shift;
     my $count     = 0;
     for (my $i = 0; $i < @{$ra_params}; $i++) {
         my $rh_part = $ra_params->[$i];
@@ -502,12 +522,16 @@ sub _run_seqgen {
         } else {
             _my_die(qq~do not know how to handle type: "$rh_part->{'type'}"\n~);
         }
-        $cmd .= " < $DIR" . "$TRE_PREFIX.t1.test.$ts > $DIR" . "seqgen.$count.out.test.$ts";
+        if ($recalc) {
+        $cmd .= " < $DIR" . "$TRE_PREFIX.t1.$tag > $DIR" . "seqgen.out.$tag.$count";
+        } else { 
+        $cmd .= " < $DIR" . "$TRE_PREFIX.t1.0.0 > $DIR" . "seqgen.out.$tag.$count";
+        }
         $cmd .= " 2>> ${DIR}sowh_stderr_$NAME.txt" if ($QUIET);
         $count++;
         safe_system($cmd);
         if ($rh_part->{'type'} eq 'Multi-State') {
-            my $file = "seqgen." . ($count - 1) . ".out";
+            my $file = "seqgen." . ".out.$tag" . ($count - 1);
             _convert_AT_to_01($DIR . $file, $ra_part_lens->[$i]);
         }
     }
@@ -588,12 +612,12 @@ sub _get_char_params {
 
 sub _build_datasets {
     my $num = shift;
-    my $ts = shift;
+    my $tag = shift;
     my @allseqs = ();
-    my $ra_ids = _get_ids_from_seqgen_out($DIR . "seqgen.0.out.test.$ts");
+    my $ra_ids = _get_ids_from_seqgen_out($DIR . "seqgen.out.$tag.0");
 
     for (my $i = 0; $i < $num; $i++) {
-        my $ra_seqs = _get_seqs_from_seqgen_out($DIR . "seqgen.$i.out.test.$ts");
+        my $ra_seqs = _get_seqs_from_seqgen_out($DIR . "seqgen.out.$tag.$i");
         push @allseqs, $ra_seqs;
     }
     my $ra_ds = _make_datasets_from_allseqs($ra_ids,\@allseqs);
@@ -672,10 +696,10 @@ sub _get_len_from_id_lens {
 
 sub _make_alns {
     my $ra_ds = shift;
-    my $ts = shift;
+    my $tag = shift;
     my @files = ();
     for (my $i = 0; $i < @{$ra_ds}; $i++) {
-        my $file = $DIR . "aln.$i.phy.test.$ts";
+        my $file = $DIR . "aln.phy.$tag.$i";
         open OUT, ">$file" or _my_die("cannot open >$file:$!");
         print OUT $ra_ds->[$i];
         push @files, $file;
@@ -689,7 +713,7 @@ sub run_raxml_on_gen_alns {
     my $ra_aln_len = shift;
     my $codon_flag = shift;
     my $i = shift;
-    my $ts = shift;
+    my $tag = shift;
     my $part = $rh_opts->{'part'};
     my $mod = $rh_opts->{'mod'};
     my $tre = $rh_opts->{'constraint_tree'};
@@ -698,9 +722,9 @@ sub run_raxml_on_gen_alns {
         my $ra_part_titles = _get_part_titles($part);
         my $ra_ranges = _print_ranges($ra_aln_len);
         _print_new_part_file($ra_part_titles,$ra_ranges,$new_part);
-        _run_rax_on_genset($ra_alns,$mod,$new_part,$tre,$i,$ts);
+        _run_rax_on_genset($ra_alns,$mod,$new_part,$tre,$i,$tag);
     } else {
-        _run_rax_on_genset($ra_alns,$mod,$part,$tre,$i,$ts);
+        _run_rax_on_genset($ra_alns,$mod,$part,$tre,$i,$tag);
     }
 }
 
@@ -753,9 +777,9 @@ sub _run_rax_on_genset {
     my $cmd     = '';
     my $tre     = shift;
     my $i       = shift;
-    my $ts       = shift;
+    my $tag       = shift;
     $cmd  = "$RAX -p 1234 -w $DIR -m $mod -s $ra_alns->[$i] ";
-    $cmd .= "-n $i.ml.test.$ts";
+    $cmd .= "-n ml.$tag.$i";
     if ($part) {
         $cmd .= " -q $part ";
     }
@@ -763,10 +787,9 @@ sub _run_rax_on_genset {
         $cmd .= " >> ${DIR}sowh_stdout_$NAME.txt ";
         $cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
     }
-    print "test.$ts - $i";
     safe_system($cmd);
     $cmd  = "$RAX -p 1234 -w $DIR -m $mod -s $ra_alns->[$i] ";
-    $cmd .= "-n $i.t1.test.$ts -g $tre";
+    $cmd .= "-n t1.$tag.$i -g $tre";
     if ($part) {
         $cmd .= " -q $part ";
     }
@@ -774,56 +797,63 @@ sub _run_rax_on_genset {
         $cmd .= " >> ${DIR}sowh_stdout_$NAME.txt ";
         $cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
     }
-    print ": ";
     safe_system($cmd);
 }
 
 sub evaluate_distribution {
     my $reps = shift;
     my $name = shift;
+    my $recalc = shift;
     my $ra_delta_dist = shift;
     my $ra_deltaprime_dist = shift;
-    my $ra_variance = shift;
+    my $ra_mean = shift;
+    my $ra_current_mean = shift;
     my $i = shift;
     my $ts = shift;
-    if ($reps < 2) {
-        my $ra_dist = _get_distribution($reps,0,$i,$ts);
-        my $ra_const_dist = _get_distribution($reps,1,$i,$ts);
-        my $best_ml_score = _get_best_score($DIR . "RAxML_info.ml.test.$ts");
-        my $best_t1_score = _get_best_score($DIR . "RAxML_info.t1.test.$ts");
-        $ra_delta_dist->[$ts] = $best_ml_score - $best_t1_score;
-        $ra_deltaprime_dist->[$ts] = $ra_dist->[$i] - $ra_const_dist->[$i];
-        my $rh_stats = _get_sowhat_stats($ra_delta_dist,$ra_deltaprime_dist);
-        $ra_variance->[$ts] = $rh_stats->{'var'};
-        my $fd_file = _print_freq_dist($ra_deltaprime_dist,$name,$reps);
-        print "current p-value = $rh_stats->{'p'}\n";
-        return ($best_ml_score,$best_t1_score,$rh_stats,$ra_deltaprime_dist,$fd_file);
-    } else {        
-        my $ra_dist = _get_distribution($reps,0,$i,$ts);
-        my $ra_const_dist = _get_distribution($reps,1,$i,$ts);
-        my $ra_diff_dist = _get_diff_dist($ra_dist,$ra_const_dist);
-        my $best_ml_score = _get_best_score($DIR . "RAxML_info.ml.test.$ts");
-        my $best_t1_score = _get_best_score($DIR . "RAxML_info.t1.test.$ts");
-        my $rh_stats = _get_stats($ra_diff_dist,$best_ml_score,$best_t1_score);
-        $ra_variance->[$i] = $rh_stats->{'var'};
-        my $fd_file = _print_freq_dist($ra_diff_dist,$name,$ts);
-        print "current p-value = $rh_stats->{'p'}\n";
-        return ($best_ml_score,$best_t1_score,$rh_stats,$ra_diff_dist,$fd_file);
-   }
+    my $ch = shift;
+    my $tag = shift;
+    my $best_ml_score = 0;
+    my $best_t1_score = 0;
+
+    my $ra_dist = _get_distribution($reps,0,$i,$tag);
+    my $ra_const_dist = _get_distribution($reps,1,$i,$tag);
+    if ($recalc) {
+        $best_ml_score = _get_best_score($DIR . "RAxML_info.ml.$tag");
+        $best_t1_score = _get_best_score($DIR . "RAxML_info.t1.$tag");
+        $ra_delta_dist->[$ch][$ts] = $best_ml_score - $best_t1_score;
+    } else {
+        $best_ml_score = _get_best_score($DIR . "RAxML_info.ml.0.0");
+        $best_t1_score = _get_best_score($DIR . "RAxML_info.t1.0.0");
+        $ra_delta_dist->[$ch][0] = $best_ml_score - $best_t1_score;
+    }
+
+        $ra_deltaprime_dist->[$ch][$ts] = $ra_dist->[$i] - $ra_const_dist->[$i];
+        my $rh_stats = _get_recalc_stats($ra_delta_dist->[$ch],$ra_deltaprime_dist->[$ch]);
+        $ra_mean->[$ch][$ts] = $rh_stats->{'mean'};
+        $ra_current_mean->[$ch] = $rh_stats->{'mean'};
+        my $fd_file = _print_freq_dist($ra_deltaprime_dist->[$ch],$name,$reps);
+        return ($best_ml_score,$best_t1_score,$rh_stats,$ra_deltaprime_dist->[$ch],$fd_file);
+  #      This block of code is used when $alns_to_gen is set to greater than 1.
+  #      my $ra_diff_dist = _get_diff_dist($ra_dist,$ra_const_dist);
+  #      my $rh_stats = _get_stats($ra_diff_dist,$best_ml_score,$best_t1_score);
+  #      $ra_mean->[$i] = $rh_stats->{'var'};
+  #      my $fd_file = _print_freq_dist($ra_diff_dist,$name,$tag);
+  #      print "current p-value = $rh_stats->{'p'}\n";
+  #      return ($best_ml_score,$best_t1_score,$rh_stats,$ra_diff_dist,$fd_file);
 }
 
 sub _get_distribution {
     my $reps = shift;
     my $w_const = shift;
     my $j = shift;
-    my $ts = shift;
+    my $tag = shift;
     my @dist = ();
     for (my $i = 0; $i <= $j; $i++) {
         my $file = '';
         if ($w_const) {
-            $file = $DIR . "RAxML_info.$i.t1.test.$ts";
+            $file = $DIR . "RAxML_info.t1.$tag.$i";
         } else {
-            $file = $DIR . "RAxML_info.$i.ml.test.$ts";
+            $file = $DIR . "RAxML_info.ml.$tag.$i";
         }
         open IN, $file or _my_die("cannot open $file:$!");
         while (my $line = <IN>) {
@@ -900,7 +930,7 @@ EOF
     return $rh_stats;
 }
 
-sub _get_sowhat_stats {
+sub _get_recalc_stats {
     my $ra_delta_dist = shift;
     my $ra_deltaprime_dist = shift;
     my $ts = scalar(@{$ra_deltaprime_dist});
@@ -953,7 +983,7 @@ sub _parse_stats {
 sub _print_freq_dist {
     my $ra_d = shift;
     my $name = shift;
-    my $ts = shift;
+    my $tag = shift;
     my %bins = ();
     my @sorted = sort {$a <=> $b} @{$ra_d};
     my $low  = $sorted[0];
@@ -969,7 +999,7 @@ sub _print_freq_dist {
         }
         $i++;
     }
-    my $d_file = $DIR . "sowh.$name.dist.$ts";
+    my $d_file = $DIR . "sowh.$name.dist.$tag";
     open OUT, ">$d_file" or _my_die("cannot open >$d_file:$!");
     foreach my $bin (sort {$a <=> $b} keys %bins) {
         print OUT "$bin\t$bins{$bin}\n";
@@ -978,18 +1008,20 @@ sub _print_freq_dist {
     return $d_file;
 }
 
-sub plot_variance {
-    my $ra_variance = shift;
-    my $R = Statistics::R->new();  
-    if(scalar(@{$ra_variance}) > 1) {
-        my $variance_str = join ', ', @{$ra_variance};
+sub plot_null_mean {
+    my $ra_mean = shift;
+    my $tag = shift;
+    my $R = Statistics::R->new();
+    $ra_mean = $ra_mean->[$tag];  
+    if(scalar(@{$ra_mean}) > 1) {
+        my $mean_str = join ', ', @{$ra_mean};
         $R->startR();
   
         my $cmds = <<EOF;
-variance <- c($variance_str)
-postscript("$DIR/variance.eps",horizontal = FALSE, onefile = FALSE, paper = "special",width=4.0,height=4.0)
+meannull <- c($mean_str)
+postscript("$DIR/mean.$tag.eps",horizontal = FALSE, onefile = FALSE, paper = "special",width=4.0,height=4.0)
 par(mar=c(5, 4, 4, 2) + 0.1)
-plot(variance, type="o", col="blue")
+plot(meannull, type="o", col="blue")
 dev.off()
 EOF
         my $r_out = $R->run($cmds);
@@ -998,18 +1030,18 @@ EOF
 }
 
 sub print_report {
-    my $ts = shift;
+    my $tag = shift;
     my $best_ml = shift;
     my $const_ml = shift;
     my $rh_s = shift;
     my $ra_d = shift;
     my $ra_delta_dist = shift;
+    $ra_delta_dist = $ra_delta_dist->[$tag];
     my $rh_opts = shift;
     my $fd_file = shift;
     my $version = shift;
-    my $file = $DIR . "sowh.info.test";
-    $file .= ".$ts" unless($rh_opts->{'sowhat'});
-    print "=============================================================\n";
+    my $file = $DIR . "sowh.info.$tag";
+    print ".";
     open OUT, ">$file" or _my_die("cannot open >$file:$!");
     print OUT "\n\n";
     print OUT "=============================================================\n";
@@ -1026,11 +1058,11 @@ sub print_report {
     foreach my $val (@{$ra_d}) {
        print OUT "$val\n";
     }
-    print OUT "\nDistribution of Test Statistics\n\n" if($ra_delta_dist);
+    print OUT "\nDistribution of Test Statistics\n" if($ra_delta_dist);
     foreach my $val (@{$ra_delta_dist}) {
        print OUT "$val\n";
     }
-    print OUT "REPS: $rh_opts->{'reps'}\n";
+    print OUT "\nREPS: $rh_opts->{'reps'}\n";
     print OUT "\nSize of null distribution: $rh_s->{'sample_size'}\n";
     print OUT "Mean of null distribution: $rh_s->{'mean'}\n";
     print OUT "Variance of distribution: $rh_s->{'var'}\n\n";
@@ -1043,6 +1075,22 @@ sub print_report {
     print OUT "z-Score: $rh_s->{'z'}\n";
     print OUT "p-value: $rh_s->{'p'}\n";
     print OUT "  The p-value is the probability that the test value is plausible\n";
+    close OUT;
+}
+
+sub calculate_chain_split {
+    my $ra_current_mean = shift;
+    my $ch = shift;
+    my $tag = shift;
+    my $file = $DIR . "sowh.chain.info";
+    open OUT, ">$file" or _my_die("cannot open >$file:$!");
+    foreach my $val (@{$ra_current_mean}) { 
+        print OUT "Mean of Chain = $val\n";
+    }
+    for (my $i = 1; $i <= $ch; $i++) {
+        my $diff = $ra_current_mean->[$i] - $ra_current_mean ->[($i - 1)];
+        print OUT "Difference between chains " . ($i - 1) .  " and $i: $diff\n";
+    }
     close OUT;
 }
 
@@ -1070,9 +1118,10 @@ sub usage {
     [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS]
     [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS]
     [--reps=NUMBER_OF_REPLICATES]
+    [--chains=NUMBER_OF_CHAINS]
     [--tests=NUMBER_OF_TESTS]
     [--partition=PARTITION_FILE]
-    [--sowhat]
+    [--recalculate]
     [--debug]
     [--help]
     [--version]\n";
@@ -1090,7 +1139,7 @@ Samuel H. Church <samuel_church@brown.edu>, Joseph F. Ryan <josephryan@yahoo.com
 
 =head1 SYNOPSIS 
 
-sowh.pl --constraint=NEWICK_CONSTRAINT_TREE --aln=PHYLIP_ALIGNMENT --name=NAME_FOR_REPORT --model=MODEL --dir=DIR [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] [--usepb] [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS] [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] [--reps=NUMBER_OF_REPLICATES] [--tests=NUMBER_OF_TESTS] [--partition=PARTITION_FILE] [--sowhat] [--debug] [--help] [--version]\n";
+sowh.pl --constraint=NEWICK_CONSTRAINT_TREE --aln=PHYLIP_ALIGNMENT --name=NAME_FOR_REPORT --model=MODEL --dir=DIR [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] [--usepb] [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS] [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] [--reps=NUMBER_OF_REPLICATES] [--chains=NUMBER_OF_chains] [--partition=PARTITION_FILE] [--recalculate] [--debug] [--help] [--version]\n";
 
 =head1 constraint
 
@@ -1172,15 +1221,15 @@ This allows the user to specify the burn-in value used for the phylobayes analys
 <default: 100>
 This is the number of datasets which will be generated according to the estimated parameters. This number represents the sample size of the distribution. Each dataset will be evaluated twice for a likelihood score, once with and once without the topology constrained. If using the SOWHat alternative, this is the number of test statistics that will be calculated, the number of times the parameters will be optimized, as well as the number of new alignments that will be generated.
 
-=item B<--tests>
+=item B<--chains>
 <default: 1>
-This is the number of tests which will be performed. If reps are set to 100 and test are set to 10, then there will be 10 separate SOWH tests performed each containing 100 data sets. If using the SOWHat alternative, this will not change the sample size - use the reps option instead.
+This is the number of chains which will be run. 
 
 =item B<--partition>
 
 This can be a partition file which applies to the dataset. It must be in a format recognizable by RAxML version 7.7.0.
 
-=item B<--sowhat>
+=item B<--recalculate>
 
 This option will adjust the SOWH test to account for variability in the maximum likelihood search. In this option, the test statistic and parameters will be recalculated for each alignment generated. The mean test statistic will then be tested against the null distribution using a one tailed test, similar to the SOWH test.
 
