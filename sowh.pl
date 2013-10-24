@@ -67,7 +67,7 @@ MAIN: {
     for (my $ts = 0; $ts < $rh_opts->{'reps'}; $ts++) {
         for (my $ch = 0; $ch < $rh_opts->{'chains'}; $ch++) {
             $tag = "$ch.$ts";
-            if (($ts < 1) || ($rh_opts->{'recalculate'})) {
+            if (($ts < 1) || ($rh_opts->{'rerun'})) {
                 run_initial_trees($rh_opts,$ch,$tag);
        
                 if ($rh_opts->{'usepb'}) {
@@ -84,7 +84,7 @@ MAIN: {
             } else {
                 $ra_alns = generate_alignments($ra_aln_len,$ra_params,
                 $ra_rates,$rh_opts->{'mod'},$alns_to_gen,
-                $rh_opts->{'recalculate'},$tag);
+                $rh_opts->{'rerun'},$tag);
             }
             for (my $i = 0; $i < @{$ra_alns}; $i++) {
                 run_raxml_on_gen_alns($ra_alns,$rh_opts,$ra_aln_len,
@@ -92,7 +92,7 @@ MAIN: {
 
                 ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) =
                 evaluate_distribution($alns_to_gen,$rh_opts->{'name'},
-                $rh_opts->{'recalculate'},\@delta_dist,\@deltaprime_dist,
+                $rh_opts->{'rerun'},\@delta_dist,\@deltaprime_dist,
                 \@mean,\@current_mean,$i,$ts,$ch,$tag);
                 plot_null_mean(\@mean,$ch);
             }
@@ -114,7 +114,7 @@ sub process_options {
 
     my $opt_results = Getopt::Long::GetOptions(
                               "version" => \$rh_opts->{'version'},
-                          "recalculate" => \$rh_opts->{'recalculate'},
+                                "rerun" => \$rh_opts->{'rerun'},
                                 "usepb" => \$rh_opts->{'usepb'},
                               "ppred=s" => \$rh_opts->{'ppred'},
                             "pb_burn=i" => \$rh_opts->{'pb_burn'},
@@ -1121,7 +1121,7 @@ sub usage {
     [--chains=NUMBER_OF_CHAINS]
     [--tests=NUMBER_OF_TESTS]
     [--partition=PARTITION_FILE]
-    [--recalculate]
+    [--rerun]
     [--debug]
     [--help]
     [--version]\n";
@@ -1139,7 +1139,7 @@ Samuel H. Church <samuel_church@brown.edu>, Joseph F. Ryan <josephryan@yahoo.com
 
 =head1 SYNOPSIS 
 
-sowh.pl --constraint=NEWICK_CONSTRAINT_TREE --aln=PHYLIP_ALIGNMENT --name=NAME_FOR_REPORT --model=MODEL --dir=DIR [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] [--usepb] [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS] [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] [--reps=NUMBER_OF_REPLICATES] [--chains=NUMBER_OF_chains] [--partition=PARTITION_FILE] [--recalculate] [--debug] [--help] [--version]\n";
+sowh.pl --constraint=NEWICK_CONSTRAINT_TREE --aln=PHYLIP_ALIGNMENT --name=NAME_FOR_REPORT --model=MODEL --dir=DIR [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] [--usepb] [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS] [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] [--reps=NUMBER_OF_REPLICATES] [--chains=NUMBER_OF_chains] [--partition=PARTITION_FILE] [--rerun] [--debug] [--help] [--version]\n";
 
 =head1 constraint
 
@@ -1229,7 +1229,7 @@ This is the number of chains which will be run.
 
 This can be a partition file which applies to the dataset. It must be in a format recognizable by RAxML version 7.7.0.
 
-=item B<--recalculate>
+=item B<--rerun>
 
 This option will adjust the SOWH test to account for variability in the maximum likelihood search. In this option, the test statistic and parameters will be recalculated for each alignment generated. The mean test statistic will then be tested against the null distribution using a one tailed test, similar to the SOWH test.
 
