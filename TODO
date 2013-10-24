@@ -1,3 +1,7 @@
+* Come up with a way to start and stop runs
+
+* Add support for threads (multiCPU)
+
 * true support for multistate. Will require running seq-gen in aminoacid mode and up to 20 substitutions.
   - multistate currently craps out with: "expecting 2 frequencies. Multi-State only works w/binary matrix"
 
