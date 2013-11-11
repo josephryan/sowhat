@@ -1,3 +1,5 @@
+* Allow for comparison of two suboptimal hypotheses rather than most likely topology vs. a single alternative.
+
 * Come up with a way to start and stop runs
 
 * Add support for threads (multiCPU)
