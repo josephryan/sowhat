@@ -27,7 +27,7 @@ To install this script and documentation type the following:
 DEPENDENCIES
 ------------
 
-    This program requires:
+    This program requires: 
         Perl (comes with most operating systems)
         RAxML v7.7 or higher (https://github.com/stamatak/standard-RAxML)
         Seq-Gen (http://tree.bio.ed.ac.uk/software/seqgen/)
