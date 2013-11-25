@@ -22,17 +22,35 @@ https://github.com/josephryan/sowh.pl (click the "Download ZIP" button at the bo
 
 ## INSTALLATION
 
+### SYSTEM REQUIREMENTS
+
+We have tested `sowhat` on OS X 10.9 and Ubuntu 13.04. It will likely work on a variety of other Unix-like operating systems.
+
 ### INSTALLING DEPENDENCIES
 
-
-This program requires that the following are installed and available: 
-- Perl (comes with most operating systems)
+This program requires that the following phylogenetic programs are installed and available: 
 - [RAxML](https://github.com/stamatak/standard-RAxML), v7.7 or higher 
 - [Seq-Gen](http://tree.bio.ed.ac.uk/software/seqgen/), v1.3.3 or higher
+
+If you already have these installed on your system, you are set. They are also available as part of this package, and can be installed to `/usr/local/bin` with:
+
+    sudo ./build_3rd_party.sh
+
+
+This program also requires that the following general tools are installed available:
+- [Perl](http://www.cpan.org/), which comes with most operating systems
+- [R](http://www.r-project.org/)
 - The [Statistics::R](http://search.cpan.org/dist/Statistics-R/) Perl module. `Statistics::R` has additional requirements, as described at http://search.cpan.org/dist/Statistics-R/README. Use the `local::lib` option to install `Statistics::R` without `sudo`. See http://search.cpan.org/~ether/local-lib-1.008018/lib/local/lib.pm for more information.
 
+You can install these dependencies on Ubuntu 13.04 with:
+
+    sudo apt-get install r-base-core
+    sudo apt-get install cpanminus
+    sudo cpanm Statistics::R
+
+
 Optional programs:
-- [PhyloBayes](http://www.phylobayes.org)
+- [PhyloBayes](http://www.phylobayes.org) must be installed and available in order to use more complex models.
 
 
 ## INSTALLING sowhat
@@ -47,10 +65,10 @@ To install SOWHAT and documentation type the following:
 
 
 
-## EXAMPLES
+## EXAMPLE ANALYSES
 
 
-See `examples.s`h for commands and the `examples/` directory for data files.
+See `examples.sh` for commands and the `examples/` directory for data files.
 
 ## RUN
 
