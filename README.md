@@ -22,7 +22,7 @@ This program requires that the following are installed and available:
 - Perl (comes with most operating systems)
 - [RAxML](https://github.com/stamatak/standard-RAxML), v7.7 or higher 
 - [Seq-Gen](http://tree.bio.ed.ac.uk/software/seqgen/), v1.3.3 or higher
-- The [Statistics::R](http://search.cpan.org/dist/Statistics-R/) Perl module. `Statistics::R` has additional requirements, as described at [http://search.cpan.org/dist/Statistics-R/README]. Use the `local::lib` option to install `Statistics::R` without `sudo`. See [http://search.cpan.org/~ether/local-lib-1.008018/lib/local/lib.pm] for more information.
+- The [Statistics::R](http://search.cpan.org/dist/Statistics-R/) Perl module. `Statistics::R` has additional requirements, as described at http://search.cpan.org/dist/Statistics-R/README. Use the `local::lib` option to install `Statistics::R` without `sudo`. See http://search.cpan.org/~ether/local-lib-1.008018/lib/local/lib.pm for more information.
 
 Optional programs:
 - [PhyloBayes](http://www.phylobayes.org)
