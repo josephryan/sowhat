@@ -107,7 +107,7 @@ fi
 # Seq-Gen
 URL="https://github.com/josephryan/sowh.pl/blob/master/dependencies/Seq-Gen.v1.3.3.tgz"
 FILE=`basename $URL`
-SHA1="19a1dd2637589cc0306d2180d49c8e5b4dd4c48e"
+SHA1=""
 if need_programs seq-gen
 then
 	echo "Intalling seq-gen..." >&2
