@@ -1,22 +1,29 @@
-sowh.pl
-=======
-
-DESCRIPTION
-------------
-
-sowh.pl has not been tested extensively and is being actively developed. Please use with caution. We appreciate hearing about your experience with the program.
-
-This program automates the steps required for the SOWH test (as described by Goldman et. al., 2000; See FURTHER READING BELOW). It depends on the freely available Seq-Gen and RAxML software packages. It works on amino acid, nucleotide, and binary character state datasets. Partitions (including codon position partitioning) can be specified. It is also possible to use PhyloBayes to generate the null distribution for nucleotide and amino acid data. The SOWHat option accounts for variability in the maximum likelihood search by estimating the test statistic and parameters for each new alignment, and using the mean test statistic to calculate the p-value.
-
-AVAILABILITY
-------------
-
-https://github.com/josephryan/sowh.pl
-    (click the "Download ZIP" button at the bottom of the right column)
+# SOWHAT
 
 
-DEPENDENCIES
-------------
+## DESCRIPTION
+
+
+`sowhat` has not been tested extensively and is being actively developed. Please use with caution. We appreciate hearing about your experience with the program.
+
+`sowhat` automates the steps required for the SOWH phylogenetic topology test (described by the manuscripts listed in FURTHER READING below). `sowhat` depends on the freely available Seq-Gen and RAxML software packages. It works on amino acid, nucleotide, and binary character state datasets. Partitions (including codon position partitioning) can be specified. It is also possible to use PhyloBayes to generate the null distribution for nucleotide and amino acid data. 
+
+`sowhat` includes several features that aid in the interpretation and assessment of SOWH test results, including: 
+
+- The option to account for variability in the maximum likelihood searches by estimating the test statistic and parameters for each new alignment.
+- Tools for assessing if a sufficient number of replicates have been run. 
+
+
+## AVAILABILITY
+
+
+https://github.com/josephryan/sowh.pl (click the "Download ZIP" button at the bottom of the right column).
+
+
+## INSTALLATION
+
+### INSTALLING DEPENDENCIES
+
 
 This program requires that the following are installed and available: 
 - Perl (comes with most operating systems)
@@ -28,8 +35,8 @@ Optional programs:
 - [PhyloBayes](http://www.phylobayes.org)
 
 
-INSTALLATION
-------------
+## INSTALLING sowhat
+
 
 To install SOWHAT and documentation type the following:
 
@@ -40,13 +47,12 @@ To install SOWHAT and documentation type the following:
 
 
 
-EXAMPLES
---------
+## EXAMPLES
+
 
 See `examples.s`h for commands and the `examples/` directory for data files.
 
-RUN
----
+## RUN
 
     sowh.pl \
     --constraint=NEWICK_CONSTRAINT_TREE \
@@ -67,8 +73,8 @@ RUN
     [--help] \
     [--version]
 
-DOCUMENTATION
--------------
+## DOCUMENTATION
+
 
 Extensive documentation is embedded inside of sowh.pl in POD format and
 can be viewed by running any of the following:
@@ -77,15 +83,24 @@ can be viewed by running any of the following:
         perldoc sowh.pl
         man sowh.pl  # available after installation
 
-FURTHER READING
----------------
+
+## CITING
+
+A manuscript describing `sowhat` and the performance of the SOWH test is currently under preparation. In the mean time, cite this repository and the manuscripts describing raxml, seq-gen, and, if used, phylobayes.
+
+
+## FURTHER READING
+
 
 Goldman, Nick, Jon P. Anderson, and Allen G. Rodrigo. "Likelihood-based tests of topologies in phylogenetics." Systematic Biology 49.4 (2000): 652-670. [doi:10.1080/106351500750049752](http://dx.doi.org/10.1080/106351500750049752)
 
 Swofford, David L., Gary J. Olsen, Peter J. Waddell, and David M. Hillis. Phylogenetic inference. (1996): 407-514. http://www.sinauer.com/molecular-systematics.html
 
-COPYRIGHT AND LICENSE
----------------------
+
+
+
+## COPYRIGHT AND LICENSE
+
 
 Copyright (C) 2013 Samuel H. Church, Joseph F. Ryan, Casey W. Dunn
 
