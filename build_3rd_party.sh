@@ -20,7 +20,7 @@ CC=${2-"gcc"}
 CXX=${3-"g++"}
 OPT=${4-"-O3"}
 
-BUILD_DIR="build"
+BUILD_DIR="dependencies"
 
 set -o nounset
 set -o errexit
@@ -94,7 +94,7 @@ SHA1="f83c56bacbd12204862aff4c4130a5e58c1305e6"
 if need_programs raxmlHPC
 then
 	echo "Intalling RAxML..." >&2
-	download $URL $SHA1 $FILE
+	# download $URL $SHA1 $FILE
 	unzip $FILE
 	cd standard-RAxML-7.7.6
 	make -f Makefile.gcc CC="$CC"
@@ -111,18 +111,18 @@ SHA1=""
 if need_programs seq-gen
 then
 	echo "Intalling seq-gen..." >&2
-	download $URL $SHA1 $FILE
+	# download $URL $SHA1 $FILE
 	tar xzf $FILE
 	cd ${FILE%-.tgz}/source
 	make
 	cp seq-gen $BINDIR/
-	cd ..
+	cd ../..
 else
 	echo "seq-gen is already installed in $PREFIX ...skipping." >&2
 fi
 
 # Take care of the other dependencies...
-apt-get install r-base-core
-apt-get install cpanminus
-cpanm Statistics::R
+# apt-get install r-base-core
+# apt-get install cpanminus
+# cpanm Statistics::R
 
