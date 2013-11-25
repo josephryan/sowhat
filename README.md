@@ -82,6 +82,7 @@ FURTHER READING
 
 Goldman, Nick, Jon P. Anderson, and Allen G. Rodrigo. "Likelihood-based tests of topologies in phylogenetics." Systematic Biology 49.4 (2000): 652-670. [doi:10.1080/106351500750049752](http://dx.doi.org/10.1080/106351500750049752)
 
+Swofford, David L., Gary J. Olsen, Peter J. Waddell, and David M. Hillis. Phylogenetic inference. (1996): 407-514. http://www.sinauer.com/molecular-systematics.html
 
 COPYRIGHT AND LICENSE
 ---------------------
