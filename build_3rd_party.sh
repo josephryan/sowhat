@@ -97,8 +97,8 @@ then
 	download $URL $SHA1 $FILE
 	unzip $FILE
 	cd standard-RAxML-7.7.6
-	make -f Makefile.SSE3.PTHREADS.gcc CC="$CC"
-	cp raxmlHPC-PTHREADS-SSE3 $BINDIR/
+	make -f Makefile.gcc CC="$CC"
+	cp raxmlHPC $BINDIR/
 	cd ..
 else
 	echo "RAxML is already installed in $PREFIX ...skipping." >&2
