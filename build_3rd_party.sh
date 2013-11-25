@@ -105,7 +105,7 @@ else
 fi
 
 # Seq-Gen
-URL="http://tree.bio.ed.ac.uk/download.html?name=seqgen&version=v1.3.3&id=85&num=1"
+URL="https://github.com/josephryan/sowh.pl/blob/master/dependencies/Seq-Gen.v1.3.3.tgz"
 FILE=`basename $URL`
 SHA1="b96d353c963766d78bde47761bc6cecd6dae0372"
 if need_programs seq-gen
