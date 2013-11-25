@@ -113,7 +113,7 @@ then
 	echo "Intalling seq-gen..." >&2
 	# download $URL $SHA1 $FILE
 	tar xzf $FILE
-	cd ${FILE%-.tgz}/source
+	cd Seq-Gen.v1.3.3/source
 	make
 	cp seq-gen $BINDIR/
 	cd ../..
