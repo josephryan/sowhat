@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # The following are a set of tests that can be used to make sure
 # sowh.pl is running correctly and provide examples 
 # 

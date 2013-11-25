@@ -42,7 +42,7 @@ This program also requires that the following general tools are installed availa
 - [R](http://www.r-project.org/)
 - The [Statistics::R](http://search.cpan.org/dist/Statistics-R/) Perl module. `Statistics::R` has additional requirements, as described at http://search.cpan.org/dist/Statistics-R/README. Use the `local::lib` option to install `Statistics::R` without `sudo`. See http://search.cpan.org/~ether/local-lib-1.008018/lib/local/lib.pm for more information.
 
-You can install these dependencies on Ubuntu 13.04 with:
+You can install these general tools on Ubuntu 13.04 with:
 
     sudo apt-get install r-base-core
     sudo apt-get install cpanminus
