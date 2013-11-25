@@ -91,7 +91,7 @@ cd $BUILD_DIR
 URL="https://github.com/stamatak/standard-RAxML/archive/v7.7.6.zip"
 FILE=`basename $URL`
 SHA1="f83c56bacbd12204862aff4c4130a5e58c1305e6"
-if need_programs raxmlHPC-PTHREADS-SSE3
+if need_programs raxmlHPC
 then
 	echo "Intalling RAxML..." >&2
 	download $URL $SHA1 $FILE
@@ -107,7 +107,7 @@ fi
 # Seq-Gen
 URL="https://github.com/josephryan/sowh.pl/blob/master/dependencies/Seq-Gen.v1.3.3.tgz"
 FILE=`basename $URL`
-SHA1="b96d353c963766d78bde47761bc6cecd6dae0372"
+SHA1="19a1dd2637589cc0306d2180d49c8e5b4dd4c48e"
 if need_programs seq-gen
 then
 	echo "Intalling seq-gen..." >&2
