@@ -61,14 +61,20 @@ To install SOWHAT and documentation type the following:
     perl Makefile.PL
     make
     make test
-    make install
+    sudo make install
 
 
 
 ## EXAMPLE ANALYSES
 
+Several test datasets are provided in the `examples/` directory. To run example analyses 
+on these datasets, execute:
 
-See `examples.sh` for commands and the `examples/` directory for data files.
+    ./examples.sh
+    
+
+See `examples.sh` and the resulting `test.output/` directory for more on the specifics of 
+`sowhat` use.
 
 ## RUN
 
