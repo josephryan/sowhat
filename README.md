@@ -14,30 +14,34 @@ AVAILABILITY
 https://github.com/josephryan/sowh.pl
     (click the "Download ZIP" button at the bottom of the right column)
 
+
+DEPENDENCIES
+------------
+
+This program requires that the following are installed and available: 
+- Perl (comes with most operating systems)
+- [RAxML](https://github.com/stamatak/standard-RAxML), v7.7 or higher 
+- [Seq-Gen](http://tree.bio.ed.ac.uk/software/seqgen/)
+- Statistics::R  (http://search.cpan.org/dist/Statistics-R/)
+    Statistics::R has additional requirements
+    See http://search.cpan.org/dist/Statistics-R/README
+    Use the local::lib option to install Statistics::R without sudo. 
+    See http://search.cpan.org/~ether/local-lib-1.008018/lib/local/lib.pm for more information, including the Bootstrapping techniques.
+
+Optional
+- [PhyloBayes](http://www.phylobayes.org)
+
 INSTALLATION
 ------------
 
-To install this script and documentation type the following:
+To install SOWHAT and documentation type the following:
 
     perl Makefile.PL
     make
     make test
     make install
 
-DEPENDENCIES
-------------
 
-    This program requires: 
-        Perl (comes with most operating systems)
-        RAxML v7.7 or higher (https://github.com/stamatak/standard-RAxML)
-        Seq-Gen (http://tree.bio.ed.ac.uk/software/seqgen/)
-        Statistics::R  (http://search.cpan.org/dist/Statistics-R/)
-            Statistics::R has additional requirements
-            See http://search.cpan.org/dist/Statistics-R/README
-            Use the local::lib option to install Statistics::R without sudo. 
-            See http://search.cpan.org/~ether/local-lib-1.008018/lib/local/lib.pm for more information, including the Bootstrapping techniques.
-    Optional
-        PhyloBayes (http://www.phylobayes.org)
 
 EXAMPLES
 --------
