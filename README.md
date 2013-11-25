@@ -28,7 +28,7 @@ We have tested `sowhat` on OS X 10.9 and Ubuntu 13.04. It will likely work on a 
 
 ### INSTALLING DEPENDENCIES
 
-This program requires that the following phylogenetic programs are installed and available: 
+`sowhat` requires that the following phylogenetic programs are installed and available in the PATH: 
 - [RAxML](https://github.com/stamatak/standard-RAxML), v7.7 or higher 
 - [Seq-Gen](http://tree.bio.ed.ac.uk/software/seqgen/), v1.3.3 or higher
 
@@ -37,7 +37,7 @@ If you already have these installed on your system, you are set. They are also a
     sudo ./build_3rd_party.sh
 
 
-This program also requires that the following general tools are installed available:
+`sowhat` also requires that the following general tools are installed available:
 - [Perl](http://www.cpan.org/), which comes with most operating systems
 - [R](http://www.r-project.org/)
 - The [Statistics::R](http://search.cpan.org/dist/Statistics-R/) Perl module. `Statistics::R` has additional requirements, as described at http://search.cpan.org/dist/Statistics-R/README. Use the `local::lib` option to install `Statistics::R` without `sudo`. See http://search.cpan.org/~ether/local-lib-1.008018/lib/local/lib.pm for more information.
