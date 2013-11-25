@@ -22,11 +22,7 @@ This program requires that the following are installed and available:
 - Perl (comes with most operating systems)
 - [RAxML](https://github.com/stamatak/standard-RAxML), v7.7 or higher 
 - [Seq-Gen](http://tree.bio.ed.ac.uk/software/seqgen/)
-- Statistics::R  (http://search.cpan.org/dist/Statistics-R/)
-    Statistics::R has additional requirements
-    See http://search.cpan.org/dist/Statistics-R/README
-    Use the local::lib option to install Statistics::R without sudo. 
-    See http://search.cpan.org/~ether/local-lib-1.008018/lib/local/lib.pm for more information, including the Bootstrapping techniques.
+- The [Statistics::R](http://search.cpan.org/dist/Statistics-R/) Perl module. `Statistics::R` has additional requirements, as described at [http://search.cpan.org/dist/Statistics-R/README]. Use the `local::lib` option to install `Statistics::R` without `sudo`. See [http://search.cpan.org/~ether/local-lib-1.008018/lib/local/lib.pm] for more information.
 
 Optional
 - [PhyloBayes](http://www.phylobayes.org)
@@ -83,7 +79,8 @@ can be viewed by running any of the following:
 FURTHER READING
 ---------------
 
-Goldman, Nick, Jon P. Anderson, and Allen G. Rodrigo. "Likelihood-based tests of topologies in phylogenetics." Systematic Biology 49.4 (2000): 652-670.
+Goldman, Nick, Jon P. Anderson, and Allen G. Rodrigo. "Likelihood-based tests of topologies in phylogenetics." Systematic Biology 49.4 (2000): 652-670. [doi:10.1080/106351500750049752](http://dx.doi.org/10.1080/106351500750049752)
+
 
 COPYRIGHT AND LICENSE
 ---------------------
