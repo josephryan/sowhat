@@ -8,6 +8,10 @@
 # this is especially relevant to amino acid tests which take a while
 # 
 
+# Get set up
+mkdir -p test.output
+
+
 # TEST1: Nucleotide data under GTRGAMMA without partitions
 # constraint tree is much less likely than tree w/highest likelihood
 # p-value should be 0 or close to 0
