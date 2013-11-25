@@ -46,7 +46,7 @@ To install SOWHAT and documentation type the following:
 EXAMPLES
 --------
 
-    see Examples.txt for commands and the examples directory for data files
+See `examples.s`h for commands and the `examples/` directory for data files.
 
 RUN
 ---
@@ -78,7 +78,7 @@ can be viewed by running any of the following:
 
         sowh.pl --help
         perldoc sowh.pl
-        man sowh.pl  (available after installation)
+        man sowh.pl  # available after installation
 
 FURTHER READING
 ---------------
