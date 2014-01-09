@@ -3,8 +3,9 @@ Makefile.PL
 MANIFEST
 README.md
 examples.sh
-sowh.pl
-t/sowh.pl.t
+sowhat
+sowhat.bibtex
+t/sowhat.t
 examples/H0.tre
 examples/H1.tre
 examples/H2.tre
