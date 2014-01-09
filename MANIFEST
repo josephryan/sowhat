@@ -2,7 +2,7 @@ LICENSE
 Makefile.PL
 MANIFEST
 README.md
-Examples.txt
+examples.sh
 sowh.pl
 t/sowh.pl.t
 examples/H0.tre
