@@ -1,6 +1,5 @@
 use ExtUtils::MakeMaker;
 
-WriteMakefile(NAME => 'sowh.pl',
+WriteMakefile(NAME => 'sowhat',
               clean => {FILES => 'test.output'},
-              VERSION => '0.07',
-              EXE_FILES => ['sowh.pl']);
+              EXE_FILES => ['sowhat']);
