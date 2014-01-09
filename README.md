@@ -17,7 +17,7 @@
 ## AVAILABILITY
 
 
-https://github.com/josephryan/sowh.pl (click the "Download ZIP" button at the bottom of the right column).
+https://github.com/josephryan/sowhat (click the "Download ZIP" button at the bottom of the right column).
 
 
 ## INSTALLATION
@@ -78,7 +78,7 @@ See `examples.sh` and the resulting `test.output/` directory for more on the spe
 
 ## RUN
 
-    sowh.pl \
+    sowhat \
     --constraint=NEWICK_CONSTRAINT_TREE \
     --aln=PHYLIP_ALIGNMENT \
     --name=NAME_FOR_REPORT \
@@ -100,18 +100,21 @@ See `examples.sh` and the resulting `test.output/` directory for more on the spe
 ## DOCUMENTATION
 
 
-Extensive documentation is embedded inside of sowh.pl in POD format and
+Extensive documentation is embedded inside of sowhat in POD format and
 can be viewed by running any of the following:
 
-        sowh.pl --help
-        perldoc sowh.pl
-        man sowh.pl  # available after installation
+        sowhat --help
+        perldoc sowhat
+        man sowhat  # available after installation
 
 
 ## CITING
 
 A manuscript describing `sowhat` and the performance of the SOWH test is currently under preparation. In the mean time, cite this repository and the manuscripts describing raxml, seq-gen, and, if used, phylobayes.
 
+Church SH, Ryan JF, Dunn CW, Sowhat, (2014), GitHub repository, https://github.com/josephryan/sowhat
+
+Also see the file sowhat.bibtex
 
 ## FURTHER READING
 
