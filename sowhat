@@ -20,7 +20,7 @@
 #    with this program; if not, write to the Free Software Foundation, Inc.,
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-our $VERSION = 0.12;
+our $VERSION = 0.13;
 
 use strict;
 use warnings;
@@ -81,7 +81,7 @@ MAIN: {
             }
             my ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) = ();
             if ($rh_opts->{'usepb'}) {
-                $ra_alns = generate_alignment_w_pb($rh_opts,$alns_to_gen,$tag);
+                $ra_alns = generate_alignments_w_pb($rh_opts,$alns_to_gen,$tag);
             } else {
                 $ra_alns = generate_alignments($ra_aln_len,$ra_params,
                 $ra_rates,$rh_opts->{'mod'},$alns_to_gen,
