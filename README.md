@@ -24,39 +24,43 @@ https://github.com/josephryan/sowhat (click the "Download ZIP" button at the bot
 
 ### SYSTEM REQUIREMENTS
 
-We have tested `sowhat` on OS X 10.9 and Ubuntu 13.04. It will likely work on a variety of other Unix-like operating systems.
+We have tested `sowhat` on OS X 10.9 and Ubuntu 13.04. It will likely work on a variety 
+of other Unix-like operating systems.
 
-### INSTALLING DEPENDENCIES
+### DEPENDENCIES
 
-`sowhat` requires that the following phylogenetic programs are installed and available in the PATH: 
-- [RAxML](https://github.com/stamatak/standard-RAxML), v7.7 or higher 
-- [Seq-Gen](http://tree.bio.ed.ac.uk/software/seqgen/), v1.3.3 or higher
+The dependencies listed below are required by `sowhat`. They must be installed and 
+available in the appropriate PATH. If they are not installed already, follow the 
+installation instructions in the links provided for each tool. We have tested `sowhat` 
+with the indicated dependency versions. Other versions may be incompatible, and should be 
+used with caution.
 
-If you already have these installed on your system, you are set. They are also available as part of this package, and can be installed to `/usr/local/bin` with:
+Phylogenetic programs: 
+- [RAxML](https://github.com/stamatak/standard-RAxML), v7.7 
+- [Seq-Gen](http://tree.bio.ed.ac.uk/software/seqgen/), v1.3.3
 
-    sudo ./build_3rd_party.sh
-
-
-`sowhat` also requires that the following general tools are installed available:
+General system tools:
 - [Perl](http://www.cpan.org/), which comes with most operating systems
 - [R](http://www.r-project.org/)
 - The [Statistics::R](http://search.cpan.org/dist/Statistics-R/) Perl module. `Statistics::R` has additional requirements, as described at http://search.cpan.org/dist/Statistics-R/README. Use the `local::lib` option to install `Statistics::R` without `sudo`. See http://search.cpan.org/~ether/local-lib-1.008018/lib/local/lib.pm for more information.
 
-You can install these general tools on Ubuntu 13.04 with:
+To use more complex models, you will need to install the following optional dependency:
+- [PhyloBayes](http://www.phylobayes.org)
 
+You can install all the required dependencies listed above on Ubuntu 13.04 with the 
+following commands (executables will be placed in `/usr/local/bin`):
+
+    sudo ./build_3rd_party.sh
     sudo apt-get install r-base-core
     sudo apt-get install cpanminus
     sudo cpanm Statistics::R
 
+Note that `build_3rd_party.sh` installs some dependencies from versions that are cached in 
+this repository. They may be out of date.
 
-Optional programs:
-- [PhyloBayes](http://www.phylobayes.org) must be installed and available in order to use more complex models.
+## INSTALLATION
 
-
-## INSTALLING sowhat
-
-
-To install SOWHAT and documentation type the following:
+To install `sowhat` and documentation, type the following:
 
     perl Makefile.PL
     make
@@ -100,7 +104,7 @@ See `examples.sh` and the resulting `test.output/` directory for more on the spe
 ## DOCUMENTATION
 
 
-Extensive documentation is embedded inside of sowhat in POD format and
+Extensive documentation is embedded inside of `sowhat` in POD format and
 can be viewed by running any of the following:
 
         sowhat --help
@@ -110,7 +114,9 @@ can be viewed by running any of the following:
 
 ## CITING
 
-A manuscript describing `sowhat` and the performance of the SOWH test is currently under preparation. In the mean time, cite this repository and the manuscripts describing raxml, seq-gen, and, if used, phylobayes.
+A manuscript describing `sowhat` and the performance of the SOWH test is currently under 
+preparation. In the mean time, cite this repository and the manuscripts describing raxml, 
+seq-gen, and, if used, phylobayes.
 
 Church SH, Ryan JF, Dunn CW, Sowhat, (2014), GitHub repository, https://github.com/josephryan/sowhat
 
@@ -119,9 +125,12 @@ Also see the file sowhat.bibtex
 ## FURTHER READING
 
 
-Goldman, Nick, Jon P. Anderson, and Allen G. Rodrigo. "Likelihood-based tests of topologies in phylogenetics." Systematic Biology 49.4 (2000): 652-670. [doi:10.1080/106351500750049752](http://dx.doi.org/10.1080/106351500750049752)
+Goldman, Nick, Jon P. Anderson, and Allen G. Rodrigo. "Likelihood-based tests of 
+topologies in phylogenetics." Systematic Biology 49.4 (2000): 652-670. 
+[doi:10.1080/106351500750049752](http://dx.doi.org/10.1080/106351500750049752)
 
-Swofford, David L., Gary J. Olsen, Peter J. Waddell, and David M. Hillis. Phylogenetic inference. (1996): 407-514. http://www.sinauer.com/molecular-systematics.html
+Swofford, David L., Gary J. Olsen, Peter J. Waddell, and David M. Hillis. Phylogenetic 
+inference. (1996): 407-514. http://www.sinauer.com/molecular-systematics.html
 
 
 
