@@ -1,3 +1,5 @@
+* Clean up output - focus on easy access to the final p-value, the graph of the mean and chains, and a clean representation of the distribution. Store the large number of RAxML and seq-gen output files apart from this information.
+
 * Allow for comparison of two suboptimal hypotheses rather than most likely topology vs. a single alternative.
 
 * Come up with a way to start and stop runs
@@ -5,32 +7,16 @@
 * Add support for threads (multiCPU)
 
 * true support for multistate. Will require running seq-gen in aminoacid mode and up to 20 substitutions.
-  - multistate currently craps out with: "expecting 2 frequencies. Multi-State only works w/binary matrix"
+  - multistate currently fails with: "expecting 2 frequencies. Multi-State only works w/binary matrix"
 
-* add in hash which checks the model
+* add in hash which checks the model - warns about unsupported model
 
 * add in documentation about using local::lib - bootstrapping the package in and using that to cpan R
 
-DONE - - -  I think the warning about reduced reps is incorrect now, because it is always 99, not the full 100. I am not sure. We need to verify this.
-
 * need to check that constraint tree, dataset share taxa - names are consistent. The error that currently is output is a confusing message from RAxML.
-
-DONE - SOWHAT make this irrelevant - - - in cases where seq-gen produces 2 of the same sequences in a dataset
-  there will be a failure in RAxML. Should we test for duplicate generated
-  seqs? will this slow down? DONE: Perhaps just a more informative warning
-  message explaining the errors?
-
-DONE - - - DELETED UNNECESSARY DATA SETS - - - CHANGED ALL H0 -> t1, H1 -> t2change all hypotheses to t1, t2, in published. Tidy up published directories, example directories.
-
-* print $DIR/sowh_info_$name.txt with all output
 
 * print $DIR/sowh_trace_$name.txt with output similar to phylobayes .trace files
 
   #cycle  #treegen        time    loglik  length  alpha   nmode   stat
   1       940     2836    -889000 21.9549 0.585788        4885    0.933128  
-
-* run consel on cnidarian Hox analyses
-
-* print the command line that was run to standard output straight away 
-  or at least upon death
 

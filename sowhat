@@ -98,8 +98,11 @@ MAIN: {
                 plot_null_mean(\@mean,$ch);
             }
             print_report($ch,$best_ml,$best_t1,$rh_stats,$ra_diff,\@delta_dist,                          $rh_opts,$fd_file,$ver);
-            if ($ch) {
+            if ($ch == ($rh_opts->{'chains'} - 1)) {
                 calculate_chain_split(\@current_mean,\@mean,$ch,$tag);
+                if ($ch) {
+                    plot_chains(\@mean,$rh_opts->{'chains'},$ts);
+                }
             }
         }
     }
@@ -532,7 +535,7 @@ sub _run_seqgen {
         $count++;
         safe_system($cmd);
         if ($rh_part->{'type'} eq 'Multi-State') {
-            my $file = "seqgen." . ".out.$tag" . ($count - 1);
+            my $file = "seqgen.out.$tag." . ($count - 1);
             _convert_AT_to_01($DIR . $file, $ra_part_lens->[$i]);
         }
     }
@@ -1030,6 +1033,37 @@ EOF
     }
 }
 
+sub plot_chains {
+    my $ra_mean = shift;
+    my $chains = shift;
+    my $ts = shift;
+    my $R = Statistics::R->new();
+    my $ra_mean_str = ();
+    my $i = 0;
+    if(scalar($ts > 0)) {
+        foreach(@{$ra_mean}) {
+            $ra_mean_str->[$i] = "m[,($i + 1)] <- c(" . join ( ', ', @{$ra_mean->[$i]}) . ');';
+            $i++;
+        }
+        my $ra_str = join ( "\n", @{$ra_mean_str});
+        $R->startR();
+  
+        my $cmds = <<EOF;
+m <- data.frame(row.names=1:($ts + 1))
+$ra_str
+postscript("$DIR/chains.$chains.eps",horizontal = FALSE, onefile = FALSE, paper = "special",width=6.0,height=6.0)
+par(mar=c(5, 4, 4, 2) + 0.1)
+plot(m[,1],ylim=c(min(m),max(m)),type="l") 
+for (i in 2:$chains){
+lines(m[,i],type="l",col=i)
+}
+dev.off()
+EOF
+        my $r_out = $R->run($cmds);
+        $R->stopR();
+    }
+}
+
 sub print_report {
     my $tag = shift;
     my $best_ml = shift;
@@ -1087,17 +1121,17 @@ sub calculate_chain_split {
     my $file = $DIR . "sowh.chain.info";
     open OUT, ">$file" or _my_die("cannot open >$file:$!");
     foreach my $ra_m (@{$ra_mean}) {
-        print OUT "\nMean of null distribution of chain $ch as sample increases: \n";
+        print OUT "\nMean of null distribution of chain as sample increases: \n";
         foreach my $val (@{$ra_m}) {
-            print OUT "$val\n\n";
+            print OUT "$val\n";
         }
     }
     foreach my $val (@{$ra_current_mean}) { 
-        print OUT "Final Mean of Chain = $val\n";
+        print OUT "\nFinal Mean of Chain = $val";
     }
     for (my $i = 1; $i <= $ch; $i++) {
         my $diff = $ra_current_mean->[$i] - $ra_current_mean ->[($i - 1)];
-        print OUT "Difference between chains " . ($i - 1) .  " and $i: $diff\n";
+        print OUT "\nDifference between chains " . ($i - 1) .  " and $i: $diff";
     }
     close OUT;
 }
