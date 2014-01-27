@@ -58,7 +58,7 @@ MAIN: {
     my (@delta_dist,@deltaprime_dist,@mean,@current_mean) = ();
     my $tag = 0;    
     my $alns_to_gen = 1;
-    my ($ra_params,$ra_recalc_flag,$ra_alns,$ra_rates,$ra_aln_len) = [ ];
+    my ($ra_params,$ra_recalc_flag,$ra_alns,$ra_rates,$ra_aln_len,$pb_id) = [ ];
     my $codon_flag = 0;
     
     print "SOWH:\n";
@@ -70,9 +70,8 @@ MAIN: {
             $tag = "$ch.$ts";
             if (($ts < 1) || ($rh_opts->{'rerun'})) {
                 run_initial_trees($rh_opts,$ch,$tag);
-       
                 if ($rh_opts->{'usepb'}) {
-                    get_params_w_pb($rh_opts,$alns_to_gen,$tag);
+                    ($pb_id)=get_params_w_pb($rh_opts,$alns_to_gen,$tag);
                 } else {
                     ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) = 
                     get_params($rh_opts->{'aln'},$rh_opts->{'part'},
@@ -81,7 +80,7 @@ MAIN: {
             }
             my ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) = ();
             if ($rh_opts->{'usepb'}) {
-                $ra_alns = generate_alignments_w_pb($rh_opts,$alns_to_gen,$tag);
+                $ra_alns = generate_alignments_w_pb($rh_opts,$alns_to_gen,$tag,$pb_id);
             } else {
                 $ra_alns = generate_alignments($ra_aln_len,$ra_params,
                 $ra_rates,$rh_opts->{'mod'},$alns_to_gen,
@@ -232,7 +231,7 @@ sub get_params_w_pb {
     my $rh_opts = shift;
     my $reps = shift;
     my $tag = shift;
-    my $id = $DIR . $rh_opts->{'name'} . ".pb.$tag";
+    my $id = $DIR . $rh_opts->{'name'} . ".$tag";
     my $pb_reps = $reps * $PB_SAMPLING_FREQ + $PB_BURN;
     my $pb_cmd = "$PB -d $rh_opts->{'aln'} -T $rh_opts->{'constraint_tree'} ";
     $pb_cmd .= "-x $PB_SAVING_FREQ $pb_reps $id";
@@ -241,6 +240,7 @@ sub get_params_w_pb {
         $pb_cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
     }
     safe_system($pb_cmd);
+    return ($id);
 }
     
 sub generate_alignments_w_pb {
@@ -248,7 +248,8 @@ sub generate_alignments_w_pb {
     my $rh_opts = shift;
     my $reps = shift;
     my $tag = shift;
-    my $id = $DIR . $rh_opts->{'name'} . ".pb.$tag";
+    my $pb_id = shift;
+    my $id = $pb_id;
     my $ppred_cmd = "$PPRED -x $PB_BURN $PB_SAMPLING_FREQ $id";
     if ($QUIET) {
         $ppred_cmd .= " >> ${DIR}sowh_stdout_$NAME.txt ";
