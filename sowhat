@@ -40,7 +40,7 @@ our $PB_SAMPLING_FREQ = 5;
 our $PB_SAVING_FREQ   = 1;
 our $PB_BURN   = 10;
 our $DEFAULT_REPS = 100;
-our $DEFAULT_CHAINS = 1;
+our $DEFAULT_RUNS = 1;
 our $QUIET = 1;
 our $DIR = '';
 our $FREQ_BIN_NUMBER = 10;
@@ -62,11 +62,11 @@ MAIN: {
     my $codon_flag = 0;
     
     print "SOWH:\n";
-    print "Number of Chains = $rh_opts->{'chains'}. Values printed to $DIR" . "sowh.chain.info\n" if($rh_opts->{'chains'} > 1);
+    print "Number of runs = $rh_opts->{'runs'}. Values printed to $DIR" . "sowh.chain.info\n" if($rh_opts->{'runs'} > 1);
     print "Sample: ";
     
     for (my $ts = 0; $ts < $rh_opts->{'reps'}; $ts++) {
-        for (my $ch = 0; $ch < $rh_opts->{'chains'}; $ch++) {
+        for (my $ch = 0; $ch < $rh_opts->{'runs'}; $ch++) {
             $tag = "$ch.$ts";
             if (($ts < 1) || ($rh_opts->{'rerun'})) {
                 run_initial_trees($rh_opts,$ch,$tag);
@@ -97,10 +97,10 @@ MAIN: {
                 plot_null_mean(\@mean,$ch);
             }
             print_report($ch,$best_ml,$best_t1,$rh_stats,$ra_diff,\@delta_dist,                          $rh_opts,$fd_file,$ver);
-            if ($ch == ($rh_opts->{'chains'} - 1)) {
+            if ($ch == ($rh_opts->{'runs'} - 1)) {
                 calculate_chain_split(\@current_mean,\@mean,$ch,$tag);
                 if ($ch) {
-                    plot_chains(\@mean,$rh_opts->{'chains'},$ts);
+                    plot_runs(\@mean,$rh_opts->{'runs'},$ts);
                 }
             }
         }
@@ -110,7 +110,7 @@ MAIN: {
 sub process_options {
     my $rh_opts = {};
     $rh_opts->{'reps'} = $DEFAULT_REPS;
-    $rh_opts->{'chains'} = $DEFAULT_CHAINS;
+    $rh_opts->{'runs'} = $DEFAULT_RUNS;
     $rh_opts->{'orig_options'} = [@ARGV];
     $rh_opts->{'rax'} = $RAX;
     $rh_opts->{'seqgen'} = $SEQGEN;
@@ -126,7 +126,7 @@ sub process_options {
                                 "aln=s" => \$rh_opts->{'aln'},
                                 "dir=s" => \$rh_opts->{'dir'},
                                "reps=i" => \$rh_opts->{'reps'},
-                             "chains=i" => \$rh_opts->{'chains'},
+                               "runs=i" => \$rh_opts->{'runs'},
                              "seqgen=s" => \$rh_opts->{'seqgen'},
                                 "rax=s" => \$rh_opts->{'rax'},
                           "partition=s" => \$rh_opts->{'part'},
@@ -1034,9 +1034,9 @@ EOF
     }
 }
 
-sub plot_chains {
+sub plot_runs {
     my $ra_mean = shift;
-    my $chains = shift;
+    my $runs = shift;
     my $ts = shift;
     my $R = Statistics::R->new();
     my $ra_mean_str = ();
@@ -1052,10 +1052,10 @@ sub plot_chains {
         my $cmds = <<EOF;
 m <- data.frame(row.names=1:($ts + 1))
 $ra_str
-postscript("$DIR/chains.$chains.eps",horizontal = FALSE, onefile = FALSE, paper = "special",width=6.0,height=6.0)
+postscript("$DIR/runs.$runs.eps",horizontal = FALSE, onefile = FALSE, paper = "special",width=6.0,height=6.0)
 par(mar=c(5, 4, 4, 2) + 0.1)
 plot(m[,1],ylim=c(min(m),max(m)),type="l") 
-for (i in 2:$chains){
+for (i in 2:$runs){
 lines(m[,i],type="l",col=i)
 }
 dev.off()
@@ -1132,7 +1132,7 @@ sub calculate_chain_split {
     }
     for (my $i = 1; $i <= $ch; $i++) {
         my $diff = $ra_current_mean->[$i] - $ra_current_mean ->[($i - 1)];
-        print OUT "\nDifference between chains " . ($i - 1) .  " and $i: $diff";
+        print OUT "\nDifference between runs " . ($i - 1) .  " and $i: $diff";
     }
     close OUT;
 }
@@ -1161,7 +1161,7 @@ sub usage {
     [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS]
     [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS]
     [--reps=NUMBER_OF_REPLICATES]
-    [--chains=NUMBER_OF_CHAINS]
+    [--runs=NUMBER_OF_RUNS]
     [--tests=NUMBER_OF_TESTS]
     [--partition=PARTITION_FILE]
     [--rerun]
@@ -1182,7 +1182,7 @@ Samuel H. Church <samuel_church@brown.edu>, Joseph F. Ryan <josephryan@yahoo.com
 
 =head1 SYNOPSIS 
 
-sowhat --constraint=NEWICK_CONSTRAINT_TREE --aln=PHYLIP_ALIGNMENT --name=NAME_FOR_REPORT --model=MODEL --dir=DIR [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] [--usepb] [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS] [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] [--reps=NUMBER_OF_REPLICATES] [--chains=NUMBER_OF_chains] [--partition=PARTITION_FILE] [--rerun] [--debug] [--help] [--version]\n";
+sowhat --constraint=NEWICK_CONSTRAINT_TREE --aln=PHYLIP_ALIGNMENT --name=NAME_FOR_REPORT --model=MODEL --dir=DIR [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] [--usepb] [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS] [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] [--reps=NUMBER_OF_REPLICATES] [--runs=NUMBER_OF_RUNS] [--partition=PARTITION_FILE] [--rerun] [--debug] [--help] [--version]\n";
 
 =head1 constraint
 
@@ -1264,9 +1264,9 @@ This allows the user to specify the burn-in value used for the phylobayes analys
 <default: 100>
 This is the number of datasets which will be generated according to the estimated parameters. This number represents the sample size of the distribution. Each dataset will be evaluated twice for a likelihood score, once with and once without the topology constrained. If using the SOWHat alternative, this is the number of test statistics that will be calculated, the number of times the parameters will be optimized, as well as the number of new alignments that will be generated.
 
-=item B<--chains>
+=item B<--runs>
 <default: 1>
-This is the number of chains which will be run. 
+This is the number of runs. 
 
 =item B<--partition>
 
