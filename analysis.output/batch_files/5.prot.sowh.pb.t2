@@ -1,7 +1,0 @@
-#!/bin/bash
-
-#SBATCH -t 14-00:00:00
-
-module load R/3.0.0;
-perl sowh.pl --constraint=published_datasets/protein.t2.tre --aln=published_datasets/protein.benchmark.phy --model=PROTGAMMAWAG --dir=test.output/5.prot.sowh.pb.t2 --name=5.prot.sowh.pb.t2 --usepb --tests=100 --rax=~/data/shchurch/SOWH/src/raxmlHPC --seqgen=~/data/shchurch/SOWH/src/Seq-Gen.v1.3.3/source/seq-gen >output.5.prot.sowh.pb.t2
-
