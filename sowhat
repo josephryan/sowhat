@@ -1033,7 +1033,7 @@ sub plot_null_mean {
 meannull <- c($mean_str)
 postscript("$DIR/mean.$tag.eps",horizontal = FALSE, onefile = FALSE, paper = "special",width=4.0,height=4.0)
 par(mar=c(5, 4, 4, 2) + 0.1)
-plot(meannull, type="o", col="blue")
+plot(meannull, type="o", col="blue",ylab="Mean of Null Distribution", xlab="Sample Size",)
 dev.off()
 EOF
         my $r_out = $R->run($cmds);
@@ -1061,7 +1061,7 @@ m <- data.frame(row.names=1:($ts + 1))
 $ra_str
 postscript("$DIR/runs.$runs.eps",horizontal = FALSE, onefile = FALSE, paper = "special",width=6.0,height=6.0)
 par(mar=c(5, 4, 4, 2) + 0.1)
-plot(m[,1],ylim=c(min(m),max(m)),type="l") 
+plot(m[,1],ylim=c(min(m),max(m)),type="l",ylab="Mean of Null Distribution", xlab="Sample Size") 
 for (i in 2:$runs){
 lines(m[,i],type="l",col=i)
 }
