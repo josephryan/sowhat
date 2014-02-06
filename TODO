@@ -1,5 +1,3 @@
-* Clean up output - focus on easy access to the final p-value, the graph of the mean and chains, and a clean representation of the distribution. Store the large number of RAxML and seq-gen output files apart from this information.
-
 * Allow for comparison of two suboptimal hypotheses rather than most likely topology vs. a single alternative.
 
 * Come up with a way to start and stop runs

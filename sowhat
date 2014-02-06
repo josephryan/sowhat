@@ -1175,7 +1175,6 @@ sub usage {
     [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS]
     [--reps=NUMBER_OF_REPLICATES]
     [--runs=NUMBER_OF_RUNS]
-    [--tests=NUMBER_OF_TESTS]
     [--partition=PARTITION_FILE]
     [--rerun]
     [--debug]

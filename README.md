@@ -94,9 +94,9 @@ See `examples.sh` and the resulting `test.output/` directory for more on the spe
     [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS] \
     [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] \
     [--reps=NUMBER_OF_REPLICATES] \
-    [--tests=NUMBER_OF_TESTS] \
+    [--runs=NUMBER_OF_RUNS] \
     [--partition=PARTITION_FILE] \
-    [--sowhat] \
+    [--rerun] \
     [--debug] \
     [--help] \
     [--version]
