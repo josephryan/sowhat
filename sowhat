@@ -838,12 +838,16 @@ sub evaluate_distribution {
         $ra_delta_dist->[$ch][0] = $best_ml_score - $best_t1_score;
     }
 
-        $ra_deltaprime_dist->[$ch][$ts] = $ra_dist->[$i] - $ra_const_dist->[$i];
-        my $rh_stats = _get_recalc_stats($ra_delta_dist->[$ch],$ra_deltaprime_dist->[$ch]);
-        $ra_mean->[$ch][$ts] = $rh_stats->{'mean'};
-        $ra_current_mean->[$ch] = $rh_stats->{'mean'};
-        my $fd_file = _print_freq_dist($ra_deltaprime_dist->[$ch],$name,$reps);
-        return ($best_ml_score,$best_t1_score,$rh_stats,$ra_deltaprime_dist->[$ch],$fd_file);
+    # next 2 lines avoid uninitialized errors
+    $ra_dist->[$i] = $ra_dist->[$i] || 0;
+    $ra_const_dist->[$i] = $ra_const_dist->[$i] || 0;
+    $ra_deltaprime_dist->[$ch][$ts] = $ra_dist->[$i] - $ra_const_dist->[$i];
+
+    my $rh_stats = _get_recalc_stats($ra_delta_dist->[$ch],$ra_deltaprime_dist->[$ch]);
+    $ra_mean->[$ch][$ts] = $rh_stats->{'mean'};
+    $ra_current_mean->[$ch] = $rh_stats->{'mean'};
+    my $fd_file = _print_freq_dist($ra_deltaprime_dist->[$ch],$name,$reps);
+    return ($best_ml_score,$best_t1_score,$rh_stats,$ra_deltaprime_dist->[$ch],$fd_file);
   #      This block of code is used when $alns_to_gen is set to greater than 1.
   #      my $ra_diff_dist = _get_diff_dist($ra_dist,$ra_const_dist);
   #      my $rh_stats = _get_stats($ra_diff_dist,$best_ml_score,$best_t1_score);
