@@ -44,7 +44,7 @@ sowhat --constraint=examples/H1.tre --aln=examples/nt.phy --partition=examples/n
 sowhat --constraint=examples/H1.tre --aln=examples/char.phy --model=MULTIGAMMA --dir=test.output/test6 --name=char.H1
 
 # TEST7: Nucleotide data using PhyloBayes for the null distribution
-sowhat --constraint=examples/H1.tre --aln=examples/nt.phy --model=GTRGAMMA --dir=test.output/test1 --name=nt.H1.pb --usepb
+sowhat --constraint=examples/H1.tre --aln=examples/nt.phy --model=GTRGAMMA --dir=test.output/test7 --name=nt.H1.pb --usepb
 
 # TEST8: CURRENT TEST - RUNS and RECALCULATE:
 sowhat --constraint=examples/H1.tre --aln=examples/nt.phy --model=GTRGAMMA --dir=test.output/test8 --name=nt.H1   --runs=2 --reps=100 --rerun
