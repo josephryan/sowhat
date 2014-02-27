@@ -1,3 +1,10 @@
+* Under Linux, I am getting an error in Statistics::R related to a flag sent to R (--gui=none). My fix was to 
+  remove the command-line switch from the system call to R in 'Statistics/R/Bridge/Linux.pm'
+  We need to at least warn users. Probably should write the author(s) of Statistics::R
+  Not sure if this affects other versions
+  
+* Eat MOAR Twizzlers
+
 * Allow for comparison of two suboptimal hypotheses rather than most likely topology vs. a single alternative.
 
 * Come up with a way to start and stop runs
