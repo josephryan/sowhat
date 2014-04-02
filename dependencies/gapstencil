@@ -1,0 +1,47 @@
+#!/usr/bin/python
+
+import sys, getopt
+
+def main(argv):
+	inputfile = ''
+	outputfile = ''
+	datalist = []
+	f = []
+	newdatalist = []
+	x = []
+	try:
+   		opts, args = getopt.getopt(argv,"hi:o:",["ifile=","ofile="])
+	except getopt.GetoptError:
+      		print 'test.py -i <inputfile> -o <outputfile>'
+     		sys.exit(2)
+   	for opt, arg in opts:
+      		if opt == '-h':
+       			print 'test.py -i <inputfile> -o <outputfile>'
+        		sys.exit()
+		elif opt in ("-i", "--ifile"):
+        		inputfile = arg
+      		elif opt in ("-o", "--ofile"):
+        		outputfile = arg
+	with open (inputfile,'r') as myfile:
+		data=myfile.readlines()
+	def find(s, ch):
+		return [i for i, ltr in enumerate(s) if ltr == ch]
+	for i in range(0,len(data)):
+		datalist.append(list(data[i]))
+	for i in range(0,len(data)):
+		f.append(find(datalist[i],"-"))
+	with open (outputfile,'r') as myfile:
+		newdata=myfile.readlines()
+	for i in range(0,len(newdata)):
+       		newdatalist.append(list(newdata[i]))
+	for i in range(0,len(newdata)):
+		for j in f[i]:
+			newdatalist[i][j] = "-"
+		x.append(''.join(newdatalist[i]))
+	file = open(outputfile,'w')
+	file.writelines(x)
+	file.close()
+
+if __name__ == "__main__":
+	main(sys.argv[1:])
+

@@ -20,7 +20,7 @@
 #    with this program; if not, write to the Free Software Foundation, Inc.,
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-our $VERSION = 0.14;
+our $VERSION = 0.15;
 
 use strict;
 use warnings;
@@ -56,7 +56,7 @@ MAIN: {
     
     my $ver = get_version();
     
-    my (@delta_dist,@deltaprime_dist,@mean,@current_mean) = ();
+    my (@delta_dist,@deltaprime_dist,@mean,@current_mean,@rse,@current_rse) = ();
     my $tag = 0;    
     my $alns_to_gen = 1;
     my ($ra_params,$ra_recalc_flag,$ra_alns,$ra_rates,$ra_aln_len,$pb_id) = [ ];
@@ -86,8 +86,7 @@ MAIN: {
                 $ra_alns = generate_alignments_w_pb($rh_opts,$alns_to_gen,$tag,$pb_id);
             } else {
                 $ra_alns = generate_alignments($ra_aln_len,$ra_params,
-                $ra_rates,$rh_opts->{'mod'},$alns_to_gen,
-                $rh_opts->{'rerun'},$tag);
+                $ra_rates,$rh_opts,$alns_to_gen,$tag);
             }
             for (my $i = 0; $i < @{$ra_alns}; $i++) {
                 run_raxml_on_gen_alns($ra_alns,$rh_opts,$ra_aln_len,
@@ -96,13 +95,14 @@ MAIN: {
                 ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) =
                 evaluate_distribution($alns_to_gen,$rh_opts->{'name'},
                 $rh_opts->{'rerun'},\@delta_dist,\@deltaprime_dist,
-                \@mean,\@current_mean,$i,$ts,$ch,$tag);
-                plot_null_mean(\@mean,$ch);
+                \@mean,\@current_mean,\@rse,\@current_rse,$i,$ts,$ch,$tag);
+                plot_null_mean(\@mean,\@rse,$ch);
             }
             if ($ch == ($rh_opts->{'runs'} - 1)) {
                 calculate_run_split(\@current_mean,\@mean,$ch,$tag);
                 if ($ch) {
                     plot_runs(\@mean,$rh_opts->{'runs'},$ts);
+                    plot_runs_rse(\@rse,$rh_opts->{'runs'},$ts);
                 }
             }
             print_report($ch,$best_ml,$best_t1,$rh_stats,$ra_diff,\@delta_dist,
@@ -122,6 +122,7 @@ sub process_options {
     my $opt_results = Getopt::Long::GetOptions(
                               "version" => \$rh_opts->{'version'},
                                 "rerun" => \$rh_opts->{'rerun'},
+                                 "gaps" => \$rh_opts->{'gaps'},
                                 "usepb" => \$rh_opts->{'usepb'},
                               "ppred=s" => \$rh_opts->{'ppred'},
                             "pb_burn=i" => \$rh_opts->{'pb_burn'},
@@ -497,13 +498,16 @@ sub generate_alignments {
     my $ra_aln_len = shift;
     my $ra_params = shift;
     my $ra_rates = shift;
-    my $mod = shift;
+    my $rh_opts = shift;
     my $reps = shift;
-    my $recalc = shift;
     my $tag = shift;
+    my $recalc = $rh_opts->{'rerun'};
+    my $gapflag = $rh_opts->{'gaps'};
+    my $mod = $rh_opts->{'mod'};
+    my $aln = $rh_opts->{'aln'};
     _run_seqgen($ra_aln_len,$ra_params,$ra_rates,$mod,$reps,$recalc,$tag);
     my $ra_ds = _build_datasets(scalar(@{$ra_params}),$tag);
-    my $ra_alns = _make_alns($ra_ds,$tag);
+    my $ra_alns = _make_alns($ra_ds,$gapflag,$aln,$tag);
 }
 
 sub _run_seqgen {
@@ -707,12 +711,20 @@ sub _get_len_from_id_lens {
 
 sub _make_alns {
     my $ra_ds = shift;
+    my $gapflag = shift;
+    my $aln = shift;
     my $tag = shift;
     my @files = ();
     for (my $i = 0; $i < @{$ra_ds}; $i++) {
         my $file = "$SCRATCH" . "aln.phy.$tag.$i";
         open OUT, ">$file" or _my_die("cannot open >$file:$!");
         print OUT $ra_ds->[$i];
+        if($gapflag) {
+            my $cmd = "gapstencil ";
+            $cmd .= "-i " . "$aln ";
+            $cmd .= "-o " . "$SCRATCH" . "aln.phy.$tag.$i";
+            safe_system($cmd);
+        }
         push @files, $file;
     }
     return \@files;
@@ -819,6 +831,8 @@ sub evaluate_distribution {
     my $ra_deltaprime_dist = shift;
     my $ra_mean = shift;
     my $ra_current_mean = shift;
+    my $ra_rse = shift;
+    my $ra_current_rse = shift;
     my $i = shift;
     my $ts = shift;
     my $ch = shift;
@@ -846,6 +860,8 @@ sub evaluate_distribution {
     my $rh_stats = _get_recalc_stats($ra_delta_dist->[$ch],$ra_deltaprime_dist->[$ch]);
     $ra_mean->[$ch][$ts] = $rh_stats->{'mean'};
     $ra_current_mean->[$ch] = $rh_stats->{'mean'};
+    $ra_rse->[$ch][$ts] = $rh_stats->{'rse'};
+    $ra_current_rse->[$ch] = $rh_stats->{'rse'};
     my $fd_file = _print_freq_dist($ra_deltaprime_dist->[$ch],$name,$reps);
     return ($best_ml_score,$best_t1_score,$rh_stats,$ra_deltaprime_dist->[$ch],$fd_file);
   #      This block of code is used when $alns_to_gen is set to greater than 1.
@@ -931,6 +947,8 @@ xbar <- $diff
 z <- (xbar-a)/(s/sqrt(n))
 p <-  pnorm(z, lower.tail = FALSE)
 v <- var(c($dist_str))
+se <- (s/sqrt(n))
+rse <- ((se/a) * 100)
 a
 s
 n
@@ -938,6 +956,8 @@ xbar
 z
 p
 v
+se
+rse
 EOF
     my $r_out = $R->run($cmds);
     $R->stopR();
@@ -966,6 +986,8 @@ xbar <- mean(c($delta_string))
 z <- (xbar-a)/(s/sqrt(n))
 p <-  pnorm(z, lower.tail = FALSE)
 v <- var(c($deltaprime_string))
+se <- (s/sqrt(n))
+rse <- ((se/a) * 100)
 a
 s
 n
@@ -973,6 +995,8 @@ xbar
 z
 p
 v
+se
+rse
 EOF
     my $r_out = $R->run($cmds);
     $R->stopR();
@@ -992,6 +1016,8 @@ sub _parse_stats {
     $stats{'z'} = $data[4];
     $stats{'p'} = $data[5];
     $stats{'var'} = $data[6];
+    $stats{'se'} = $data[7];
+    $stats{'rse'} = $data[8];
     return \%stats;
 }
 
@@ -1026,18 +1052,25 @@ sub _print_freq_dist {
 
 sub plot_null_mean {
     my $ra_mean = shift;
+    my $ra_rse = shift;
     my $tag = shift;
     my $R = Statistics::R->new();
-    $ra_mean = $ra_mean->[$tag];  
+    $ra_mean = $ra_mean->[$tag]; 
+    $ra_rse = $ra_rse->[$tag]; 
     if(scalar(@{$ra_mean}) > 1) {
         my $mean_str = join ', ', @{$ra_mean};
+        my $rse_str = join ', ', @{$ra_rse};
         $R->startR();
-  
         my $cmds = <<EOF;
 meannull <- c($mean_str)
 postscript("$DIR/mean.$tag.eps",horizontal = FALSE, onefile = FALSE, paper = "special",width=4.0,height=4.0)
 par(mar=c(5, 4, 4, 2) + 0.1)
-plot(meannull, type="o", col="blue",ylab="Mean of Null Distribution", xlab="Sample Size",)
+plot(meannull,type="l",ylim=c(min(meannull),max(meannull)),ylab="Cumulative Mean of Null Distribution", xlab="Sample Size") 
+dev.off()
+senull <- c($rse_str)
+postscript("$DIR/rse.$tag.eps",horizontal = FALSE, onefile = FALSE, paper = "special",width=4.0,height=4.0)
+par(mar=c(5, 4, 4, 2) + 0.1)
+plot(senull,type="l",ylim=c(0,100),ylab="Cumulative Relative Standard Error", xlab="Sample Size") 
 dev.off()
 EOF
         my $r_out = $R->run($cmds);
@@ -1063,9 +1096,40 @@ sub plot_runs {
         my $cmds = <<EOF;
 m <- data.frame(row.names=1:($ts + 1))
 $ra_str
-postscript("$DIR/runs.$runs.eps",horizontal = FALSE, onefile = FALSE, paper = "special",width=6.0,height=6.0)
+postscript("$DIR/allmeans.$runs.eps",horizontal = FALSE, onefile = FALSE, paper = "special",width=6.0,height=6.0)
 par(mar=c(5, 4, 4, 2) + 0.1)
-plot(m[,1],ylim=c(min(m),max(m)),type="l",ylab="Mean of Null Distribution", xlab="Sample Size") 
+plot(m[,1],ylim=c(min(m),max(m)),type="l",ylab="Cumulative Mean of Null Distribution", xlab="Sample Size") 
+for (i in 2:$runs){
+lines(m[,i],type="l",col=i)
+}
+dev.off()
+EOF
+        my $r_out = $R->run($cmds);
+        $R->stopR();
+    }
+}
+
+sub plot_runs_rse {
+    my $ra_rse = shift;
+    my $runs = shift;
+    my $ts = shift;
+    my $R = Statistics::R->new();
+    my $ra_rse_str = ();
+    my $i = 0;
+    if(scalar($ts > 0)) {
+        foreach(@{$ra_rse}) {
+            $ra_rse_str->[$i] = "m[,($i + 1)] <- c(" . join ( ', ', @{$ra_rse->[$i]}) . ');';
+            $i++;
+        }
+        my $ra_str = join ( "\n", @{$ra_rse_str});
+        $R->startR();
+  
+        my $cmds = <<EOF;
+m <- data.frame(row.names=1:($ts + 1))
+$ra_str
+postscript("$DIR/allrse.$runs.eps",horizontal = FALSE, onefile = FALSE, paper = "special",width=6.0,height=6.0)
+par(mar=c(5, 4, 4, 2) + 0.1)
+plot(m[,1],type="l",ylim=c(0,100),ylab="Cumulative Relative Standard Error", xlab="Sample Size") 
 for (i in 2:$runs){
 lines(m[,i],type="l",col=i)
 }
@@ -1108,6 +1172,8 @@ sub print_report {
     print OUT "  RAxML was version $version\n";
     print OUT "\nSize of null distribution: $rh_s->{'sample_size'}\n";
     print OUT "Mean of null distribution: $rh_s->{'mean'}\n";
+    print OUT "Standard error of null distribution: $rh_s->{'se'}\n";
+    print OUT "Relative standard error: $rh_s->{'rse'}" . "%\n";
     print OUT "Variance of null distribution: $rh_s->{'var'}\n";
     print OUT "Standard deviation of null distribution: $rh_s->{'stdev'}\n\n";
     print OUT "Distributions and frequencies printed to:\n $fd_file\n\n";
@@ -1181,6 +1247,7 @@ sub usage {
     [--runs=NUMBER_OF_RUNS]
     [--partition=PARTITION_FILE]
     [--rerun]
+    [--gaps]
     [--debug]
     [--help]
     [--version]\n";
@@ -1291,6 +1358,10 @@ This can be a partition file which applies to the dataset. It must be in a forma
 =item B<--rerun>
 
 This option will adjust the SOWH test to account for variability in the maximum likelihood search. In this option, the test statistic and parameters will be recalculated for each alignment generated. The mean test statistic will then be tested against the null distribution using a one tailed test, similar to the SOWH test.
+
+=item B<--gaps>
+
+This option will call a python script which propogates the undetermined sites in the original dataset into all simulated datasets before they are evaluted. This allows simulated data to more accurately reflect the real world data.
 
 =item B<--debug>
 

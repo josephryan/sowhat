@@ -121,6 +121,17 @@ else
 	echo "seq-gen is already installed in $PREFIX ...skipping." >&2
 fi
 
+# gapstencil
+FILE="gapstencil"
+# SHA1=""
+if need_programs gapstencil
+then
+	echo "Intalling gapstencil..." >&2
+	cp gapstencil $BINDIR/
+else
+	echo "gapstencil is already installed in $PREFIX ...skipping." >&2
+fi
+
 # Take care of the other dependencies...
 # apt-get install r-base-core
 # apt-get install cpanminus
