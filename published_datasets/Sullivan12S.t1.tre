@@ -1,1 +1,1 @@
-(P.leucopus,(P.gossypin,(P.eremicus,(P.melanoti,(P.polionot,(P.keeni,(O.torridus,O.leucogas)))))));
+(P.leucopus,(P.gossypin,((P.melanoti,(P.keeni,P.polionot)),(P.eremicus,(O.torridus,O.leucogas)))));
