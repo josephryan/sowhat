@@ -56,11 +56,12 @@ MAIN: {
     
     my $ver = get_version();
     
-    my (@delta_dist,@deltaprime_dist,@mean,@current_mean,@rse,@current_rse) = ();
+    my (@delta_dist,@deltaprime_dist,@mean,@current_mean,@current_score,@pen_score,@ratio) = ();
     my $tag = 0;    
     my $alns_to_gen = 1;
     my ($ra_params,$ra_recalc_flag,$ra_alns,$ra_rates,$ra_aln_len,$pb_id) = [ ];
     my $codon_flag = 0;
+    my (@ratio_count,@perc_ratio) = ();
     
     print "SOWHAT:\n";
     print "Results printed to $DIR" . "sowhat.results\n" unless($rh_opts->{'runs'} > 1);
@@ -92,21 +93,22 @@ MAIN: {
                 run_raxml_on_gen_alns($ra_alns,$rh_opts,$ra_aln_len,
                 $codon_flag,$i,$tag);
 
-                ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) =
-                evaluate_distribution($alns_to_gen,$rh_opts->{'name'},
-                $rh_opts->{'rerun'},\@delta_dist,\@deltaprime_dist,
-                \@mean,\@current_mean,\@rse,\@current_rse,$i,$ts,$ch,$tag);
-                plot_null_mean(\@mean,\@rse,$ch);
+                ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) = evaluate_distribution($alns_to_gen,$rh_opts->{'name'},$rh_opts->{'rerun'},
+                    \@delta_dist,\@deltaprime_dist,\@mean,\@current_mean,\@current_score,\@pen_score,$i,$ts,$ch,$tag);
             }
             if ($ch == ($rh_opts->{'runs'} - 1)) {
                 calculate_run_split(\@current_mean,\@mean,$ch,$tag);
                 if ($ch) {
                     plot_runs(\@mean,$rh_opts->{'runs'},$ts);
-                    plot_runs_rse(\@rse,$rh_opts->{'runs'},$ts);
                 }
             }
-            print_report($ch,$best_ml,$best_t1,$rh_stats,$ra_diff,\@delta_dist,
-            $rh_opts,$fd_file,$ver);
+            if($ts > 9) {
+                calc_ratio($ch,$ts,\@current_score,\@pen_score,\@ratio,\@mean);
+                print_report($ch,$ts,$best_ml,$best_t1,$rh_stats,$ra_diff,\@delta_dist,
+                    \@ratio,$rh_opts,$fd_file,\@ratio_count,\@perc_ratio,$ver);
+            } else {
+                print "-";
+            }
         }
     }
 }
@@ -720,7 +722,7 @@ sub _make_alns {
         open OUT, ">$file" or _my_die("cannot open >$file:$!");
         print OUT $ra_ds->[$i];
         if($gapflag) {
-            my $cmd = "gapstencil ";
+            my $cmd = "python dependencies/gapstencil ";
             $cmd .= "-i " . "$aln ";
             $cmd .= "-o " . "$SCRATCH" . "aln.phy.$tag.$i";
             safe_system($cmd);
@@ -831,14 +833,16 @@ sub evaluate_distribution {
     my $ra_deltaprime_dist = shift;
     my $ra_mean = shift;
     my $ra_current_mean = shift;
-    my $ra_rse = shift;
-    my $ra_current_rse = shift;
+    my $ra_current_score = shift;
+    my $ra_pen_score = shift;
     my $i = shift;
     my $ts = shift;
     my $ch = shift;
     my $tag = shift;
     my $best_ml_score = 0;
     my $best_t1_score = 0;
+
+    $ra_pen_score->[$ch] = $ra_current_score->[$ch];
 
     my $ra_dist = _get_distribution($reps,0,$i,$tag);
     my $ra_const_dist = _get_distribution($reps,1,$i,$tag);
@@ -860,16 +864,16 @@ sub evaluate_distribution {
     my $rh_stats = _get_recalc_stats($ra_delta_dist->[$ch],$ra_deltaprime_dist->[$ch]);
     $ra_mean->[$ch][$ts] = $rh_stats->{'mean'};
     $ra_current_mean->[$ch] = $rh_stats->{'mean'};
-    $ra_rse->[$ch][$ts] = $rh_stats->{'rse'};
-    $ra_current_rse->[$ch] = $rh_stats->{'rse'};
+    $ra_current_score->[$ch] = $rh_stats->{'z'};
+
     my $fd_file = _print_freq_dist($ra_deltaprime_dist->[$ch],$name,$reps);
     return ($best_ml_score,$best_t1_score,$rh_stats,$ra_deltaprime_dist->[$ch],$fd_file);
+
   #      This block of code is used when $alns_to_gen is set to greater than 1.
   #      my $ra_diff_dist = _get_diff_dist($ra_dist,$ra_const_dist);
   #      my $rh_stats = _get_stats($ra_diff_dist,$best_ml_score,$best_t1_score);
   #      $ra_mean->[$i] = $rh_stats->{'var'};
   #      my $fd_file = _print_freq_dist($ra_diff_dist,$name,$tag);
-  #      print "current p-value = $rh_stats->{'p'}\n";
   #      return ($best_ml_score,$best_t1_score,$rh_stats,$ra_diff_dist,$fd_file);
 }
 
@@ -948,7 +952,7 @@ z <- (xbar-a)/(s/sqrt(n))
 p <-  pnorm(z, lower.tail = FALSE)
 v <- var(c($dist_str))
 se <- (s/sqrt(n))
-rse <- ((se/a) * 100)
+rse <- abs((se/a) * 100)
 a
 s
 n
@@ -987,7 +991,7 @@ z <- (xbar-a)/(s/sqrt(n))
 p <-  pnorm(z, lower.tail = FALSE)
 v <- var(c($deltaprime_string))
 se <- (s/sqrt(n))
-rse <- ((se/a) * 100)
+rse <- abs((se/a) * 100)
 a
 s
 n
@@ -1050,34 +1054,6 @@ sub _print_freq_dist {
     return $d_file;
 }
 
-sub plot_null_mean {
-    my $ra_mean = shift;
-    my $ra_rse = shift;
-    my $tag = shift;
-    my $R = Statistics::R->new();
-    $ra_mean = $ra_mean->[$tag]; 
-    $ra_rse = $ra_rse->[$tag]; 
-    if(scalar(@{$ra_mean}) > 1) {
-        my $mean_str = join ', ', @{$ra_mean};
-        my $rse_str = join ', ', @{$ra_rse};
-        $R->startR();
-        my $cmds = <<EOF;
-meannull <- c($mean_str)
-postscript("$DIR/mean.$tag.eps",horizontal = FALSE, onefile = FALSE, paper = "special",width=4.0,height=4.0)
-par(mar=c(5, 4, 4, 2) + 0.1)
-plot(meannull,type="l",ylim=c(min(meannull),max(meannull)),ylab="Cumulative Mean of Null Distribution", xlab="Sample Size") 
-dev.off()
-senull <- c($rse_str)
-postscript("$DIR/rse.$tag.eps",horizontal = FALSE, onefile = FALSE, paper = "special",width=4.0,height=4.0)
-par(mar=c(5, 4, 4, 2) + 0.1)
-plot(senull,type="l",ylim=c(0,100),ylab="Cumulative Relative Standard Error", xlab="Sample Size") 
-dev.off()
-EOF
-        my $r_out = $R->run($cmds);
-        $R->stopR();
-    }
-}
-
 sub plot_runs {
     my $ra_mean = shift;
     my $runs = shift;
@@ -1109,30 +1085,42 @@ EOF
     }
 }
 
-sub plot_runs_rse {
-    my $ra_rse = shift;
-    my $runs = shift;
+sub calc_ratio {
+    my $ch = shift;
     my $ts = shift;
+    my $ra_current_score = shift;
+    my $ra_pen_score = shift;
+    my $ra_ratio = shift;
+    my $ra_mean = shift;
+    my $calc_ratio = 0;
+    $ra_current_score = $ra_current_score->[$ch];
+    $ra_pen_score = $ra_pen_score->[$ch];
+    $calc_ratio = $ra_current_score / $ra_pen_score;
+    $ra_ratio->[$ch][$ts] = abs(1-$calc_ratio);
+
     my $R = Statistics::R->new();
-    my $ra_rse_str = ();
-    my $i = 0;
-    if(scalar($ts > 0)) {
-        foreach(@{$ra_rse}) {
-            $ra_rse_str->[$i] = "m[,($i + 1)] <- c(" . join ( ', ', @{$ra_rse->[$i]}) . ');';
-            $i++;
-        }
-        my $ra_str = join ( "\n", @{$ra_rse_str});
+    for(my $j=0; $j < 10; $j++) {
+        $ra_ratio->[$ch][$j] = 0;
+    }
+
+    $ra_ratio = $ra_ratio->[$ch]; 
+    $ra_mean = $ra_mean->[$ch]; 
+
+    if(scalar(@{$ra_ratio}) > 1) {
+        my $ratio_str = join ', ', @{$ra_ratio};
+        my $mean_str = join ', ', @{$ra_mean};
+
         $R->startR();
-  
         my $cmds = <<EOF;
-m <- data.frame(row.names=1:($ts + 1))
-$ra_str
-postscript("$DIR/allrse.$runs.eps",horizontal = FALSE, onefile = FALSE, paper = "special",width=6.0,height=6.0)
+rationull <- c($ratio_str)
+postscript("$DIR/ratio.$ch.eps",horizontal = FALSE, onefile = FALSE, paper = "special",width=4.0,height=4.0)
 par(mar=c(5, 4, 4, 2) + 0.1)
-plot(m[,1],type="l",ylim=c(0,100),ylab="Cumulative Relative Standard Error", xlab="Sample Size") 
-for (i in 2:$runs){
-lines(m[,i],type="l",col=i)
-}
+plot(rationull,ylim=c(min(rationull),max(rationull)),ylab="1 - Ratio", xlab="Sample Size",pch=20) 
+dev.off()
+meannull <- c($mean_str)
+postscript("$DIR/mean.$ch.eps",horizontal = FALSE, onefile = FALSE, paper = "special",width=4.0,height=4.0)
+par(mar=c(5, 4, 4, 2) + 0.1)
+plot(meannull,type="l",ylim=c(min(meannull),max(meannull)),ylab="Cumulative Mean of Null Distribution", xlab="Sample Size") 
 dev.off()
 EOF
         my $r_out = $R->run($cmds);
@@ -1141,23 +1129,40 @@ EOF
 }
 
 sub print_report {
-    my $tag = shift;
+    my $ch = shift;
+    my $ts = shift;
     my $best_ml = shift;
     my $const_ml = shift;
     my $rh_s = shift;
     my $ra_d = shift;
     my $ra_delta_dist = shift;
-    $ra_delta_dist = $ra_delta_dist->[$tag];
+    my $ra_ratio = shift;
+    $ra_delta_dist = $ra_delta_dist->[$ch];
     my $rh_opts = shift;
     my $fd_file = shift;
+    my $ra_ratio_count = shift;
+    my $ra_perc_ratio = shift;
     my $version = shift;
+    my $ratio = $ra_ratio->[$ch][$ts];
     my $file = '';
     if ($rh_opts->{'runs'} > 1) {
-        $file = $DIR . "sowhat.results.$tag";  
+        $file = $DIR . "sowhat.results.$ch";  
     } else {
         $file = $DIR . "sowhat.results";
     }
-    print ".";
+
+    if($ratio > 0.01) {
+        print ".";
+    } else {
+        print "o";
+        $ra_ratio_count->[$ch]++;
+    }
+    no warnings 'uninitialized';
+    $ra_perc_ratio->[$ch] = ($ra_ratio_count->[$ch] / $rh_s->{'sample_size'}) * 100;
+    use warnings 'uninitialized';
+    if($ra_perc_ratio->[$ch] > 50 && $rh_s->{'sample_size'} > 100) {
+        print "Stopping Criteria Met\n";
+    }
     open OUT, ">$file" or _my_die("cannot open >$file:$!");
     print OUT "\n\n";
     print OUT "=============================================================\n";
@@ -1175,7 +1180,9 @@ sub print_report {
     print OUT "Standard error of null distribution: $rh_s->{'se'}\n";
     print OUT "Relative standard error: $rh_s->{'rse'}" . "%\n";
     print OUT "Variance of null distribution: $rh_s->{'var'}\n";
-    print OUT "Standard deviation of null distribution: $rh_s->{'stdev'}\n\n";
+    print OUT "Standard deviation of null distribution: $rh_s->{'stdev'}\n";
+    print OUT "Ratio: $ratio \n";
+    print OUT "Percent Ratio: $ra_perc_ratio->[$ch]" . "%\n\n";
     print OUT "Distributions and frequencies printed to:\n $fd_file\n\n";
     print OUT "ML value of best tree: $best_ml\n";
     print OUT "ML value of best tree w/constraint: $const_ml\n";
