@@ -4,9 +4,10 @@
 ## DESCRIPTION
 
 
-`sowhat` has not been tested extensively and is being actively developed. Please use with caution. We appreciate hearing about your experience with the program.
+`sowhat` has is being actively developed. Please use with caution. We appreciate hearing about your experience with the program.
 
 `sowhat` automates the steps required for the SOWH phylogenetic topology test (described by the manuscripts listed in FURTHER READING below). `sowhat` depends on the freely available Seq-Gen and RAxML software packages. It works on amino acid, nucleotide, and binary character state datasets. Partitions (including codon position partitioning) can be specified. It is also possible to use PhyloBayes to generate the null distribution for nucleotide and amino acid data. 
+A manuscript describing the `sowhat` and the SOWH test has been released to the bioRxiv: http://biorxiv.org/content/early/2014/05/19/005264
 
 `sowhat` includes several features that aid in the interpretation and assessment of SOWH test results, including: 
 
@@ -21,6 +22,15 @@ https://github.com/josephryan/sowhat (click the "Download ZIP" button at the bot
 
 
 ## INSTALLATION
+
+### QUICK
+
+To install `sowhat` and documentation, type the following:
+
+    perl Makefile.PL
+    make
+    make test
+    sudo make install
 
 ### SYSTEM REQUIREMENTS
 
@@ -43,6 +53,7 @@ General system tools:
 - [Perl](http://www.cpan.org/), which comes with most operating systems
 - [R](http://www.r-project.org/)
 - The [Statistics::R](http://search.cpan.org/dist/Statistics-R/) Perl module. `Statistics::R` has additional requirements, as described at http://search.cpan.org/dist/Statistics-R/README. Use the `local::lib` option to install `Statistics::R` without `sudo`. Use the boostrap method found at http://search.cpan.org/~haarg/local-lib-2.000004/lib/local/lib.pm for installation information. Once local::lib has been installed, and with R installed,  install the Statistics::R package as you would normally. The use local::lib option must be activated in the program as well.
+- The [IPC::Run](http://search.cpan.org/dist/IPC-Run/) Perl module is currently needed for `make test` to work correctly.
 
 To use more complex models, you will need to install the following optional dependency:
 - [PhyloBayes](http://www.phylobayes.org)
@@ -57,15 +68,6 @@ following commands (executables will be placed in `/usr/local/bin`):
 
 Note that `build_3rd_party.sh` installs some dependencies from versions that are cached in 
 this repository. They may be out of date.
-
-## INSTALLATION
-
-To install `sowhat` and documentation, type the following:
-
-    perl Makefile.PL
-    make
-    make test
-    sudo make install
 
 
 
@@ -114,11 +116,11 @@ can be viewed by running any of the following:
 
 ## CITING
 
-A manuscript describing `sowhat` and the performance of the SOWH test is currently under 
-preparation. In the mean time, cite this repository and the manuscripts describing raxml, 
-seq-gen, and, if used, phylobayes.
+A manuscript describing `sowhat` and the performance of the SOWH test has been posted to the bioRxiv:
 
-Church SH, Ryan JF, Dunn CW, Sowhat, (2014), GitHub repository, https://github.com/josephryan/sowhat
+Automation and Evaluation of the SOWH Test of Phylogenetic Topologies with SOWHAT
+Samuel H. Church, Joseph F. Ryan, Casey W. Dunn
+bioRxivdoi: http://dx.doi.org/10.1101/005264
 
 Also see the file sowhat.bibtex
 
