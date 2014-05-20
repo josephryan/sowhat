@@ -1,3 +1,5 @@
+* Come up with an alternative to IPC::Run for the test suite. This does not seem to be installed by default with Perl.
+
 * Under Linux, I am getting an error in Statistics::R related to a flag sent to R (--gui=none). My fix was to 
   remove the command-line switch from the system call to R in 'Statistics/R/Bridge/Linux.pm'
   We need to at least warn users. Probably should write the author(s) of Statistics::R
