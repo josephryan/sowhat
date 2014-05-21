@@ -58,12 +58,21 @@ General system tools:
 To use more complex models, you will need to install the following optional dependency:
 - [PhyloBayes](http://www.phylobayes.org)
 
-You can install all the required dependencies listed above on Ubuntu 13.04 with the 
-following commands (executables will be placed in `/usr/local/bin`):
+You can install SOWHAT and all the required dependencies listed above on a clean Ubuntu 14.04 
+machine with the following commands (executables will be placed in `/usr/local/bin`):
 
-    sudo ./build_3rd_party.sh
-    sudo apt-get install -y r-base-core cpanminus
+    sudo apt-get update
+    sudo apt-get install -y r-base-core cpanminus unzip gcc git
     sudo cpanm Statistics::R
+    cd ~
+    git clone https://github.com/josephryan/sowhat.git
+    cd sowhat/
+    sudo ./build_3rd_party.sh
+    perl Makefile.PL
+    make
+    make test
+    sudo make install
+    
 
 Note that `build_3rd_party.sh` installs some dependencies from versions that are cached in 
 this repository. They may be out of date.
