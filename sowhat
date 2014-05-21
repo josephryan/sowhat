@@ -73,7 +73,6 @@ MAIN: {
         for (my $ch = 0; $ch < $rh_opts->{'runs'}; $ch++) {
             $tag = "$ch.$ts";
             if (($ts < 1) || ($rh_opts->{'rerun'})) {
-                run_initial_trees($rh_opts,$ch,$tag);
                 if ($rh_opts->{'usepb'}) {
                     ($pb_id)=get_params_w_pb($rh_opts,$alns_to_gen,$tag);
                 } else {
