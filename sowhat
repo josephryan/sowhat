@@ -73,6 +73,7 @@ MAIN: {
         for (my $ch = 0; $ch < $rh_opts->{'runs'}; $ch++) {
             $tag = "$ch.$ts";
             if (($ts < 1) || ($rh_opts->{'rerun'})) {
+                run_initial_trees($rh_opts,$tag);
                 if ($rh_opts->{'usepb'}) {
                     ($pb_id)=get_params_w_pb($rh_opts,$alns_to_gen,$tag);
                 } else {
@@ -112,6 +113,9 @@ MAIN: {
     }
 }
 
+# IN:  none
+# OUT: reference to a hash of command-line options
+# JOB: checks and organizes all command-line options
 sub process_options {
     my $rh_opts = {};
     $rh_opts->{'reps'} = $DEFAULT_REPS;
@@ -165,6 +169,9 @@ sub process_options {
     return $rh_opts;
 }
 
+# IN:  output directory specified with --dir on command-line
+# OUT: none
+# JOB: makes sure full path is used for output directory (required by RAX)
 sub set_out_dir {
     my $opt_dir = shift;
     my $pwd = getcwd();
@@ -181,6 +188,9 @@ sub set_out_dir {
     mkdir $SCRATCH unless (-d $SCRATCH);
 }
 
+# IN:  system command (e.g., ls -l)
+# OUT: none
+# JOB: runs a commond, prints command if in verbose mode, or if command fails
 sub safe_system {
     my $cmd = shift;
     warn "\$cmd = $cmd\n" unless ($QUIET);
@@ -188,6 +198,10 @@ sub safe_system {
     warn "system call failed:\n$cmd\nerror code=$?" if ($error != 0);
 }
 
+# IN: none
+# OUT: returns version of raxml
+# JOB: runs raxml -v and parses the output to check version,
+#      throws an error if not correct version
 sub get_version {
     my $version_st = `$RAX -v`;
     my @lines= split /\n/, $version_st;
@@ -205,6 +219,10 @@ sub get_version {
     return $version;
 }
 
+# IN:  command-line options hash, string consisting of the current rep and run
+# OUT: none
+# JOB: formats options and runs trees using _run_best_tree method 
+#      with and without the constraint tree
 sub run_initial_trees {
     my $rh_opts = shift;
     my $tag = shift;
@@ -217,6 +235,15 @@ sub run_initial_trees {
     _run_best_tree('t1',$aln,$part,$mod,$tag,$tre);
 }
 
+# IN:  title          (-n for raxml)
+#      alignment file (-s for raxml)
+#      partition file (-q for raxml)
+#      model          (-m for raxml)
+#      string consisting of the current rep and run (-n for raxml)
+#      treefile       (-t for raxml)
+# OUT: none
+# JOB: format the command line for running raxml tree
+#      only includes -q partitionfile or -t treefile if they are supplied     
 sub _run_best_tree {
     my $title = shift;
     my $aln   = shift;
@@ -235,6 +262,11 @@ sub _run_best_tree {
     safe_system($cmd);
 }
 
+# IN:  command-line options hash
+#      replicates (number of trees to generate in phylobayes)
+#      string consisting of the current rep and run
+# OUT: the id of the phylobayes run (used later by ppred)
+# JOB: fomat command line for phylobayes and run phylobayes
 sub get_params_w_pb {
     my $rh_opts = shift;
     my $reps = shift;
@@ -250,14 +282,24 @@ sub get_params_w_pb {
     safe_system($pb_cmd);
     return ($id);
 }
-    
+
+# IN:  command-line options hash
+#      replicates (number of trees to generate in phylobayes)
+#      string consisting of the current rep and run
+#      id of the phylobayes run (output of get_params_w_pb method)
+# OUT: returns array of file names of alignments
+# JOB: format command-line options for ppred
+#      run ppred
+#      return alignment file names
 sub generate_alignments_w_pb {
-    my @alns = ();
     my $rh_opts = shift;
     my $reps = shift;
     my $tag = shift;
     my $id = shift;
+
+    my @alns = ();
     my $ppred_cmd = "$PPRED -x $PB_BURN $PB_SAMPLING_FREQ $id";
+
     if ($QUIET) {
         $ppred_cmd .= " >> ${DIR}sowh_stdout_$NAME.txt ";
         $ppred_cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
