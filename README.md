@@ -62,8 +62,7 @@ You can install all the required dependencies listed above on Ubuntu 13.04 with 
 following commands (executables will be placed in `/usr/local/bin`):
 
     sudo ./build_3rd_party.sh
-    sudo apt-get install r-base-core
-    sudo apt-get install cpanminus
+    sudo apt-get install -y r-base-core cpanminus
     sudo cpanm Statistics::R
 
 Note that `build_3rd_party.sh` installs some dependencies from versions that are cached in 
