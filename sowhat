@@ -256,8 +256,7 @@ sub generate_alignments_w_pb {
     my $rh_opts = shift;
     my $reps = shift;
     my $tag = shift;
-    my $pb_id = shift;
-    my $id = $pb_id;
+    my $id = shift;
     my $ppred_cmd = "$PPRED -x $PB_BURN $PB_SAMPLING_FREQ $id";
     if ($QUIET) {
         $ppred_cmd .= " >> ${DIR}sowh_stdout_$NAME.txt ";
