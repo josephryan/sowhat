@@ -208,7 +208,6 @@ sub get_version {
 
 sub run_initial_trees {
     my $rh_opts = shift;
-    my $ch = shift;
     my $tag = shift;
     my $aln = $rh_opts->{'aln'};
     my $part = $rh_opts->{'part'};
