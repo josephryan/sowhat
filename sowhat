@@ -56,12 +56,12 @@ MAIN: {
     
     my $ver = get_version();
     
-    my (@delta_dist,@deltaprime_dist,@mean,@current_mean,@current_score,@pen_score,@ratio) = ();
+    my (@delta_dist,@deltaprime_dist,@mean,@current_mean,
+        @current_score,@pen_score,@ratio,@ratio_count,@perc_ratio) = ();
     my $tag = 0;    
     my $alns_to_gen = 1;
     my ($ra_params,$ra_recalc_flag,$ra_alns,$ra_rates,$ra_aln_len,$pb_id) = [ ];
     my $codon_flag = 0;
-    my (@ratio_count,@perc_ratio) = ();
     
     print "SOWHAT:\n";
     print "Results printed to $DIR" . "sowhat.results\n" unless($rh_opts->{'runs'} > 1);
@@ -70,42 +70,69 @@ MAIN: {
     print "Sample: ";
     
     for (my $ts = 0; $ts < $rh_opts->{'reps'}; $ts++) {
+    #LOOP: For the number of repetitions, simulate data
+    #      and calculate the statistics.
+
         for (my $ch = 0; $ch < $rh_opts->{'runs'}; $ch++) {
+        #LOOP: For the number of runs, perform each repetition of the test.
+        #      This loop allows multiple runs to be performed simultaneously.
+
             $tag = "$ch.$ts";
+            my ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) = ();
+
             if (($ts < 1) || ($rh_opts->{'rerun'})) {
+            #For the first iteration of each run only, run the initial trees
+            #and get the parameter values.
+
                 run_initial_trees($rh_opts,$tag);
                 if ($rh_opts->{'usepb'}) {
                     ($pb_id)=get_params_w_pb($rh_opts,$alns_to_gen,$tag);
                 } else {
                     ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) = 
-                    get_params($rh_opts->{'aln'},$rh_opts->{'part'},
-                    $rh_opts->{'mod'},$rh_opts->{'constraint_tree'},$tag);
+                    get_params($rh_opts,$tag);
                 }
             }
-            my ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) = ();
+
             if ($rh_opts->{'usepb'}) {
-                $ra_alns = generate_alignments_w_pb($rh_opts,$alns_to_gen,$tag,$pb_id);
+                $ra_alns = generate_alignments_w_pb($rh_opts,$alns_to_gen,
+                $tag,$pb_id);
             } else {
                 $ra_alns = generate_alignments($ra_aln_len,$ra_params,
                 $ra_rates,$rh_opts,$alns_to_gen,$tag);
             }
+
             for (my $i = 0; $i < @{$ra_alns}; $i++) {
+            #LOOP: For the number of alignments generated under this iteration,
+            #      run both raxml trees and calculate the statistic.
+            #      This loop is necessary when $alns_to_gen is >1
+
                 run_raxml_on_gen_alns($ra_alns,$rh_opts,$ra_aln_len,
                 $codon_flag,$i,$tag);
 
-                ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) = evaluate_distribution($alns_to_gen,$rh_opts->{'name'},$rh_opts->{'rerun'},
-                    \@delta_dist,\@deltaprime_dist,\@mean,\@current_mean,\@current_score,\@pen_score,$i,$ts,$ch,$tag);
+                ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) =
+                evaluate_distribution($alns_to_gen,$rh_opts->{'name'},
+                $rh_opts->{'rerun'},\@delta_dist,\@deltaprime_dist,\@mean,
+                \@current_mean,\@current_score,\@pen_score,$i,$ts,$ch,$tag);
             }
+
             if ($ch == ($rh_opts->{'runs'} - 1)) {
+            #After a successive iteration on all runs, 
+            #evaluate statistics across runs and create a graph
+
                 calculate_run_split(\@current_mean,\@mean,$ch,$tag);
                 if ($ch) {
                     plot_runs(\@mean,$rh_opts->{'runs'},$ts);
                 }
             }
+
             if($ts > 9) {
+            #After 10 iterations on all runs,
+            # begin to calculate and report the statistics.
+
                 calc_ratio($ch,$ts,\@current_score,\@pen_score,\@ratio,\@mean);
-                print_report($ch,$ts,$best_ml,$best_t1,$rh_stats,$ra_diff,\@delta_dist,
-                    \@ratio,$rh_opts,$fd_file,\@ratio_count,\@perc_ratio,$ver);
+                print_report($ch,$ts,$best_ml,$best_t1,$rh_stats,$ra_diff,
+                \@delta_dist,\@ratio,$rh_opts,$fd_file,\@ratio_count,
+                \@perc_ratio,$ver);
             } else {
                 print "-";
             }
@@ -266,7 +293,7 @@ sub _run_best_tree {
 #      replicates (number of trees to generate in phylobayes)
 #      string consisting of the current rep and run
 # OUT: the id of the phylobayes run (used later by ppred)
-# JOB: fomat command line for phylobayes and run phylobayes
+# JOB: format command line for phylobayes and run phylobayes
 sub get_params_w_pb {
     my $rh_opts = shift;
     my $reps = shift;
@@ -311,12 +338,19 @@ sub generate_alignments_w_pb {
     return \@alns;
 }
 
+# IN: command-line options hash, string consistent of rep and run
+# OUT: returns alignment length
+#      flag for partitions by codon positions
+#      array of parameter values
+#      array of rates
+# JOB: based on the model, uses one of four methods to parse params.
 sub get_params {
-    my $aln = shift;
-    my $part = shift;
-    my $mod = shift;
-    my $tre = shift;
+    my $rh_opts = shift;
     my $tag = shift;
+    my $aln = $rh_opts->{'aln'};
+    my $part = $rh_opts->{'part'};
+    my $mod = $rh_opts->{'mod'};
+    my $tre = $rh_opts->{'constraint_tree'};
     my $ra_aln_len = ();
     my $codon_flag = 0;
     my $ra_params = ();
@@ -337,6 +371,15 @@ sub get_params {
     return ($ra_aln_len,$codon_flag,$ra_params,$ra_rates);   
 }
 
+# IN: alignment file
+#     partition file
+#     tree file
+#     string consisting of rep and run
+# OUT: alignment length
+#      flag for partitions by codon position
+#      array of parameter values
+# JOB: gets part lengths using the _get_partition_lengths method
+#      gets parameters using the _get_params_from_const_rax method
 sub _model_gtrgamma {
     my $aln = shift;
     my $part = shift;
@@ -347,6 +390,18 @@ sub _model_gtrgamma {
     return ($ra_aln_len,$codon_flag,$ra_params);
 }
 
+# IN: alignment file
+#     partition file
+#     tree file
+#     string consisting of rep and run
+# OUT: alignment length
+#      flag for partitions by codon position
+#      array of parameter values
+#      array of rates
+# JOB: if partitioned, makes new part file using _make_unlinked_partition_file
+#      run tree using the unlinked GTR model of raxml using _run_best_tree
+#      gets part lengths using the _get_partition_lengths method
+#      gets parameters using the _get_params_from_const_rax method
 sub _model_prot {
     my $aln = shift;
     my $part = shift;
@@ -372,6 +427,15 @@ sub _model_prot {
     return ($ra_aln_len,$codon_flag,$ra_params,$ra_rates);      
 }
 
+# IN: alignment file
+#     partition file
+#     tree file
+#     string consisting of rep and run
+# OUT: alignment length
+#      flag for partitions by codon position
+#      array of parameter values
+# JOB: gets part lengths using the _get_partition_lengths method
+#      gets parameters using the _get_params_from_const_rax method
 sub _model_character_data {
     my $aln = shift;
     my $part = shift;
@@ -382,6 +446,16 @@ sub _model_character_data {
     return ($ra_aln_len,$codon_flag,$ra_params);
 }
 
+# IN: alignment file
+#     partition file
+#     tree file
+#     string consisting of rep and run
+# OUT: alignment length
+#      flag for partitions by codon position
+#      array of parameter values
+# JOB: run tree using GTRGAMMA model
+#      gets part lengths using the _get_partition_lengths method
+#      gets parameters using the _get_params_from_const_rax method
 sub _model_non_gtr {
     my $aln = shift;
     my $part = shift;
@@ -393,6 +467,13 @@ sub _model_non_gtr {
     return ($ra_aln_len,$codon_flag,$ra_params);
 }
 
+# IN: alignment file
+#     partition file
+# OUT: array of lengths
+#      flag for partitions by codon position
+# JOB: if partitioning scheme included
+#      return the length of each partition for data
+#      to be simulated separately
 sub _get_partition_lengths {
     my $aln = shift;
     my $part = shift;
@@ -426,6 +507,9 @@ sub _get_partition_lengths {
     return (\@lens,$codon_flag);
 }
 
+# IN: filename
+# OUT: array of parameter values
+# JOB: parse the base freq., alpha value, rates, and data type
 sub _get_params_from_const_rax {
     my $file = shift;
     my @data = ();
@@ -473,6 +557,10 @@ sub _get_params_from_const_rax {
     return \@data;
 }    
 
+# IN: partition file
+#     new part file name
+# OUT: return partition names
+# JOB: print new part file with _print_unlinked_part method
 sub _make_unlinked_partition_file {
     my $part = shift;
     my $new_part = shift;
@@ -481,6 +569,10 @@ sub _make_unlinked_partition_file {
     return $ra_part_names;
 }
 
+# IN: partition file
+# OUT: number and lengths of partitions
+#      name of partitions
+# JOB: get partition lengths and names for new file
 sub _get_aa_part_info {
     my $part = shift;
     open IN, $part or _my_die("cannot open $part:$!");
@@ -501,6 +593,11 @@ sub _get_aa_part_info {
    return (\@part_info,\@names);
 }
 
+# IN: partition info
+#     new part file name
+# OUT: none
+# JOB: print new paritition info with the GTR_UNLINKED model
+#      necessary for amino acid data
 sub _print_unlinked_part {
     my $part_info = shift;
     my $new_part = shift;
@@ -510,6 +607,10 @@ sub _print_unlinked_part {
     }
 }
 
+# IN: string consisting of rep and run
+#     array of partition names
+# OUT: array of rates for AA data
+# JOB: Get rate matrix for AA data from raxml partition reports
 sub _parse_rates {
     my $tag = shift;
     my $ra_part_names = shift;
@@ -1215,22 +1316,28 @@ sub print_report {
     print OUT "\n  \$SEQGEN variable set to $SEQGEN\n";
     print OUT "  \$RAX variable set to $RAX\n";
     print OUT "  RAxML was version $version\n";
-    print OUT "\nSize of null distribution: $rh_s->{'sample_size'}\n";
-    print OUT "Mean of null distribution: $rh_s->{'mean'}\n";
-    print OUT "Standard error of null distribution: $rh_s->{'se'}\n";
-    print OUT "Relative standard error: $rh_s->{'rse'}" . "%\n";
-    print OUT "Variance of null distribution: $rh_s->{'var'}\n";
-    print OUT "Standard deviation of null distribution: $rh_s->{'stdev'}\n";
-    print OUT "Ratio: $ratio \n";
-    print OUT "Percent Ratio: $ra_perc_ratio->[$ch]" . "%\n\n";
-    print OUT "Distributions and frequencies printed to:\n $fd_file\n\n";
-    print OUT "ML value of best tree: $best_ml\n";
-    print OUT "ML value of best tree w/constraint: $const_ml\n";
-    print OUT "Difference between $best_ml and $const_ml: $rh_s->{'diff'}\n";
-    print OUT "  (this is the test statistic)\n\n";
-    print OUT "z-Score: $rh_s->{'z'}\n";
-    print OUT "p-value: $rh_s->{'p'}\n";
-    print OUT "    The p-value is the probability that the test value is plausible\n\n";
+    print OUT "\nDistributions and frequencies printed to:\n $fd_file\n";
+    print OUT "\nTest Statistic:\n";
+    print OUT "    ML value of best tree: $best_ml\n";
+    print OUT "    ML value of best tree w/constraint: $const_ml\n";
+    print OUT "    Difference between $best_ml and $const_ml: $rh_s->{'diff'}\n";
+    print OUT "\nStatistics of the null distribution:\n";
+    print OUT "    Size of null distribution: $rh_s->{'sample_size'}\n";
+    print OUT "    Mean of null distribution: $rh_s->{'mean'}\n";
+    print OUT "    Standard deviation of null distribution: $rh_s->{'stdev'}\n";
+    print OUT "    Standard error of null distribution: $rh_s->{'se'}\n";
+    print OUT "    Relative standard error: $rh_s->{'rse'}" . "%\n";
+    print OUT "    Variance of null distribution: $rh_s->{'var'}\n";
+    print OUT "\nStopping Criteria:\n";
+    print OUT "    The value of 1 - ratio of z-scores as the sample size increases\n";
+    print OUT "    will approach 0. The percent of iterations which return values\n";
+    print OUT "    of 1-ratio < 0.01 is shown. Sufficient sampling is >50%\n";
+    print OUT "\n    Current z-score: $rh_s->{'z'}\n";
+    print OUT "    Percent Ratio: $ra_perc_ratio->[$ch]" . "%\n";
+    print OUT "\nSOWH test results:\n";
+    print OUT "    The p-value represents the probability that the test statistic\n";
+    print OUT "    would be observed under the null hypothesis.\n";
+    print OUT "\n    p-value: $rh_s->{'p'}\n";
     close OUT;
     open OUT, ">>$fd_file" or _my_die("cannot open >$fd_file:$!");
     print OUT "\nNull Distribution:\n";

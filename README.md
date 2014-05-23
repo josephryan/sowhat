@@ -4,7 +4,7 @@
 ## DESCRIPTION
 
 
-`sowhat` has is being actively developed. Please use with caution. We appreciate hearing about your experience with the program.
+`sowhat` is being actively developed. Please use with caution. We appreciate hearing about your experience with the program.
 
 `sowhat` automates the steps required for the SOWH phylogenetic topology test (described by the manuscripts listed in FURTHER READING below). `sowhat` depends on the freely available Seq-Gen and RAxML software packages. It works on amino acid, nucleotide, and binary character state datasets. Partitions (including codon position partitioning) can be specified. It is also possible to use PhyloBayes to generate the null distribution for nucleotide and amino acid data. 
 A manuscript describing the `sowhat` and the SOWH test has been released to the bioRxiv: http://biorxiv.org/content/early/2014/05/19/005264
