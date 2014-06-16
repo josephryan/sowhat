@@ -314,7 +314,7 @@ sub get_params_w_pb {
 #      replicates (number of trees to generate in phylobayes)
 #      string consisting of the current rep and run
 #      id of the phylobayes run (output of get_params_w_pb method)
-# OUT: returns array of file names of alignments
+# OUT: array of file names of alignments
 # JOB: format command-line options for ppred
 #      run ppred
 #      return alignment file names
@@ -339,7 +339,7 @@ sub generate_alignments_w_pb {
 }
 
 # IN: command-line options hash, string consistent of rep and run
-# OUT: returns alignment length
+# OUT: alignment length
 #      flag for partitions by codon positions
 #      array of parameter values
 #      array of rates
@@ -637,6 +637,16 @@ sub _parse_rates {
     return \@rates;
 }
 
+# IN: array of alignment lengths
+#     array of parameter values
+#     array of transtition rates
+#     command line options hash
+#     number of reps to be completed
+#     string consisting of run and rep
+# OUT: none
+# JOB: run seqgen
+#      parse the simulated datasets
+#      build the alignment files
 sub generate_alignments {
     my $ra_aln_len = shift;
     my $ra_params = shift;
@@ -653,6 +663,20 @@ sub generate_alignments {
     my $ra_alns = _make_alns($ra_ds,$gapflag,$aln,$tag);
 }
 
+# IN: array of alignment lengths
+#     array of parameter values
+#     array of transition rates
+#     model
+#     number of reps (datasets to generate)
+#     recalc flag
+#     string consisting of rep and run
+# OUT: none
+# JOB: build a command for seqgen based on number of separate 
+#          parameter sets (partitions)
+#      use model to determine parameter type
+#      if recal model, add additional count number to tag
+#      run seqgen
+#      if binary data, convert data type in simulated datasets
 sub _run_seqgen {
     my $ra_part_lens = shift;
     my $ra_params = shift;
@@ -695,6 +719,67 @@ sub _run_seqgen {
     }
 }
 
+# IN: parameter values
+# OUT: seqgen command components
+# JOB: build command based on DNA model
+sub _get_dna_params {
+    my $rh_part = shift;
+    my $cmd = '';
+    _my_die("unexpected freq") unless ($rh_part->{'freqs'});
+    _my_die("unexpected rate") unless ($rh_part->{'rates'}->{'ac'} &&
+          $rh_part->{'rates'}->{'ag'} && $rh_part->{'rates'}->{'ct'} &&
+          $rh_part->{'rates'}->{'cg'} && $rh_part->{'rates'}->{'at'} &&
+          $rh_part->{'rates'}->{'gt'} );
+    $cmd .= "-f$rh_part->{'freqs'} ";
+    $cmd .= "-r$rh_part->{'rates'}->{'ac'} $rh_part->{'rates'}->{'ag'} ";
+    $cmd .= "$rh_part->{'rates'}->{'at'} $rh_part->{'rates'}->{'cg'} ";
+    $cmd .= "$rh_part->{'rates'}->{'ct'} $rh_part->{'rates'}->{'gt'} ";
+    return $cmd;
+}
+
+# IN: parameter values
+#     rate matrix for dataset
+# OUT: seqgen command components
+# JOB: build command based on amino acid model
+sub _get_aa_params {
+    my $rh_part = shift;
+    my $ra_r = shift;
+    my $cmd = '';
+    _my_die("unexpected freq") unless ($rh_part->{'freqs'});
+    _my_die("unexpected rates") unless (scalar(@{$ra_r}) == 21);
+    $cmd .= "-f$rh_part->{'freqs'} ";
+    my $j = 0;
+    $cmd .= "-r";
+    for (my $i = 0; $i < 20; $i++) {
+        $j++;
+        for (my $k = $j; $k < 20; $k++) {
+            $cmd .= "$ra_r->[$i]->[$k], ";
+        }
+    }
+    return $cmd;
+}
+
+# IN: parameter values
+# OUT: seqgen command components
+# JOB: build command based on binary character model
+sub _get_char_params {
+    my $rh_part = shift;
+    my $cmd = '';
+    _my_die("unexpected freq") unless ($rh_part->{'freqs'});
+    $rh_part->{'freqs'} =~ s/^\s*//;
+    $rh_part->{'freqs'} =~ s/\s*$//;
+    my @freqs = split /\s+/, $rh_part->{'freqs'};
+    unless (scalar(@freqs) == 2) {
+        _my_die("expecting 2 frequencies. Multi-State only works w/binary matrix\n");
+    }
+    $cmd .= "-f$freqs[0],0.0,0.0,$freqs[1] ";
+    return $cmd;
+}
+
+# IN: filename of simulated dataset
+#     partition lengths
+# OUT: none
+# JOB: change simulated data from AT to 01 (nucleotide to binary)
 sub _convert_AT_to_01 {
     my $file  = shift;
     my $num_cols = shift;
@@ -721,59 +806,16 @@ sub _convert_AT_to_01 {
     close OUT;
 }
 
-sub _get_dna_params {
-    my $rh_part = shift;
-    my $cmd = '';
-    _my_die("unexpected freq") unless ($rh_part->{'freqs'});
-    _my_die("unexpected rate") unless ($rh_part->{'rates'}->{'ac'} &&
-          $rh_part->{'rates'}->{'ag'} && $rh_part->{'rates'}->{'ct'} &&
-          $rh_part->{'rates'}->{'cg'} && $rh_part->{'rates'}->{'at'} &&
-          $rh_part->{'rates'}->{'gt'} );
-    $cmd .= "-f$rh_part->{'freqs'} ";
-    $cmd .= "-r$rh_part->{'rates'}->{'ac'} $rh_part->{'rates'}->{'ag'} ";
-    $cmd .= "$rh_part->{'rates'}->{'at'} $rh_part->{'rates'}->{'cg'} ";
-    $cmd .= "$rh_part->{'rates'}->{'ct'} $rh_part->{'rates'}->{'gt'} ";
-    return $cmd;
-}
-
-sub _get_aa_params {
-    my $rh_part = shift;
-    my $ra_r = shift;
-    my $cmd = '';
-    _my_die("unexpected freq") unless ($rh_part->{'freqs'});
-    _my_die("unexpected rates") unless (scalar(@{$ra_r}) == 21);
-    $cmd .= "-f$rh_part->{'freqs'} ";
-    my $j = 0;
-    $cmd .= "-r";
-    for (my $i = 0; $i < 20; $i++) {
-        $j++;
-        for (my $k = $j; $k < 20; $k++) {
-            $cmd .= "$ra_r->[$i]->[$k], ";
-        }
-    }
-    return $cmd;
-}
-
-sub _get_char_params {
-    my $rh_part = shift;
-    my $cmd = '';
-    _my_die("unexpected freq") unless ($rh_part->{'freqs'});
-    $rh_part->{'freqs'} =~ s/^\s*//;
-    $rh_part->{'freqs'} =~ s/\s*$//;
-    my @freqs = split /\s+/, $rh_part->{'freqs'};
-    unless (scalar(@freqs) == 2) {
-        _my_die("expecting 2 frequencies. Multi-State only works w/binary matrix\n");
-    }
-    $cmd .= "-f$freqs[0],0.0,0.0,$freqs[1] ";
-    return $cmd;
-}
-
+# IN: number of separater parameter sets (partitions)
+#     string consisting of rep and run
+# OUT: array of simulated data
+# JOB: parse titles and data
+#      build alignment files
 sub _build_datasets {
     my $num = shift;
     my $tag = shift;
     my @allseqs = ();
     my $ra_ids = _get_ids_from_seqgen_out("$SCRATCH" . "seqgen.out.$tag.0");
-
     for (my $i = 0; $i < $num; $i++) {
         my $ra_seqs = _get_seqs_from_seqgen_out("$SCRATCH" . "seqgen.out.$tag.$i");
         push @allseqs, $ra_seqs;
@@ -782,6 +824,9 @@ sub _build_datasets {
     return $ra_ds;
 }
 
+# IN: filename of first simulated dataset
+# OUT: array of taxa titles
+# JOB: parse taxa titles
 sub _get_ids_from_seqgen_out {
     my $file = shift;
     my @ids = ();
@@ -796,6 +841,9 @@ sub _get_ids_from_seqgen_out {
     return \@ids;
 }
 
+# IN: filename of each simulated dataset
+# OUT: array of simulated data
+# JOB: parse simulated data
 sub _get_seqs_from_seqgen_out {
     my $file = shift;
     my @seqs = ();
@@ -815,6 +863,10 @@ sub _get_seqs_from_seqgen_out {
     return \@seqs;
 }
 
+# IN: array of taxa titles
+#     array of simulated data
+# OUT: array of formatted alignment file content
+# JOB: concatenate data, format for alignment files
 sub _make_datasets_from_allseqs {
     my $ra_ids = shift;
     my $ra_all = shift;
@@ -842,6 +894,9 @@ sub _make_datasets_from_allseqs {
     return \@formatted;
 }
 
+# IN: array of taxa titles
+# OUT: length of titles
+# JOB: return lenght of titles for alignment files
 sub _get_len_from_id_lens {
     my $ra_ids = shift;
     my $longest = 0;
@@ -852,6 +907,14 @@ sub _get_len_from_id_lens {
     return $sprintf_val;
 }
 
+# IN: array of formatted datasets
+#     flag for gap replacement
+#     actual alignment file
+#     string consisting of rep and run
+# OUT: simulated alignment files
+# JOB: print array of formatted datasets into alignment files
+#      if gap flag, superimpose gaps from real data to 
+#          simulated files (run gapstencil.py)
 sub _make_alns {
     my $ra_ds = shift;
     my $gapflag = shift;
@@ -873,6 +936,15 @@ sub _make_alns {
     return \@files;
 }
 
+# IN: array of simulated alignments
+#     command-line hash of options
+#     length of alignments
+#     flag for partitioning by codon position
+#     iteration
+#     string containing rep and run
+# OUT: none
+# JOB: if partitioned by codon position, create new partitioning scheme
+#      run RAxML on simulated alignments
 sub run_raxml_on_gen_alns {
     my $ra_alns = shift;
     my $rh_opts = shift;
@@ -894,6 +966,9 @@ sub run_raxml_on_gen_alns {
     }
 }
 
+# IN: parition file
+# OUT: array of partition titles
+# JOB: parse partition titles
 sub _get_part_titles {
     my $part = shift;
     my @titles = ();
@@ -911,6 +986,9 @@ sub _get_part_titles {
     return \@titles;
 }
 
+# IN: alignment length
+# OUT: array of partition lengths
+# JOB: parse partition lengths
 sub _print_ranges {
     my $ra_lens = shift;
     my $i = 0;
@@ -925,6 +1003,10 @@ sub _print_ranges {
    return \@ranges;
 }
 
+# IN: array of partition titles
+#     array of partition lengths
+# OUT: none
+# JOB: print new partition files for codon positions
 sub _print_new_part_file {
     my $ra_part_titles = shift;
     my $ra_ranges = shift;
@@ -936,6 +1018,17 @@ sub _print_new_part_file {
     }
 }
 
+# IN: array of simulated alignments
+#     model
+#     partition file
+#     tree file
+#     iteration
+#     string consisting of rep and run
+# OUT: none
+# JOB: create command for RAxML
+#      run command
+#      create command constrained by tree
+#      run command
 sub _run_rax_on_genset {
     my $ra_alns = shift;
     my $mod     = shift;
@@ -966,6 +1059,29 @@ sub _run_rax_on_genset {
     safe_system($cmd);
 }
 
+# IN: number of reps
+#     filename
+#     recalculation flag
+#     array of likelihood differences in real data
+#     array of likelihood differences in sim data
+#     array of mean differences
+#     mean difference at last iteration
+#     current stopping score
+#     last stopping score
+#     iteration
+#     rep
+#     run
+# OUT: max likelihood score of new iteration
+#      constrained likelihood of new iteration
+#      hash of statistical measures
+#      array of likelihood differences for this run
+#      distribution file
+# JOB: set stopping score to last stopping score
+#      parse most recent values for null distribution 
+#      if recalculate, create distribution of test stats
+#      calculate liklihood differences  
+#      parse additional statitistics
+#      print distribution of differences
 sub evaluate_distribution {
     my $reps = shift;
     my $name = shift;
@@ -1002,22 +1118,21 @@ sub evaluate_distribution {
     $ra_const_dist->[$i] = $ra_const_dist->[$i] || 0;
     $ra_deltaprime_dist->[$ch][$ts] = $ra_dist->[$i] - $ra_const_dist->[$i];
 
-    my $rh_stats = _get_recalc_stats($ra_delta_dist->[$ch],$ra_deltaprime_dist->[$ch]);
+    my $rh_stats = _get_stats($ra_delta_dist->[$ch],$ra_deltaprime_dist->[$ch]);
     $ra_mean->[$ch][$ts] = $rh_stats->{'mean'};
     $ra_current_mean->[$ch] = $rh_stats->{'mean'};
     $ra_current_score->[$ch] = $rh_stats->{'z'};
 
     my $fd_file = _print_freq_dist($ra_deltaprime_dist->[$ch],$name,$reps);
     return ($best_ml_score,$best_t1_score,$rh_stats,$ra_deltaprime_dist->[$ch],$fd_file);
-
-  #      This block of code is used when $alns_to_gen is set to greater than 1.
-  #      my $ra_diff_dist = _get_diff_dist($ra_dist,$ra_const_dist);
-  #      my $rh_stats = _get_stats($ra_diff_dist,$best_ml_score,$best_t1_score);
-  #      $ra_mean->[$i] = $rh_stats->{'var'};
-  #      my $fd_file = _print_freq_dist($ra_diff_dist,$name,$tag);
-  #      return ($best_ml_score,$best_t1_score,$rh_stats,$ra_diff_dist,$fd_file);
 }
 
+# IN: number of repetitions
+#     flag for constrained ml score
+#     iteration
+#     string consisting of rep and run
+# OUT: array of likelihood scores
+# JOB: parse likelihood scores from RAxML output
 sub _get_distribution {
     my $reps = shift;
     my $w_const = shift;
@@ -1044,20 +1159,10 @@ sub _get_distribution {
     return \@dist;
 }
 
-sub _get_diff_dist {
-    my $ra_d = shift;
-    my $ra_cd = shift;
 
-    my @diffs = ();
-    for (my $i = 0; $i < @{$ra_d}; $i++) {
-        # next if seqgen creates same random sequence and then raxml fails
-        next unless ($ra_d->[$i] && $ra_cd->[$i]); 
-        push @diffs, ($ra_d->[$i] - $ra_cd->[$i]);
-    }
-    my @sorted_diffs = sort {$a <=> $b} @diffs;
-    return \@sorted_diffs;
-}
-
+# IN: filename
+# OUT: likelihood score
+# JOB: parse likelihood score of real data
 sub _get_best_score {
     my $file = shift;
     my $ml_score = '';
@@ -1074,43 +1179,11 @@ sub _get_best_score {
     return $ml_score;
 }
 
+# IN: array of test statistics
+#     array of null distribution
+# OUT: hash of statistics
+# JOB: run R for statistical test
 sub _get_stats {
-    my $ra_dist  = shift;
-    my $best_ml  = shift;
-    my $const_ml = shift;
-    my $R = Statistics::R->new();
-    $R->startR();
-
-    my $num = scalar(@{$ra_dist});
-    my $diff = $best_ml - $const_ml;
-    my $dist_str = join ', ', @{$ra_dist};
-my $cmds = <<EOF;
-a <- mean(c($dist_str))
-s <- sd(c($dist_str))
-n <- $num
-xbar <- $diff
-z <- (xbar-a)/(s/sqrt(n))
-p <-  pnorm(z, lower.tail = FALSE)
-v <- var(c($dist_str))
-se <- (s/sqrt(n))
-rse <- abs((se/a) * 100)
-a
-s
-n
-xbar
-z
-p
-v
-se
-rse
-EOF
-    my $r_out = $R->run($cmds);
-    $R->stopR();
-    my $rh_stats = _parse_stats($r_out);
-    return $rh_stats;
-}
-
-sub _get_recalc_stats {
     my $ra_delta_dist = shift;
     my $ra_deltaprime_dist = shift;
     my $ts = scalar(@{$ra_deltaprime_dist});
@@ -1149,6 +1222,9 @@ EOF
     return $rh_stats;
 }
 
+# IN: output of R
+# OUT: hash of statistics
+# JOB: parse R output
 sub _parse_stats {
     my $str = shift;
     my %stats = ();
@@ -1166,6 +1242,11 @@ sub _parse_stats {
     return \%stats;
 }
 
+# IN: array of null distribution
+#     filename
+#     string consisting of rep and run
+# OUT: distribution filename
+# JOB: print null distribution
 sub _print_freq_dist {
     my $ra_d = shift;
     my $name = shift;
@@ -1195,6 +1276,11 @@ sub _print_freq_dist {
     return $d_file;
 }
 
+# IN: array of cumulative mean of null dist
+#     runs
+#     reps
+# OUT: none
+# JOB: plot cumulative mean of all runs
 sub plot_runs {
     my $ra_mean = shift;
     my $runs = shift;
@@ -1226,6 +1312,45 @@ EOF
     }
 }
 
+# IN: array of current mean of null
+#     array of all means of null
+#     run
+#     rep
+# OUT: none
+# JOB: calculate difference between runs
+sub calculate_run_split {
+    my $ra_current_mean = shift;
+    my $ra_mean = shift;
+    my $ch = shift;
+    my $tag = shift;
+    my $file = $DIR . "sowhat.runs.info";
+    open OUT, ">$file" or _my_die("cannot open >$file:$!");
+    foreach my $ra_m (@{$ra_mean}) {
+        print OUT "\nMean of null distribution of run as sample increases: \n";
+        foreach my $val (@{$ra_m}) {
+            print OUT "$val\n";
+        }
+    }
+    foreach my $val (@{$ra_current_mean}) { 
+        print OUT "\nFinal Mean of Run = $val";
+    }
+    for (my $i = 1; $i <= $ch; $i++) {
+        my $diff = $ra_current_mean->[$i] - $ra_current_mean ->[($i - 1)];
+        print OUT "\nDifference between runs " . ($i - 1) .  " and $i: $diff\n";
+    }
+    close OUT;
+}
+
+# IN: run
+#     rep
+#     current stopping score
+#     last stopping score
+#     ratio of current score to last
+#     array of mean values
+# OUT: none
+# JOB: calculate stopping ratio
+#      plot stopping ratio of each run
+#      plot cumulative mean of each run 
 sub calc_ratio {
     my $ch = shift;
     my $ts = shift;
@@ -1269,6 +1394,22 @@ EOF
     }
 }
 
+# IN: run
+#    rep
+#    real max likelihood score
+#    real constrained score
+#    hash of statistics
+#    array of test statistics
+#    array of null distribution
+#    array of stopping ratios
+#    hash of command-line options
+#    frequency filename
+#    stopping ratio count
+#    stopping ration percent
+#    version
+# OUT: none
+# JOB: calculate percent of stopping score to sample
+#      print report
 sub print_report {
     my $ch = shift;
     my $ts = shift;
@@ -1351,29 +1492,9 @@ sub print_report {
     close OUT;
 }
 
-sub calculate_run_split {
-    my $ra_current_mean = shift;
-    my $ra_mean = shift;
-    my $ch = shift;
-    my $tag = shift;
-    my $file = $DIR . "sowhat.runs.info";
-    open OUT, ">$file" or _my_die("cannot open >$file:$!");
-    foreach my $ra_m (@{$ra_mean}) {
-        print OUT "\nMean of null distribution of run as sample increases: \n";
-        foreach my $val (@{$ra_m}) {
-            print OUT "$val\n";
-        }
-    }
-    foreach my $val (@{$ra_current_mean}) { 
-        print OUT "\nFinal Mean of Run = $val";
-    }
-    for (my $i = 1; $i <= $ch; $i++) {
-        my $diff = $ra_current_mean->[$i] - $ra_current_mean ->[($i - 1)];
-        print OUT "\nDifference between runs " . ($i - 1) .  " and $i: $diff\n";
-    }
-    close OUT;
-}
-
+# IN: message
+# OUT: none
+# JOB: warn when file cannot be opened
 sub _my_die {
     my $msg  = shift;
     my $file = "${DIR}sowh_stderr_$NAME.txt";
