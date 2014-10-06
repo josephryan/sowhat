@@ -32,6 +32,13 @@ To install `sowhat` and documentation, type the following:
     make test
     sudo make install
 
+To install without root privelages try:
+
+    perl Makefile.PL PREFIX=/home/myuser/scripts
+    make
+    make test
+    sudo make install
+
 ### SYSTEM REQUIREMENTS
 
 We have tested `sowhat` on OS X 10.9 and Ubuntu 13.04. It will likely work on a variety 
