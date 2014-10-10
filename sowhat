@@ -258,6 +258,10 @@ sub get_version {
     return $version;
 }
 
+# IN: command-line options hash
+# OUT: return flag for determining where to resume test
+# JOB: identify the final two iterations, remove them, and signal 
+#      where to resume the test
 sub restart {
     my $rh_opts = shift;
     my $reps = $rh_opts->{'reps'};
@@ -277,9 +281,9 @@ sub restart {
     return $num;
 }
 
-
-
-# IN:  command-line options hash, string consisting of the current rep and run
+# IN:  command-line options hash
+#      restart flag
+#      string consisting of the current rep and run
 # OUT: none
 # JOB: formats options and runs trees using _run_best_tree method 
 #      with and without the constraint tree
@@ -300,6 +304,7 @@ sub run_initial_trees {
 #      alignment file (-s for raxml)
 #      partition file (-q for raxml)
 #      model          (-m for raxml)
+#      restart flag
 #      string consisting of the current rep and run (-n for raxml)
 #      treefile       (-t for raxml)
 # OUT: none
@@ -326,6 +331,7 @@ sub _run_best_tree {
 
 # IN:  command-line options hash
 #      replicates (number of trees to generate in phylobayes)
+#      restart flag
 #      string consisting of the current rep and run
 # OUT: the id of the phylobayes run (used later by ppred)
 # JOB: format command line for phylobayes and run phylobayes
@@ -348,6 +354,7 @@ sub get_params_w_pb {
 
 # IN:  command-line options hash
 #      replicates (number of trees to generate in phylobayes)
+#      restart flag
 #      string consisting of the current rep and run
 #      id of the phylobayes run (output of get_params_w_pb method)
 # OUT: array of file names of alignments
@@ -679,6 +686,7 @@ sub _parse_rates {
 #     array of transtition rates
 #     command line options hash
 #     number of reps to be completed
+#     restart flag
 #     string consisting of run and rep
 # OUT: none
 # JOB: run seqgen
@@ -707,6 +715,7 @@ sub generate_alignments {
 #     model
 #     number of reps (datasets to generate)
 #     recalc flag
+#     restart flag
 #     string consisting of rep and run
 # OUT: none
 # JOB: build a command for seqgen based on number of separate 
@@ -980,6 +989,7 @@ sub _make_alns {
 #     length of alignments
 #     flag for partitioning by codon position
 #     iteration
+#     restart flag
 #     string containing rep and run
 # OUT: none
 # JOB: if partitioned by codon position, create new partitioning scheme
@@ -1063,6 +1073,7 @@ sub _print_new_part_file {
 #     partition file
 #     tree file
 #     iteration
+#     restart flag
 #     string consisting of rep and run
 # OUT: none
 # JOB: create command for RAxML
