@@ -57,7 +57,7 @@ MAIN: {
     my $ver = get_version();
     
     my (@delta_dist,@deltaprime_dist,@mean,@current_mean,
-        @current_score,@pen_score,@ratio,@ratio_count,@perc_ratio) = ();
+        @current_score,@pen_score,@ratio,@ratio_count,@perc_ratio,@mc_count,@pval_mc) = ();
     my $tag = 0;    
     my $alns_to_gen = 1;
     my ($restart_num,$restart_flag) = 0;
@@ -139,11 +139,10 @@ MAIN: {
             if($ts > 9) {
             #After 10 iterations on all runs,
             # begin to calculate and report the statistics.
-
                 calc_ratio($ch,$ts,\@current_score,\@pen_score,\@ratio,\@mean);
                 print_report($ch,$ts,$best_ml,$best_t1,$rh_stats,$ra_diff,
                 \@delta_dist,\@ratio,$rh_opts,$fd_file,\@ratio_count,
-                \@perc_ratio,$ver);
+                \@perc_ratio,\@mc_count,\@pval_mc,$ver);
             } else {
                 print "-";
             }
@@ -1168,6 +1167,7 @@ sub evaluate_distribution {
     # next 2 lines avoid uninitialized errors
     $ra_dist->[$i] = $ra_dist->[$i] || 0;
     $ra_const_dist->[$i] = $ra_const_dist->[$i] || 0;
+
     $ra_deltaprime_dist->[$ch][$ts] = $ra_dist->[$i] - $ra_const_dist->[$i];
 
     my $rh_stats = _get_stats($ra_delta_dist->[$ch],$ra_deltaprime_dist->[$ch]);
@@ -1318,11 +1318,15 @@ sub _print_freq_dist {
         }
         $i++;
     }
-    my $d_file = "$DIR" . "sowhat.$name.dist.$tag";
+    my $d_file = "$DIR" . "sowhat.distribution";
     open OUT, ">$d_file" or _my_die("cannot open >$d_file:$!");
     print OUT "Null Distribution Frequencies:\n";
     foreach my $bin (sort {$a <=> $b} keys %bins) {
         print OUT "$bin\t$bins{$bin}\n";
+    }
+    print OUT "\nNull Distribution\n";
+    foreach my $dist_val (@sorted) {
+        print OUT "$dist_val\n";
     }
     close OUT;
     return $d_file;
@@ -1458,6 +1462,8 @@ EOF
 #    frequency filename
 #    stopping ratio count
 #    stopping ration percent
+#    mc count
+#    mc p-value
 #    version
 # OUT: none
 # JOB: calculate percent of stopping score to sample
@@ -1469,30 +1475,40 @@ sub print_report {
     my $const_ml = shift;
     my $rh_s = shift;
     my $ra_d = shift;
+    my $current_d = $ra_d->[$ts];
     my $ra_delta_dist = shift;
-    my $ra_ratio = shift;
     $ra_delta_dist = $ra_delta_dist->[$ch];
+    my $ra_ratio = shift;
     my $rh_opts = shift;
     my $fd_file = shift;
     my $ra_ratio_count = shift;
     my $ra_perc_ratio = shift;
+    my $ra_mc_count = shift;
+    my $ra_pval_mc = shift;
     my $version = shift;
     my $ratio = $ra_ratio->[$ch][$ts];
     my $file = '';
+
     if ($rh_opts->{'runs'} > 1) {
         $file = $DIR . "sowhat.results.$ch";  
     } else {
         $file = $DIR . "sowhat.results";
     }
 
-    if($ratio > 0.01) {
-        print ".";
-    } else {
+    if($ratio <= 0.01) {
         print "o";
         $ra_ratio_count->[$ch]++;
+    } else {
+        print ".";
     }
+
+    if($current_d >= $rh_s->{'diff'}) {
+        $ra_mc_count->[$ch]++;
+    }
+
     no warnings 'uninitialized';
     $ra_perc_ratio->[$ch] = ($ra_ratio_count->[$ch] / $rh_s->{'sample_size'}) * 100;
+    $ra_pval_mc->[$ch]    = ($ra_mc_count->[$ch] / $rh_s->{'sample_size'});
     use warnings 'uninitialized';
     if($ra_perc_ratio->[$ch] > 50 && $rh_s->{'sample_size'} > 100) {
         exit if($rh_opts->{'stop'});
@@ -1530,7 +1546,9 @@ sub print_report {
     print OUT "\nSOWH test results:\n";
     print OUT "    The p-value represents the probability that the test statistic\n";
     print OUT "    would be observed under the null hypothesis.\n";
-    print OUT "\n    p-value: $rh_s->{'p'}\n";
+    print OUT "\n    Monte Carlo count $ra_mc_count->[$ch]\n";
+    print OUT "    Monte Carlo p-value: $ra_pval_mc->[$ch]\n";
+    print OUT "\n    Parametric test p-value: $rh_s->{'p'}\n";
     close OUT;
     open OUT, ">>$fd_file" or _my_die("cannot open >$fd_file:$!");
     print OUT "\nNull Distribution:\n";
