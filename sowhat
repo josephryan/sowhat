@@ -60,8 +60,13 @@ MAIN: {
         @current_score,@pen_score,@ratio,@ratio_count,@perc_ratio) = ();
     my $tag = 0;    
     my $alns_to_gen = 1;
+    my ($restart_num,$restart_flag) = 0;
     my ($ra_params,$ra_recalc_flag,$ra_alns,$ra_rates,$ra_aln_len,$pb_id) = [ ];
     my $codon_flag = 0;
+
+    if ($rh_opts->{'restart'}) {
+        ($restart_num) = restart($rh_opts);
+    }
     
     print "SOWHAT:\n";
     print "Results printed to $DIR" . "sowhat.results\n" unless($rh_opts->{'runs'} > 1);
@@ -78,15 +83,21 @@ MAIN: {
         #      This loop allows multiple runs to be performed simultaneously.
 
             $tag = "$ch.$ts";
+            
+            $restart_flag = 0;
+            if (($rh_opts->{'restart'}) && ($ts <= $restart_num)) {
+                $restart_flag = 1;
+            }
+
             my ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) = ();
 
             if (($ts < 1) || ($rh_opts->{'rerun'})) {
             #For the first iteration of each run only, run the initial trees
             #and get the parameter values.
 
-                run_initial_trees($rh_opts,$tag);
+                run_initial_trees($rh_opts,$restart_flag,$tag);
                 if ($rh_opts->{'usepb'}) {
-                    ($pb_id)=get_params_w_pb($rh_opts,$alns_to_gen,$tag);
+                    ($pb_id)=get_params_w_pb($rh_opts,$alns_to_gen,$restart_flag,$tag);
                 } else {
                     ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) = 
                     get_params($rh_opts,$tag);
@@ -95,10 +106,10 @@ MAIN: {
 
             if ($rh_opts->{'usepb'}) {
                 $ra_alns = generate_alignments_w_pb($rh_opts,$alns_to_gen,
-                $tag,$pb_id);
+                $restart_flag,$tag,$pb_id);
             } else {
                 $ra_alns = generate_alignments($ra_aln_len,$ra_params,
-                $ra_rates,$rh_opts,$alns_to_gen,$tag);
+                $ra_rates,$rh_opts,$alns_to_gen,$restart_flag,$tag);
             }
 
             for (my $i = 0; $i < @{$ra_alns}; $i++) {
@@ -107,7 +118,7 @@ MAIN: {
             #      This loop is necessary when $alns_to_gen is >1
 
                 run_raxml_on_gen_alns($ra_alns,$rh_opts,$ra_aln_len,
-                $codon_flag,$i,$tag);
+                $codon_flag,$i,$restart_flag,$tag);
 
                 ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) =
                 evaluate_distribution($alns_to_gen,$rh_opts->{'name'},
@@ -169,6 +180,7 @@ sub process_options {
                                 "rax=s" => \$rh_opts->{'rax'},
                           "partition=s" => \$rh_opts->{'part'},
                                 "debug" => \$rh_opts->{'debug'},
+                              "restart" => \$rh_opts->{'restart'},
                               "model=s" => \$rh_opts->{'mod'},
                                "name=s" => \$rh_opts->{'name'},
                                  "help" => \$rh_opts->{'help'});
@@ -246,20 +258,42 @@ sub get_version {
     return $version;
 }
 
+sub restart {
+    my $rh_opts = shift;
+    my $reps = $rh_opts->{'reps'};
+    my $max = 0;
+    my $num = 0;
+    my $fileml = '';
+    for (my $i = 0; $i < $reps; $i++) {
+        $fileml = "$SCRATCH/RAxML_info.ml.0.$i.0";
+        if (-e $fileml) {
+            $max = $i;
+        }
+    }
+    unlink glob "$SCRATCH/*0.$max.0*";
+    $num = ($max - 1);
+    unlink glob "$SCRATCH/*0.$num.0*";
+    $num = ($max - 2);
+    return $num;
+}
+
+
+
 # IN:  command-line options hash, string consisting of the current rep and run
 # OUT: none
 # JOB: formats options and runs trees using _run_best_tree method 
 #      with and without the constraint tree
 sub run_initial_trees {
     my $rh_opts = shift;
+    my $restart = shift;
     my $tag = shift;
     my $aln = $rh_opts->{'aln'};
     my $part = $rh_opts->{'part'};
     my $mod = $rh_opts->{'mod'};
     my $tre = $rh_opts->{'constraint_tree'};
 
-    _run_best_tree('ml',$aln,$part,$mod,$tag);
-    _run_best_tree('t1',$aln,$part,$mod,$tag,$tre);
+    _run_best_tree('ml',$aln,$part,$mod,$restart,$tag);
+    _run_best_tree('t1',$aln,$part,$mod,$restart,$tag,$tre);
 }
 
 # IN:  title          (-n for raxml)
@@ -272,12 +306,13 @@ sub run_initial_trees {
 # JOB: format the command line for running raxml tree
 #      only includes -q partitionfile or -t treefile if they are supplied     
 sub _run_best_tree {
-    my $title = shift;
-    my $aln   = shift;
-    my $part  = shift;
-    my $mod   = shift;
-    my $tag    = shift;
-    my $tre   = shift;
+    my $title   = shift;
+    my $aln     = shift;
+    my $part    = shift;
+    my $mod     = shift;
+    my $restart = shift;
+    my $tag     = shift;
+    my $tre     = shift;
 
     my $cmd = "$RAX -f d -p 1234 -w $SCRATCH -m $mod -s $aln -n $title.$tag";
     $cmd .= " -q $part" if ($part);
@@ -286,7 +321,7 @@ sub _run_best_tree {
         $cmd .= " >> ${DIR}sowh_stdout_$NAME.txt ";
         $cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
     }
-    safe_system($cmd);
+    safe_system($cmd) unless($restart);
 }
 
 # IN:  command-line options hash
@@ -297,6 +332,7 @@ sub _run_best_tree {
 sub get_params_w_pb {
     my $rh_opts = shift;
     my $reps = shift;
+    my $restart = shift;
     my $tag = shift;
     my $id = "$SCRATCH" . $rh_opts->{'name'} . ".$tag";
     my $pb_reps = $reps * $PB_SAMPLING_FREQ + $PB_BURN;
@@ -306,7 +342,7 @@ sub get_params_w_pb {
         $pb_cmd .= " >> ${DIR}sowh_stdout_$NAME.txt ";
         $pb_cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
     }
-    safe_system($pb_cmd);
+    safe_system($pb_cmd) unless($restart);
     return ($id);
 }
 
@@ -321,6 +357,7 @@ sub get_params_w_pb {
 sub generate_alignments_w_pb {
     my $rh_opts = shift;
     my $reps = shift;
+    my $restart = shift;
     my $tag = shift;
     my $id = shift;
 
@@ -331,7 +368,7 @@ sub generate_alignments_w_pb {
         $ppred_cmd .= " >> ${DIR}sowh_stdout_$NAME.txt ";
         $ppred_cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
     }
-    safe_system($ppred_cmd);
+    safe_system($ppred_cmd) unless($restart);
     for (my $i = 0; $i < $reps; $i++) {
         push @alns, "${id}_sample_${i}.ali"; 
     }
@@ -653,12 +690,13 @@ sub generate_alignments {
     my $ra_rates = shift;
     my $rh_opts = shift;
     my $reps = shift;
+    my $restart = shift;
     my $tag = shift;
     my $recalc = $rh_opts->{'rerun'};
     my $gapflag = $rh_opts->{'gaps'};
     my $mod = $rh_opts->{'mod'};
     my $aln = $rh_opts->{'aln'};
-    _run_seqgen($ra_aln_len,$ra_params,$ra_rates,$mod,$reps,$recalc,$tag);
+    _run_seqgen($ra_aln_len,$ra_params,$ra_rates,$mod,$reps,$recalc,$restart,$tag);
     my $ra_ds = _build_datasets(scalar(@{$ra_params}),$tag);
     my $ra_alns = _make_alns($ra_ds,$gapflag,$aln,$tag);
 }
@@ -684,6 +722,7 @@ sub _run_seqgen {
     my $model     = shift;
     my $reps      = shift;
     my $recalc    = shift;
+    my $restart   = shift;
     my $tag       = shift;
     my $count     = 0;
     for (my $i = 0; $i < @{$ra_params}; $i++) {
@@ -711,7 +750,7 @@ sub _run_seqgen {
         }
         $cmd .= " 2>> ${DIR}sowh_stderr_$NAME.txt" if ($QUIET);
         $count++;
-        safe_system($cmd);
+        safe_system($cmd) unless($restart);
         if ($rh_part->{'type'} eq 'Multi-State') {
             my $file = "seqgen.out.$tag." . ($count - 1);
             _convert_AT_to_01("$SCRATCH" . $file, $ra_part_lens->[$i]);
@@ -951,6 +990,7 @@ sub run_raxml_on_gen_alns {
     my $ra_aln_len = shift;
     my $codon_flag = shift;
     my $i = shift;
+    my $restart = shift;
     my $tag = shift;
     my $part = $rh_opts->{'part'};
     my $mod = $rh_opts->{'mod'};
@@ -960,9 +1000,9 @@ sub run_raxml_on_gen_alns {
         my $ra_part_titles = _get_part_titles($part);
         my $ra_ranges = _print_ranges($ra_aln_len);
         _print_new_part_file($ra_part_titles,$ra_ranges,$new_part);
-        _run_rax_on_genset($ra_alns,$mod,$new_part,$tre,$i,$tag);
+        _run_rax_on_genset($ra_alns,$mod,$new_part,$tre,$i,$restart,$tag);
     } else {
-        _run_rax_on_genset($ra_alns,$mod,$part,$tre,$i,$tag);
+        _run_rax_on_genset($ra_alns,$mod,$part,$tre,$i,$restart,$tag);
     }
 }
 
@@ -1036,7 +1076,8 @@ sub _run_rax_on_genset {
     my $cmd     = '';
     my $tre     = shift;
     my $i       = shift;
-    my $tag       = shift;
+    my $restart = shift;
+    my $tag     = shift;
     $cmd  = "$RAX -p 1234 -w $SCRATCH -m $mod -s $ra_alns->[$i] ";
     $cmd .= "-n ml.$tag.$i";
     if ($part) {
@@ -1046,7 +1087,7 @@ sub _run_rax_on_genset {
         $cmd .= " >> ${DIR}sowh_stdout_$NAME.txt ";
         $cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
     }
-    safe_system($cmd);
+    safe_system($cmd) unless($restart);
     $cmd  = "$RAX -p 1234 -w $SCRATCH -m $mod -s $ra_alns->[$i] ";
     $cmd .= "-n t1.$tag.$i -g $tre";
     if ($part) {
@@ -1056,7 +1097,7 @@ sub _run_rax_on_genset {
         $cmd .= " >> ${DIR}sowh_stdout_$NAME.txt ";
         $cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
     }
-    safe_system($cmd);
+    safe_system($cmd) unless($restart);
 }
 
 # IN: number of reps
@@ -1523,6 +1564,7 @@ sub usage {
     [--runs=NUMBER_OF_RUNS]
     [--partition=PARTITION_FILE]
     [--rerun]
+    [--restart]
     [--gaps]
     [--debug]
     [--help]
@@ -1641,6 +1683,9 @@ This can be a partition file which applies to the dataset. It must be in a forma
 
 This option will adjust the SOWH test to account for variability in the maximum likelihood search. In this option, the test statistic and parameters will be recalculated for each alignment generated. The mean test statistic will then be tested against the null distribution using a one tailed test, similar to the SOWH test.
 
+=item B<--restart>
+
+This option allows the user to restart a test without reconstructing the null distribution. The final two iterations are removed to eliminate any trees not fully completed. The statistics will be parsed again from the output files of RAxML and the report will be calculated at each iteration.
 =item B<--gaps>
 
 This option will call a python script which propogates the undetermined sites in the original dataset into all simulated datasets before they are evaluted. This allows simulated data to more accurately reflect the real world data.
