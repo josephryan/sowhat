@@ -100,7 +100,7 @@ MAIN: {
                     ($pb_id)=get_params_w_pb($rh_opts,$alns_to_gen,$restart_flag,$tag);
                 } else {
                     ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) = 
-                    get_params($rh_opts,$retart_flag,$tag);
+                    get_params($rh_opts,$restart_flag,$tag);
                 }
             }
 
@@ -381,7 +381,9 @@ sub generate_alignments_w_pb {
     return \@alns;
 }
 
-# IN: command-line options hash, string consistent of rep and run
+# IN: command-line options hash
+#     restart flag
+#     string consistent of rep and run
 # OUT: alignment length
 #      flag for partitions by codon positions
 #      array of parameter values
@@ -401,22 +403,23 @@ sub get_params {
     my $ra_rates = ();
     if ($mod =~ m/^GTRGAMMA/i) {
         ($ra_aln_len,$codon_flag,$ra_params) =
-           _model_gtrgamma($aln,$part,$tre,$tag);
+           _model_gtrgamma($aln,$part,$restart,$tre,$tag);
     } elsif ($mod =~ m/^PROT/i) {
         ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) =
-           _model_prot($aln,$part,$tre,$tag);      
+           _model_prot($aln,$part,$restart,$tre,$tag);      
     } elsif ($mod =~ m/^MULTIGAMMA/i) {
         ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) =
-           _model_character_data($aln,$part,$tre,$tag);
+           _model_character_data($aln,$part,$restart,$tre,$tag);
     } else {
         ($ra_aln_len,$codon_flag,$ra_params) =
-           _model_non_gtr($aln,$part,$tre,$tag);        
+           _model_non_gtr($aln,$part,$restart,$tre,$tag);        
     }
     return ($ra_aln_len,$codon_flag,$ra_params,$ra_rates);   
 }
 
 # IN: alignment file
 #     partition file
+#     restart flag
 #     tree file
 #     string consisting of rep and run
 # OUT: alignment length
@@ -427,6 +430,7 @@ sub get_params {
 sub _model_gtrgamma {
     my $aln = shift;
     my $part = shift;
+    my $restart = shift;
     my $tre = shift;
     my $tag = shift;
     my ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,$part);
@@ -436,6 +440,7 @@ sub _model_gtrgamma {
 
 # IN: alignment file
 #     partition file
+#     restart flag
 #     tree file
 #     string consisting of rep and run
 # OUT: alignment length
@@ -449,6 +454,7 @@ sub _model_gtrgamma {
 sub _model_prot {
     my $aln = shift;
     my $part = shift;
+    my $restart = shift;
     my $tre = shift;
     my $tag = shift;
     my $ra_aln_len = ();
@@ -473,6 +479,7 @@ sub _model_prot {
 
 # IN: alignment file
 #     partition file
+#     restart flag
 #     tree file
 #     string consisting of rep and run
 # OUT: alignment length
@@ -483,6 +490,7 @@ sub _model_prot {
 sub _model_character_data {
     my $aln = shift;
     my $part = shift;
+    my $restart = shift;
     my $tre = shift;
     my $tag = shift;
     my ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,$part);
@@ -492,6 +500,7 @@ sub _model_character_data {
 
 # IN: alignment file
 #     partition file
+#     restart flag
 #     tree file
 #     string consisting of rep and run
 # OUT: alignment length
@@ -503,6 +512,7 @@ sub _model_character_data {
 sub _model_non_gtr {
     my $aln = shift;
     my $part = shift;
+    my $restart = shift;
     my $tre = shift;
     my $tag = shift;
     _run_best_tree('par',$aln,$part,'GTRGAMMA',$restart,$tag,$tre);
