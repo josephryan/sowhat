@@ -100,7 +100,7 @@ MAIN: {
                     ($pb_id)=get_params_w_pb($rh_opts,$alns_to_gen,$restart_flag,$tag);
                 } else {
                     ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) = 
-                    get_params($rh_opts,$tag);
+                    get_params($rh_opts,$retart_flag,$tag);
                 }
             }
 
@@ -389,6 +389,7 @@ sub generate_alignments_w_pb {
 # JOB: based on the model, uses one of four methods to parse params.
 sub get_params {
     my $rh_opts = shift;
+    my $restart = shift;
     my $tag = shift;
     my $aln = $rh_opts->{'aln'};
     my $part = $rh_opts->{'part'};
@@ -457,12 +458,12 @@ sub _model_prot {
     my $new_part = "$SCRATCH" . $NEW_PARTITION_FILE;
     if ($part) {
         my $ra_part_names = _make_unlinked_partition_file($part,$new_part);
-        _run_best_tree('par',$aln,$new_part,'PROTGAMMAGTR_UNLINKED',$tag,$tre);
+        _run_best_tree('par',$aln,$new_part,'PROTGAMMAGTR_UNLINKED',$restart,$tag,$tre);
         $ra_rates = _parse_rates($tag,$ra_part_names);
         ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,$part);
         $ra_params = _get_params_from_const_rax("$SCRATCH" ."RAxML_info.par.$tag");
     } else {
-        _run_best_tree('par',$aln,$part,'PROTGAMMAGTR_UNLINKED',$tag,$tre);
+        _run_best_tree('par',$aln,$part,'PROTGAMMAGTR_UNLINKED',$restart,$tag,$tre);
         $ra_rates = _parse_rates($tag);
         ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,$part);
         $ra_params = _get_params_from_const_rax("$SCRATCH" ."RAxML_info.par.$tag");
@@ -504,7 +505,7 @@ sub _model_non_gtr {
     my $part = shift;
     my $tre = shift;
     my $tag = shift;
-    _run_best_tree('par',$aln,$part,'GTRGAMMA',$tag,$tre);
+    _run_best_tree('par',$aln,$part,'GTRGAMMA',$restart,$tag,$tre);
     my ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,$part);
     my $ra_params = _get_params_from_const_rax("$SCRATCH" . "RAxML_info.par.$tag");
     return ($ra_aln_len,$codon_flag,$ra_params);
