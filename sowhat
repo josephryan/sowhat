@@ -244,10 +244,15 @@ sub get_version {
     my $version_st = `$RAX -v`;
     my @lines= split /\n/, $version_st;
     my $version = '';
+    my $possible_error = '';
     foreach my $l (@lines) {
+        $possible_error .= $l;
         next unless $l =~ m/^This is RAxML version (\d+\.\d+)/;
         $version = $1;
         last;
+    }
+    if ($version eq '') {
+        die "Error from RAxML (check --rax option):\n$possible_error";
     }
     if ($version < 7.7) {
         warn "sowhat ERROR:\n";
