@@ -1,3 +1,11 @@
+* add support for garli
+
+* Check to see if a user supplies a --rax option and includes -T something like
+  "--rax='raxmlHPC -T 4'
+  This will cause RAxML to give the following error
+  "Option -T does not have any effect with the sequential or parallel..."
+  And it will cause an error that is not immediately obvious to the user
+
 * Come up with an alternative to IPC::Run for the test suite. This does not seem to be installed by default with Perl.
 
 * Under Linux, I am getting an error in Statistics::R related to a flag sent to R (--gui=none). My fix was to 
