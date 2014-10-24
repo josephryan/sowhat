@@ -1,10 +1,6 @@
 * add support for garli
 
-* Check to see if a user supplies a --rax option and includes -T something like
-  "--rax='raxmlHPC -T 4'
-  This will cause RAxML to give the following error
-  "Option -T does not have any effect with the sequential or parallel..."
-  And it will cause an error that is not immediately obvious to the user
+* add support for gapped alignments using INDELIBLE (http://abacus.gene.ucl.ac.uk/software/indelible/) for simulations
 
 * Come up with an alternative to IPC::Run for the test suite. This does not seem to be installed by default with Perl.
 
