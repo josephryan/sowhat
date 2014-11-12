@@ -1431,9 +1431,9 @@ sub calc_ratio {
     my $ra_ratio = shift;
     my $ra_mean = shift;
     my $calc_ratio = 0;
-    $ra_current_score = $ra_current_score->[$ch];
-    $ra_pen_score = $ra_pen_score->[$ch];
-    $calc_ratio = $ra_current_score / $ra_pen_score;
+    my $current_score = $ra_current_score->[$ch];
+    my $pen_score = $ra_pen_score->[$ch];
+    $calc_ratio = $current_score / $pen_score;
     $ra_ratio->[$ch][$ts] = abs(1-$calc_ratio);
 
     my $R = Statistics::R->new();
@@ -1522,10 +1522,11 @@ sub print_report {
         $ra_mc_count->[$ch]++;
     }
 
-    no warnings 'uninitialized';
+    $ra_ratio_count->[$ch] = $ra_ratio_count->[$ch] || 0;
+    $ra_mc_count->[$ch] = $ra_mc_count->[$ch] || 0;
+    
     $ra_perc_ratio->[$ch] = ($ra_ratio_count->[$ch] / $rh_s->{'sample_size'}) * 100;
     $ra_pval_mc->[$ch]    = ($ra_mc_count->[$ch] / $rh_s->{'sample_size'});
-    use warnings 'uninitialized';
     if($ra_perc_ratio->[$ch] > 50 && $rh_s->{'sample_size'} > 100) {
         exit if($rh_opts->{'stop'});
     }
