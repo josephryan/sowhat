@@ -1,6 +1,6 @@
-* add support for garli
+* escape spaces in pathnames returned from getcwd (this needs to be a system independent method using Perl module)
 
-* add support for gapped alignments using INDELIBLE (http://abacus.gene.ucl.ac.uk/software/indelible/) for simulations
+* add support for garli
 
 * Come up with an alternative to IPC::Run for the test suite. This does not seem to be installed by default with Perl.
 
