@@ -72,6 +72,10 @@ MAIN: {
     print "Results printed to $DIR" . "sowhat.results\n" unless($rh_opts->{'runs'} > 1);
     print "Number of runs = $rh_opts->{'runs'}. Details printed to $DIR" . "sowhat.runs.info\n" if($rh_opts->{'runs'} > 1);
     print "Results of each run printed to separate file: $DIR" . "sowhat.results.'run'\n" if($rh_opts->{'runs'} > 1);
+    if ($rh_opts->{'gaps'}) {
+        print "     Warning: gaps option requires PHYLIP sequential format\n";
+        print "     PHYLIP interleaved will fail\n";
+    }
     print "Sample: ";
     
     for (my $ts = 0; $ts < $rh_opts->{'reps'}; $ts++) {
@@ -720,8 +724,8 @@ sub generate_alignments {
     my $mod = $rh_opts->{'mod'};
     my $aln = $rh_opts->{'aln'};
     _run_seqgen($ra_aln_len,$ra_params,$ra_rates,$mod,$reps,$recalc,$restart,$tag);
-    my $ra_ds = _build_datasets(scalar(@{$ra_params}),$tag);
-    my $ra_alns = _make_alns($ra_ds,$gapflag,$aln,$tag);
+    my $ra_ds = _build_datasets(scalar(@{$ra_params}),$aln,$gapflag,$tag);
+    my $ra_alns = _make_alns($ra_ds,$aln,$tag);
 }
 
 # IN: array of alignment lengths
@@ -876,11 +880,13 @@ sub _convert_AT_to_01 {
 #      build alignment files
 sub _build_datasets {
     my $num = shift;
+    my $aln = shift;
+    my $gapflag = shift;
     my $tag = shift;
     my @allseqs = ();
     my $ra_ids = _get_ids_from_seqgen_out("$SCRATCH" . "seqgen.out.$tag.0");
     for (my $i = 0; $i < $num; $i++) {
-        my $ra_seqs = _get_seqs_from_seqgen_out("$SCRATCH" . "seqgen.out.$tag.$i");
+        my $ra_seqs = _get_seqs_from_seqgen_out("$SCRATCH" . "seqgen.out.$tag.$i",$aln,$gapflag);
         push @allseqs, $ra_seqs;
     }
     my $ra_ds = _make_datasets_from_allseqs($ra_ids,\@allseqs);
@@ -905,10 +911,15 @@ sub _get_ids_from_seqgen_out {
 }
 
 # IN: filename of each simulated dataset
+#     alignment file
+#     flag for gap simulation
 # OUT: array of simulated data
 # JOB: parse simulated data
+#      if gaps option, stencil gaps in seqs
 sub _get_seqs_from_seqgen_out {
     my $file = shift;
+    my $aln = shift;
+    my $gapflag = shift;
     my @seqs = ();
     open IN, $file or _my_die("cannot open $file:$!");
     my $topline = <IN>;
@@ -923,7 +934,35 @@ sub _get_seqs_from_seqgen_out {
         my @fields = split /\s+/, $line;
         push @{$seqs[$count]}, $fields[1];
     }
+    if($gapflag) {
+        @seqs = _gap_stencil($aln,@seqs);
+    }
     return \@seqs;
+}
+
+# IN: alignment file
+#    array of sequences
+# OUT: array of sequences
+# JOB: parse positions of gaps from aln
+#      replace chars with gaps in seqs
+sub _gap_stencil {
+    my $aln = shift;
+    my $ra_seqs = shift;
+    my $ra_real_seq = _get_seqs_from_seqgen_out($aln,0,0);
+    my $count = 0;
+    foreach my $sq (@{$ra_real_seq->[0]}) {
+        my $string = $sq;
+        my $char = '-';
+        my $offset = 0;
+        my $result = index($string, $char, $offset);
+        while ($result != -1) {
+            $offset = $result + 1;
+            $result = index($string, $char, $offset);
+            substr($ra_seqs->[$count],($offset-1),1,'-');
+        }
+        $count++;
+    }
+    return $ra_seqs;
 }
 
 # IN: array of taxa titles
@@ -971,16 +1010,12 @@ sub _get_len_from_id_lens {
 }
 
 # IN: array of formatted datasets
-#     flag for gap replacement
 #     actual alignment file
 #     string consisting of rep and run
 # OUT: simulated alignment files
 # JOB: print array of formatted datasets into alignment files
-#      if gap flag, superimpose gaps from real data to 
-#          simulated files (run gapstencil.py)
 sub _make_alns {
     my $ra_ds = shift;
-    my $gapflag = shift;
     my $aln = shift;
     my $tag = shift;
     my @files = ();
@@ -988,12 +1023,6 @@ sub _make_alns {
         my $file = "$SCRATCH" . "aln.phy.$tag.$i";
         open OUT, ">$file" or _my_die("cannot open >$file:$!");
         print OUT $ra_ds->[$i];
-        if($gapflag) {
-            my $cmd = "python dependencies/gapstencil ";
-            $cmd .= "-i " . "$aln ";
-            $cmd .= "-o " . "$SCRATCH" . "aln.phy.$tag.$i";
-            safe_system($cmd);
-        }
         push @files, $file;
     }
     return \@files;

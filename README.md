@@ -108,15 +108,18 @@ See `examples.sh` and the resulting `test.output/` directory for more on the spe
     [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] \
     [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] \
     [--usepb] \
+    [--stop] \
     [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS] \
     [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] \
     [--reps=NUMBER_OF_REPLICATES] \
     [--runs=NUMBER_OF_RUNS] \
     [--partition=PARTITION_FILE] \
     [--rerun] \
+    [--restart] \
+    [--gaps] \
     [--debug] \
     [--help] \
-    [--version]
+    [--version] \
 
 ## DOCUMENTATION
 
