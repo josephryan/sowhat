@@ -886,10 +886,10 @@ sub _build_datasets {
     my @allseqs = ();
     my $ra_ids = _get_ids_from_seqgen_out("$SCRATCH" . "seqgen.out.$tag.0");
     for (my $i = 0; $i < $num; $i++) {
-        my $ra_seqs = _get_seqs_from_seqgen_out("$SCRATCH" . "seqgen.out.$tag.$i",$aln,$gapflag);
+        my $ra_seqs = _get_seqs_from_seqgen_out("$SCRATCH" . "seqgen.out.$tag.$i");
         push @allseqs, $ra_seqs;
     }
-    my $ra_ds = _make_datasets_from_allseqs($ra_ids,\@allseqs);
+    my $ra_ds = _make_datasets_from_allseqs($ra_ids,$aln,$gapflag,\@allseqs);
     return $ra_ds;
 }
 
@@ -911,15 +911,10 @@ sub _get_ids_from_seqgen_out {
 }
 
 # IN: filename of each simulated dataset
-#     alignment file
-#     flag for gap simulation
 # OUT: array of simulated data
 # JOB: parse simulated data
-#      if gaps option, stencil gaps in seqs
 sub _get_seqs_from_seqgen_out {
     my $file = shift;
-    my $aln = shift;
-    my $gapflag = shift;
     my @seqs = ();
     open IN, $file or _my_die("cannot open $file:$!");
     my $topline = <IN>;
@@ -934,10 +929,46 @@ sub _get_seqs_from_seqgen_out {
         my @fields = split /\s+/, $line;
         push @{$seqs[$count]}, $fields[1];
     }
-    if($gapflag) {
-        @seqs = _gap_stencil($aln,@seqs);
-    }
     return \@seqs;
+}
+
+# IN: array of taxa titles
+#     alignment file
+#     flag for gap simulation
+#     array of simulated data
+# OUT: array of formatted alignment file content
+# JOB: concatenate data, format for alignment files
+#      if gaps option, stencil gaps in seqs
+sub _make_datasets_from_allseqs {
+    my $ra_ids = shift;
+    my $real_aln = shift;
+    my $gapflag = shift;
+    my $ra_all = shift;
+    my @ds = ();
+    foreach my $ra_seqs (@{$ra_all}) {
+        for (my $i = 0; $i < @{$ra_seqs}; $i++) {
+            for (my $j = 0; $j < @{$ra_ids}; $j++) {
+                 $ds[$i]->[$j] .= "$ra_seqs->[$i]->[$j]";
+            }
+        }
+    }
+    if($gapflag) {
+        @ds = _gap_stencil($real_aln,@ds);
+    }
+    my $len = _get_len_from_id_lens($ra_ids);
+    my @formatted = ();
+    my $seqlen = length($ds[0]->[0]);
+    my $numseq = scalar(@{$ds[0]});
+    my $header = " $numseq $seqlen\n";
+    foreach my $ra_d (@ds) {
+        my $aln = $header;
+        for (my $i = 0; $i < @{$ra_ids}; $i++) {
+            $aln .= sprintf("%${len}s", $ra_ids->[$i]);
+            $aln .= "$ra_d->[$i]\n";
+        }
+        push @formatted, $aln;
+    }
+    return \@formatted;
 }
 
 # IN: alignment file
@@ -963,37 +994,6 @@ sub _gap_stencil {
         $count++;
     }
     return $ra_seqs;
-}
-
-# IN: array of taxa titles
-#     array of simulated data
-# OUT: array of formatted alignment file content
-# JOB: concatenate data, format for alignment files
-sub _make_datasets_from_allseqs {
-    my $ra_ids = shift;
-    my $ra_all = shift;
-    my @ds = ();
-    foreach my $ra_seqs (@{$ra_all}) {
-        for (my $i = 0; $i < @{$ra_seqs}; $i++) {
-            for (my $j = 0; $j < @{$ra_ids}; $j++) {
-                 $ds[$i]->[$j] .= "$ra_seqs->[$i]->[$j]";
-            }
-        }
-    }
-    my $len = _get_len_from_id_lens($ra_ids);
-    my @formatted = ();
-    my $seqlen = length($ds[0]->[0]);
-    my $numseq = scalar(@{$ds[0]});
-    my $header = " $numseq $seqlen\n";
-    foreach my $ra_d (@ds) {
-        my $aln = $header;
-        for (my $i = 0; $i < @{$ra_ids}; $i++) {
-            $aln .= sprintf("%${len}s", $ra_ids->[$i]);
-            $aln .= "$ra_d->[$i]\n";
-        }
-        push @formatted, $aln;
-    }
-    return \@formatted;
 }
 
 # IN: array of taxa titles
@@ -1763,7 +1763,7 @@ This option will adjust the SOWH test to account for variability in the maximum 
 This option allows the user to restart a test without reconstructing the null distribution. The final two iterations are removed to eliminate any trees not fully completed. The statistics will be parsed again from the output files of RAxML and the report will be calculated at each iteration.
 =item B<--gaps>
 
-This option will call a python script which propogates the undetermined sites in the original dataset into all simulated datasets before they are evaluted. This allows simulated data to more accurately reflect the real world data.
+This option will propogate the undetermined sites in the original dataset into all simulated datasets before they are evaluted.
 
 =item B<--debug>
 
