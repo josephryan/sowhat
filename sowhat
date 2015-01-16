@@ -20,7 +20,7 @@
 #    with this program; if not, write to the Free Software Foundation, Inc.,
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-our $VERSION = 0.17;
+our $VERSION = 0.20;
 
 use strict;
 use warnings;
@@ -33,6 +33,7 @@ use Cwd;
 use Statistics::R;
 
 our $RAX = 'raxmlHPC';
+our $GARLI = 'garli';
 our $SEQGEN = 'seq-gen';
 our $PB = 'pb -f';
 our $PPRED = 'ppred';
@@ -166,29 +167,33 @@ sub process_options {
     $rh_opts->{'seqgen'} = $SEQGEN;
 
     my $opt_results = Getopt::Long::GetOptions(
-                              "version" => \$rh_opts->{'version'},
-                                "rerun" => \$rh_opts->{'rerun'},
-                                 "gaps" => \$rh_opts->{'gaps'},
-                                "usepb" => \$rh_opts->{'usepb'},
-                                 "stop" => \$rh_opts->{'stop'},
-                              "ppred=s" => \$rh_opts->{'ppred'},
-                            "pb_burn=i" => \$rh_opts->{'pb_burn'},
-                                 "pb=s" => \$rh_opts->{'pb'},
-                         "constraint=s" => \$rh_opts->{'constraint_tree'},
                                 "aln=s" => \$rh_opts->{'aln'},
-                                "dir=s" => \$rh_opts->{'dir'},
-                               "reps=i" => \$rh_opts->{'reps'},
-                               "runs=i" => \$rh_opts->{'runs'},
-                             "seqgen=s" => \$rh_opts->{'seqgen'},
-                                "rax=s" => \$rh_opts->{'rax'},
-                          "partition=s" => \$rh_opts->{'part'},
+                         "constraint=s" => \$rh_opts->{'constraint_tree'},
                                 "debug" => \$rh_opts->{'debug'},
-                              "restart" => \$rh_opts->{'restart'},
+                                "dir=s" => \$rh_opts->{'dir'},
+                                 "gaps" => \$rh_opts->{'gaps'},
+                              "garli=s" => \$rh_opts->{'garli'},
+                                 "help" => \$rh_opts->{'help'},
                               "model=s" => \$rh_opts->{'mod'},
                                "name=s" => \$rh_opts->{'name'},
-                                 "help" => \$rh_opts->{'help'});
+                          "partition=s" => \$rh_opts->{'part'},
+                                 "pb=s" => \$rh_opts->{'pb'},
+                            "pb_burn=i" => \$rh_opts->{'pb_burn'},
+                              "ppred=s" => \$rh_opts->{'ppred'},
+                                "rax=s" => \$rh_opts->{'rax'},
+                               "reps=i" => \$rh_opts->{'reps'},
+                                "rerun" => \$rh_opts->{'rerun'},
+                              "restart" => \$rh_opts->{'restart'},
+                               "runs=i" => \$rh_opts->{'runs'},
+                             "seqgen=s" => \$rh_opts->{'seqgen'},
+                                 "stop" => \$rh_opts->{'stop'},
+                                "usepb" => \$rh_opts->{'usepb'},
+                             "usegarli" => \$rh_opts->{'usegarli'},
+                              "version" => \$rh_opts->{'version'},
+                           );
 
     $PPRED = $rh_opts->{'ppred'} if ($rh_opts->{'ppred'});
+    $GARLI = $rh_opts->{'garli'} if ($rh_opts->{'garli'});
     $PB = $rh_opts->{'pb'} if ($rh_opts->{'pb'});
     $PB_BURN = $rh_opts->{'pb_burn'} if ($rh_opts->{'pb_burn'});
     $RAX = $rh_opts->{'rax'} if ($rh_opts->{'rax'});
@@ -1631,6 +1636,8 @@ sub usage {
     --dir=DIR
     [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS]
     [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS]
+    [--usegarli]
+    [--garli]
     [--usepb]
     [--stop]
     [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS]
@@ -1658,7 +1665,7 @@ Samuel H. Church <samuel_church@brown.edu>, Joseph F. Ryan <joseph.ryan@whitney.
 
 =head1 SYNOPSIS 
 
-sowhat --constraint=NEWICK_CONSTRAINT_TREE --aln=PHYLIP_ALIGNMENT --name=NAME_FOR_REPORT --model=MODEL --dir=DIR [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] [--usepb] [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS] [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] [--reps=NUMBER_OF_REPLICATES] [--runs=NUMBER_OF_RUNS] [--partition=PARTITION_FILE] [--rerun] [--debug] [--help] [--version]\n";
+sowhat --constraint=NEWICK_CONSTRAINT_TREE --aln=PHYLIP_ALIGNMENT --name=NAME_FOR_REPORT --model=MODEL --dir=DIR [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] [--usegarli] [--garli=GARLI_BINARY_ORPATH_PLUS_OPTIONS] [--usepb] [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS] [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] [--reps=NUMBER_OF_REPLICATES] [--runs=NUMBER_OF_RUNS] [--partition=PARTITION_FILE] [--rerun] [--debug] [--help] [--version]\n";
 
 =head1 constraint
 
@@ -1722,14 +1729,23 @@ This allows the user to specify the SeqGen binary or path to the binary to be us
 
 Use PhyloBayes (pb and ppred programs) to calculate null distribution parameters and generate data sets instead of using RAxML and Seq-Gen. Only works for amino acid and nucleotide datasets (not character data)
 
-=item B<--stop>
-
-This option allows the program to stop when sufficient sample size is reached, under a given stopping criterion. The value of reps is the maximum number of simulations the program will calculate. This is measured by comparing the frequency of iterations of simulation which return non-extreme values, as measured by calculating 1 - the ratio of z-scores after each new simulation is added. The plot of this ratio is included as ratio.eps
-
 =item B<--pb>
 
 <default: pb>
 This allows the user to specify the pb binary or path to the binary to be used in the analysis. It could be useful to pass additional parameters to pb (only useful with --usepb)
+
+=item B<--usegarli>
+
+Use GARLI instead of RAXML for nucleotide data.
+
+=item B<--garli>
+
+<default: garli>
+This allows the user to specify the garli binary or path to the binary to be used in the analysis. It could be useful to pass additional parameters to garli (only useful with --usegarli)
+
+=item B<--stop>
+
+This option allows the program to stop when sufficient sample size is reached, under a given stopping criterion. The value of reps is the maximum number of simulations the program will calculate. This is measured by comparing the frequency of iterations of simulation which return non-extreme values, as measured by calculating 1 - the ratio of z-scores after each new simulation is added. The plot of this ratio is included as ratio.eps
 
 =item B<--ppred>
 
