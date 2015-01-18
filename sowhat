@@ -54,30 +54,23 @@ our $SUBZERO = 0.001;
 
 MAIN: {
     my $rh_opts = process_options();
-    
-    my $ver = get_version();
-    
-    my (@delta_dist,@deltaprime_dist,@mean,@current_mean,
-        @current_score,@pen_score,@ratio,@ratio_count,@perc_ratio,@mc_count,@pval_mc) = ();
-    my $tag = 0;    
+    my $ver = get_version() unless ($rh_opts->{'usegarli'});
+    my $restart_num = 0;
     my $alns_to_gen = 1;
-    my ($restart_num,$restart_flag) = 0;
-    my ($ra_params,$ra_recalc_flag,$ra_alns,$ra_rates,$ra_aln_len,$pb_id) = [ ];
-    my $codon_flag = 0;
+    my (@delta_dist,@deltaprime_dist,@mean,@current_mean); 
+    my (@current_score,@pen_score,@ratio,@ratio_count);
+    my (@perc_ratio,@mc_count,@pval_mc);
+    my $ra_params = [];
+    my $ra_recalc_flag = [];
+    my $ra_alns = [];
+    my $ra_rates = [];
+    my $ra_aln_len = [];
 
     if ($rh_opts->{'restart'}) {
         ($restart_num) = restart($rh_opts);
     }
-    
-    print "SOWHAT:\n";
-    print "Results printed to $DIR" . "sowhat.results\n" unless($rh_opts->{'runs'} > 1);
-    print "Number of runs = $rh_opts->{'runs'}. Details printed to $DIR" . "sowhat.runs.info\n" if($rh_opts->{'runs'} > 1);
-    print "Results of each run printed to separate file: $DIR" . "sowhat.results.'run'\n" if($rh_opts->{'runs'} > 1);
-    if ($rh_opts->{'gaps'}) {
-        print "     Warning: gaps option requires PHYLIP sequential format\n";
-        print "     PHYLIP interleaved will fail\n";
-    }
-    print "Sample: ";
+
+    print_initial_messages($rh_opts);
     
     for (my $ts = 0; $ts < $rh_opts->{'reps'}; $ts++) {
     #LOOP: For the number of repetitions, simulate data
@@ -87,19 +80,20 @@ MAIN: {
         #LOOP: For the number of runs, perform each repetition of the test.
         #      This loop allows multiple runs to be performed simultaneously.
 
-            $tag = "$ch.$ts";
+            my $pb_id = '';
+            my $codon_flag = 0;
+            my $tag = "$ch.$ts";
             
-            $restart_flag = 0;
+            my $restart_flag = 0;
             if (($rh_opts->{'restart'}) && ($ts <= $restart_num)) {
                 $restart_flag = 1;
             }
 
-            my ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) = ();
+            my ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file);
 
             if (($ts < 1) || ($rh_opts->{'rerun'})) {
             #For the first iteration of each run only, run the initial trees
             #and get the parameter values.
-
                 run_initial_trees($rh_opts,$restart_flag,$tag);
                 if ($rh_opts->{'usepb'}) {
                     ($pb_id)=get_params_w_pb($rh_opts,$alns_to_gen,$restart_flag,$tag);
@@ -155,6 +149,23 @@ MAIN: {
     }
 }
 
+# IN: hashref with options
+# OUT: none
+# JOB: prints messages to user at beginning of run
+sub print_initial_messages {
+    my $rh_opts = shift;
+
+    print "SOWHAT:\n";
+    print "Results are being printed to $DIR" . "sowhat.results\n" unless($rh_opts->{'runs'} > 1);
+    print "Number of runs = $rh_opts->{'runs'}. Details printed to $DIR" . "sowhat.runs.info\n" if($rh_opts->{'runs'} > 1);
+    print "Results of each run printed to separate file: $DIR" . "sowhat.results.'run'\n" if($rh_opts->{'runs'} > 1);
+    if ($rh_opts->{'gaps'}) {
+        print "     Warning: gaps option requires PHYLIP sequential format\n";
+        print "     PHYLIP interleaved will fail\n";
+    }
+    print "Sample: ";
+}
+
 # IN:  none
 # OUT: reference to a hash of command-line options
 # JOB: checks and organizes all command-line options
@@ -193,7 +204,11 @@ sub process_options {
                            );
 
     $PPRED = $rh_opts->{'ppred'} if ($rh_opts->{'ppred'});
-    $GARLI = $rh_opts->{'garli'} if ($rh_opts->{'garli'});
+    if ($rh_opts->{'usegarli'}) {
+        $rh_opts->{'garli_conf'} or die "--garli_conf is required with --usegarli\n";
+        $GARLI = $rh_opts->{'garli'} if ($rh_opts->{'garli'});
+        check_garli_version();
+    }
     $PB = $rh_opts->{'pb'} if ($rh_opts->{'pb'});
     $PB_BURN = $rh_opts->{'pb_burn'} if ($rh_opts->{'pb_burn'});
     $RAX = $rh_opts->{'rax'} if ($rh_opts->{'rax'});
@@ -216,6 +231,34 @@ sub process_options {
     return $rh_opts;
 }
 
+sub check_garli_version {
+    my $errorcode = system "$GARLI -v";
+    if ($errorcode != 0) {
+        die "$GARLI is not in your path.\n  Supply full path to garli binary with --garli option\n    e.g., --garli=/usr/local/Garli-2.0-IntelOSX-multithread/bin/Garli-2.0\n";
+    }
+    my $version_st = `$GARLI -v`;
+    my @lines= split /\n/, $version_st;
+    my $numeric_version = '';
+    my $version = '';
+    my $possible_error = '';
+    foreach my $l (@lines) {
+        $possible_error .= $l;
+        next unless $l =~ m/^GARLI\S* Version ((\d+\.\d+)\.(\d+)?)/;
+        $version = $1;
+        $numeric_version = $2;
+        last;
+    }
+    if ($version eq '') {
+        die "Error from GARLI (check --garli option):\n$possible_error";
+    }
+    if ($numeric_version < 2) {
+        warn "sowhat ERROR:\n";
+        warn "You are running version $version of GARLI\n";
+        die  "sowhat requires version 2.0 or higher\n";
+    }
+    return $version;
+}
+
 # IN:  output directory specified with --dir on command-line
 # OUT: none
 # JOB: makes sure full path is used for output directory (required by RAX)
@@ -226,7 +269,7 @@ sub set_out_dir {
         $opt_dir = "$pwd/$opt_dir" if ($opt_dir !~ m/^\//);
         $opt_dir .= '/' if ($opt_dir !~ m/\/$/);
         $DIR = $opt_dir if ($opt_dir);
-        $SCRATCH = "$DIR" . "scratch/";
+        $SCRATCH = "$DIR" . "sowhat_scratch/";
     } else {
         warn "missing --dir\n";
         usage();
@@ -278,6 +321,7 @@ sub get_version {
 sub restart {
     my $rh_opts = shift;
     my $reps = $rh_opts->{'reps'};
+    die "cannot restart if using garli\n" if ($rh_opts->{'usegarli'});
     my $max = 0;
     my $num = 0;
     my $fileml = '';
@@ -415,6 +459,8 @@ sub get_params {
     my $codon_flag = 0;
     my $ra_params = ();
     my $ra_rates = ();
+
+    # ZZZ if garli
     if ($mod =~ m/^GTRGAMMA/i) {
         ($ra_aln_len,$codon_flag,$ra_params) =
            _model_gtrgamma($aln,$part,$restart,$tre,$tag);
@@ -428,6 +474,12 @@ sub get_params {
         ($ra_aln_len,$codon_flag,$ra_params) =
            _model_non_gtr($aln,$part,$restart,$tre,$tag);        
     }
+#print "\$ra_params\n";
+#print Dumper $ra_params;
+#exit;
+#print "\$ra_rates\n";
+#print Dumper $ra_rates;
+#exit;
     return ($ra_aln_len,$codon_flag,$ra_params,$ra_rates);   
 }
 
@@ -1637,7 +1689,8 @@ sub usage {
     [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS]
     [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS]
     [--usegarli]
-    [--garli]
+    [--garli=GARLI_BINARY_OR_PATH_PLUS_OPTIONS]
+    [--garli_conf=PATH_TO_GARLI_CONF_FILE]
     [--usepb]
     [--stop]
     [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS]
@@ -1665,7 +1718,7 @@ Samuel H. Church <samuel_church@brown.edu>, Joseph F. Ryan <joseph.ryan@whitney.
 
 =head1 SYNOPSIS 
 
-sowhat --constraint=NEWICK_CONSTRAINT_TREE --aln=PHYLIP_ALIGNMENT --name=NAME_FOR_REPORT --model=MODEL --dir=DIR [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] [--usegarli] [--garli=GARLI_BINARY_ORPATH_PLUS_OPTIONS] [--usepb] [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS] [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] [--reps=NUMBER_OF_REPLICATES] [--runs=NUMBER_OF_RUNS] [--partition=PARTITION_FILE] [--rerun] [--debug] [--help] [--version]\n";
+sowhat --constraint=NEWICK_CONSTRAINT_TREE --aln=PHYLIP_ALIGNMENT --name=NAME_FOR_REPORT --model=MODEL --dir=DIR [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] [--usegarli] [--garli=GARLI_BINARY_ORPATH_PLUS_OPTIONS] [--garli_conf=PATH_TO_GARLI_CONF_FILE] [--usepb] [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS] [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] [--reps=NUMBER_OF_REPLICATES] [--runs=NUMBER_OF_RUNS] [--partition=PARTITION_FILE] [--rerun] [--debug] [--help] [--version]\n";
 
 =head1 constraint
 
@@ -1742,6 +1795,9 @@ Use GARLI instead of RAXML for nucleotide data.
 
 <default: garli>
 This allows the user to specify the garli binary or path to the binary to be used in the analysis. It could be useful to pass additional parameters to garli (only useful with --usegarli)
+
+=item B<--garli_conf=PATH_TO_GARLI_CONF_FILE>
+If using garli (--usegarli) a garli conf file must be supplied (see examples directory of sowhat distribution for example)
 
 =item B<--stop>
 
