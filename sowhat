@@ -26,6 +26,7 @@ use strict;
 use warnings;
 use Getopt::Long;
 use Pod::Usage;
+use File::Path;
 use File::Temp;
 use Data::Dumper;
 use Cwd;
@@ -49,13 +50,18 @@ our $SCRATCH = '';
 our $FREQ_BIN_NUMBER = 10;
 our $TRE_PREFIX = 'RAxML_bestTree';
 our $NEW_PARTITION_FILE = 'new.part.txt';
-our $PART_RATE_MATRIX_PREFIX = 'RAxML_proteinGTRmodel.par';
+our $PART_RATE_MATRIX_PREFIX = 'RAxML_proteinGTRmodel';
 our $NAME = '';
 our $SUBZERO = 0.001;
 
 MAIN: {
     my $rh_opts = process_options();
-    my $ver = get_version() unless ($rh_opts->{'usegarli'});
+    my $ver = '';
+    if ($rh_opts->{'usegarli'}) {
+        $ver = $rh_opts->{'garli_version'};
+    } else {
+        $ver = get_version();
+    }
     my $restart_num = 0;
     my $alns_to_gen = 1;
     my (@delta_dist,@deltaprime_dist,@mean,@current_mean); 
@@ -117,13 +123,14 @@ MAIN: {
             #      run both raxml trees and calculate the statistic.
             #      This loop is necessary when $alns_to_gen is >1
 
-                run_raxml_on_gen_alns($ra_alns,$rh_opts,$ra_aln_len,
-                $codon_flag,$i,$restart_flag,$tag);
+                run_gen_trees($ra_alns,$rh_opts,$ra_aln_len,
+                              $codon_flag,$i,$restart_flag,$tag);
 
                 ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) =
                 evaluate_distribution($alns_to_gen,$rh_opts->{'name'},
-                $rh_opts->{'rerun'},\@delta_dist,\@deltaprime_dist,\@mean,
-                \@current_mean,\@current_score,\@pen_score,$i,$ts,$ch,$tag);
+                    $rh_opts->{'rerun'},\@delta_dist,\@deltaprime_dist,\@mean,
+                    \@current_mean,\@current_score,\@pen_score,$i,$ts,$ch,
+                    $tag,$rh_opts);
             }
 
             if ($ch == ($rh_opts->{'runs'} - 1)) {
@@ -160,11 +167,24 @@ sub print_initial_messages {
     print "Results are being printed to $DIR" . "sowhat.results\n" unless($rh_opts->{'runs'} > 1);
     print "Number of runs = $rh_opts->{'runs'}. Details printed to $DIR" . "sowhat.runs.info\n" if($rh_opts->{'runs'} > 1);
     print "Results of each run printed to separate file: $DIR" . "sowhat.results.'run'\n" if($rh_opts->{'runs'} > 1);
-    if ($rh_opts->{'gaps'}) {
-        print "     Warning: gaps option requires PHYLIP sequential format\n";
-        print "     PHYLIP interleaved will fail\n";
+    if (interleaved($rh_opts->{'aln'})) {
+        die "your alignment $rh_opts->{'aln'} appears to be in phylip interleaved format or sequences are not on a single line. Sorry but sowhat cannot currently deal with this. Please convert to sequential or have one line per taxa.\n";
     }
     print "Sample: ";
+}
+
+sub interleaved {
+    my $file = shift;
+    open IN, $file or die "cannot open $file:$!";
+    my $topline = <IN>;
+    $topline =~ m/\s*(\d+)\s+(\d+)/;
+    my $seq_num = $1;
+    my $count = 0;
+    while (my $line = <IN>) {
+        next if ($line =~ m/^\s*$/);
+        $count++;
+    }
+    return 1 if ($count != $seq_num);
 }
 
 # IN:  none
@@ -183,12 +203,13 @@ sub process_options {
                          "constraint=s" => \$rh_opts->{'constraint_tree'},
                                 "debug" => \$rh_opts->{'debug'},
                                 "dir=s" => \$rh_opts->{'dir'},
-                                 "gaps" => \$rh_opts->{'gaps'},
                               "garli=s" => \$rh_opts->{'garli'},
                          "garli_conf=s" => \$rh_opts->{'garli_conf'},
                                  "help" => \$rh_opts->{'help'},
+                                  "max" => \$rh_opts->{'max'},
                               "model=s" => \$rh_opts->{'mod'},
                                "name=s" => \$rh_opts->{'name'},
+                               "nogaps" => \$rh_opts->{'nogaps'},
                           "partition=s" => \$rh_opts->{'part'},
                                  "pb=s" => \$rh_opts->{'pb'},
                             "pb_burn=i" => \$rh_opts->{'pb_burn'},
@@ -213,7 +234,7 @@ sub process_options {
             die "  model should be supplied in conf file\n";
         }
         $GARLI = $rh_opts->{'garli'} if ($rh_opts->{'garli'});
-        check_garli_version();
+        $rh_opts->{'garli_version'} = check_garli_version();
     }
     $PB = $rh_opts->{'pb'} if ($rh_opts->{'pb'});
     $PB_BURN = $rh_opts->{'pb_burn'} if ($rh_opts->{'pb_burn'});
@@ -309,8 +330,8 @@ sub set_out_dir {
         warn "missing --dir\n";
         usage();
     }
-    mkdir $DIR unless (-d $DIR);
-    mkdir $SCRATCH unless (-d $SCRATCH);
+    File::Path::mkpath($DIR) unless (-d $DIR);
+    File::Path::mkpath($SCRATCH) unless (-d $SCRATCH);
 }
 
 # IN:  system command (e.g., ls -l)
@@ -541,25 +562,22 @@ sub get_params {
         } else {
             ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) = get_params_garli_aa($tag,$aln);
         }
-    } elsif ($mod =~ m/^GTRGAMMA/i) {
+    } elsif ($mod =~ m/^(ASC_)?GTR/i) {
         ($ra_aln_len,$codon_flag,$ra_params) =
            _model_gtrgamma($aln,$part,$restart,$tre,$tag);
     } elsif ($mod =~ m/^PROT/i) {
         ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) =
-           _model_prot($aln,$part,$restart,$tre,$tag);      
+           _model_prot($rh_opts,$aln,$part,$restart,$tre,$tag);      
     } elsif ($mod =~ m/^MULTIGAMMA/i) {
         ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) =
            _model_character_data($aln,$part,$restart,$tre,$tag);
+    } elsif ($rh_opts->{'max'}) {
+        ($ra_aln_len,$codon_flag,$ra_params) =
+           _model_non_gtr_w_max_params($aln,$part,$restart,$tre,$tag);        
     } else {
         ($ra_aln_len,$codon_flag,$ra_params) =
-           _model_non_gtr($aln,$part,$restart,$tre,$tag);        
+           _model_non_gtr($rh_opts,$aln,$part,$restart,$tre,$tag);        
     }
-#print "\$ra_params\n";
-#print Dumper $ra_params;
-#exit;
-#print "\$ra_rates\n";
-#print Dumper $ra_rates;
-#exit;
     return ($ra_aln_len,$codon_flag,$ra_params,$ra_rates);   
 }
 
@@ -692,28 +710,43 @@ sub _model_gtrgamma {
 #      gets part lengths using the _get_partition_lengths method
 #      gets parameters using the _get_params_from_const_rax method
 sub _model_prot {
+    my $rh_opts = shift;
     my $aln = shift;
     my $part = shift;
     my $restart = shift;
     my $tre = shift;
     my $tag = shift;
-    my $ra_aln_len = ();
+    my $ra_aln_len = [];
     my $codon_flag = 0;
-    my $ra_params = ();
-    my $ra_rates = ();
+    my $ra_params = [];
+    my $ra_rates = [];
     my $new_part = "$SCRATCH" . $NEW_PARTITION_FILE;
-    if ($part) {
-        my $ra_part_names = _make_unlinked_partition_file($part,$new_part);
-        _run_best_tree('par',$aln,$new_part,'PROTGAMMAGTR_UNLINKED',$restart,$tag,$tre);
-        $ra_rates = _parse_rates($tag,$ra_part_names);
-        ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,$part);
-        $ra_params = _get_params_from_const_rax("$SCRATCH" ."RAxML_info.par.$tag");
+    if ($rh_opts->{'mod'} =~ /GTR_UNLINKED/i) {
+        $ra_params = _get_params_from_const_rax("$SCRATCH" .
+                                                "RAxML_info.t1.$tag");
+        $ra_rates = _parse_rates($tag,'t1');
+    } elsif ($rh_opts->{'max'}) {
+        if ($part) {
+            my $ra_part_names = _make_unlinked_partition_file($part,$new_part);
+            _run_best_tree_w_raxml('par',$aln,$new_part,'PROTGAMMAGTR_UNLINKED',
+                               $restart,$tag,$tre);
+            $ra_rates = _parse_rates($tag,'par',$ra_part_names);
+        } else {
+            _run_best_tree_w_raxml('par',$aln,$part,'PROTGAMMAGTR_UNLINKED',
+                               $restart,$tag,$tre);
+            $ra_rates = _parse_rates($tag,'par');
+        }
+        $ra_params = _get_params_from_const_rax("$SCRATCH" .
+                                                "RAxML_info.par.$tag");
+    } elsif ($rh_opts->{'mod'} =~ /GTR/) {
+        $ra_params = _get_params_from_const_rax("$SCRATCH" .
+                                                "RAxML_info.t1.$tag");
+        $ra_rates = _parse_rates($tag,'t1');
     } else {
-        _run_best_tree('par',$aln,$part,'PROTGAMMAGTR_UNLINKED',$restart,$tag,$tre);
-        $ra_rates = _parse_rates($tag);
-        ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,$part);
-        $ra_params = _get_params_from_const_rax("$SCRATCH" ."RAxML_info.par.$tag");
+        $ra_params = _get_params_from_const_rax("$SCRATCH" .
+                                                "RAxML_info.t1.$tag");
     }
+    ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,$part);
     return ($ra_aln_len,$codon_flag,$ra_params,$ra_rates);      
 }
 
@@ -750,12 +783,14 @@ sub _model_character_data {
 #      gets part lengths using the _get_partition_lengths method
 #      gets parameters using the _get_params_from_const_rax method
 sub _model_non_gtr {
+    my $rh_opts = shift;
     my $aln = shift;
     my $part = shift;
     my $restart = shift;
     my $tre = shift;
     my $tag = shift;
-    _run_best_tree('par',$aln,$part,'GTRGAMMA',$restart,$tag,$tre);
+    
+    _run_best_tree_w_raxml('par',$aln,$part,'GTRGAMMA',$restart,$tag,$tre);
     my ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,$part);
     my $ra_params = _get_params_from_const_rax("$SCRATCH" . "RAxML_info.par.$tag");
     return ($ra_aln_len,$codon_flag,$ra_params);
@@ -907,12 +942,13 @@ sub _print_unlinked_part {
 # JOB: Get rate matrix for AA data from raxml partition reports
 sub _parse_rates {
     my $tag = shift;
+    my $par_or_t1 = shift;
     my $ra_part_names = shift;
     my @rates = ();
     if ($ra_part_names) {
         foreach my $pn (@{$ra_part_names}) {
             my @local_rates = ();
-            my $matrix = "$SCRATCH" . $PART_RATE_MATRIX_PREFIX . ".$tag" . "_Partition_" . $pn;
+            my $matrix = "$SCRATCH" . $PART_RATE_MATRIX_PREFIX . ".$par_or_t1.$tag" . "_Partition_" . $pn;
             open IN, "$matrix" or _my_die("cannot open $matrix:$!");
             while (my $line = <IN>) {
                 my @fields = split/\s/, $line;
@@ -921,7 +957,7 @@ sub _parse_rates {
             push @rates, \@local_rates;
         }
     } else {
-        my $matrix = "$SCRATCH" . $PART_RATE_MATRIX_PREFIX . ".$tag" . "_Partition_No Name Provided";
+        my $matrix = "$SCRATCH" . $PART_RATE_MATRIX_PREFIX . ".$par_or_t1.$tag" . "_Partition_No Name Provided";
         open IN, "$matrix" or _my_die("cannot open $matrix:$!");
         while (my $line = <IN>) {
             my @fields = split/\s/, $line;
@@ -950,11 +986,10 @@ sub generate_alignments {
     my $reps = shift;
     my $restart = shift;
     my $tag = shift;
-    my $gapflag = $rh_opts->{'gaps'};
+    my $gapflag = $rh_opts->{'nogaps'};
     my $aln = $rh_opts->{'aln'};
 
     _run_seqgen($rh_opts,$ra_aln_len,$ra_params,$ra_rates,$reps,$restart,$tag);
-exit;
     my $ra_ds = _build_datasets(scalar(@{$ra_params}),$aln,$gapflag,$tag);
     my $ra_alns = _make_alns($ra_ds,$aln,$tag);
 }
@@ -991,11 +1026,17 @@ sub _run_seqgen {
         $cmd .= "-a$rh_part->{'alpha'} ";
         $cmd .= "-n$reps ";
         if ($rh_part->{'type'} eq 'DNA') {
-            $cmd .= "-m$model ";
+            $cmd .= "-mGTR ";
             $cmd .= _get_dna_params($rh_part);
         } elsif ($rh_part->{'type'} eq 'AA') {
-            $cmd .= "-mGENERAL ";
-            $cmd .= _get_aa_params($rh_part,$ra_rates->[$i]);
+            if (scalar(@{$ra_rates})) {
+                $cmd .= "-mGENERAL ";
+                $cmd .= _get_aa_params($rh_part,$ra_rates->[$i]);
+            } else {
+                my $trans_model = _translate_model($model);
+                $cmd .= "-m$trans_model ";
+                $cmd .= _get_aa_params($rh_part,0);
+            }
         } elsif ($rh_part->{'type'} eq 'Multi-State') {
             $cmd .= "-mGTR ";
             $cmd .= _get_char_params($rh_part);
@@ -1010,9 +1051,8 @@ sub _run_seqgen {
             $tre = "$TRE_PREFIX.t1.$tag";
         } elsif ($rh_opts->{'usegarli'}) {
             $tre = 't1.0.0.best.phy';
-        } else {
-            die "unexpected";
         }
+
         $cmd .= " < $SCRATCH" . "$tre > $SCRATCH" . "seqgen.out.$tag.$count";
         $cmd .= " 2>> ${DIR}sowh_stderr_$NAME.txt" if ($QUIET);
         $count++;
@@ -1021,6 +1061,35 @@ sub _run_seqgen {
             my $file = "seqgen.out.$tag." . ($count - 1);
             _convert_AT_to_01("$SCRATCH" . $file, $ra_part_lens->[$i]);
         }
+    }
+}
+
+sub _translate_model {
+    my $mod = shift;
+    $mod = uc($mod);
+    if ($mod =~ m/(?:ASC_)?PROT(?:GAMMA|CAT)(\S+)/) {
+        my $core_mod = $1;
+        if ($core_mod =~ m/JTT/) {
+            return 'JTT';
+        } elsif ($core_mod =~ m/WAG/) {
+            return 'WAG';
+        } elsif ($core_mod =~ m/DAYHOFF/) {
+            return 'PAM';
+        } elsif ($core_mod =~ m/BLOSUM62/) {
+            return 'BLOSUM';
+        } elsif ($core_mod =~ m/MTREV/) {
+            return 'MTREV';
+        } elsif ($core_mod =~ m/MTART/) {
+            return 'MTART';
+        } elsif ($core_mod =~ m/CPREV45/) {
+            return 'CPREV';
+        } else {
+            warn "you specified $mod. seq-gen does not know about $core_mod\n";
+            warn "    either run: WAG DAYHOFF BLOSUM62 MTREV MTART CPREV45\n";
+            die  "    or specify --max\n";
+        }
+    } else {
+        die "unexpected model: $mod\n";
     }
 }
 
@@ -1051,15 +1120,17 @@ sub _get_aa_params {
     my $ra_r = shift;
     my $cmd = '';
     _my_die("unexpected freq") unless ($rh_part->{'freqs'});
-    _my_die("unexpected rates") unless (scalar(@{$ra_r}) == 21);
     $cmd .= "-f$rh_part->{'freqs'} ";
     my $j = 0;
-    $cmd .= "-r";
-    for (my $i = 0; $i < 20; $i++) {
-        $j++;
-        for (my $k = $j; $k < 20; $k++) {
-            $cmd .= "$ra_r->[$i]->[$k], ";
+    if ($ra_r != 0) {
+        $cmd .= "-r";
+        for (my $i = 0; $i < 20; $i++) {
+            $j++;
+            for (my $k = $j; $k < 20; $k++) {
+                $cmd .= "$ra_r->[$i]->[$k], ";
+            }
         }
+        _my_die("unexpected rates") unless (scalar(@{$ra_r}) == 21);
     }
     return $cmd;
 }
@@ -1176,7 +1247,7 @@ sub _get_seqs_from_seqgen_out {
 #     array of simulated data
 # OUT: array of formatted alignment file content
 # JOB: concatenate data, format for alignment files
-#      if gaps option, stencil gaps in seqs
+#      if nogaps option, do not stencil gaps in seqs
 sub _make_datasets_from_allseqs {
     my $ra_ids = shift;
     my $real_aln = shift;
@@ -1190,7 +1261,7 @@ sub _make_datasets_from_allseqs {
             }
         }
     }
-    if($gapflag) {
+    unless ($gapflag) {
         @ds = _gap_stencil($real_aln,@ds);
     }
     my $len = _get_len_from_id_lens($ra_ids);
@@ -1276,7 +1347,7 @@ sub _make_alns {
 # OUT: none
 # JOB: if partitioned by codon position, create new partitioning scheme
 #      run RAxML on simulated alignments
-sub run_raxml_on_gen_alns {
+sub run_gen_trees {
     my $ra_alns = shift;
     my $rh_opts = shift;
     my $ra_aln_len = shift;
@@ -1287,7 +1358,10 @@ sub run_raxml_on_gen_alns {
     my $part = $rh_opts->{'part'};
     my $mod = $rh_opts->{'mod'};
     my $tre = $rh_opts->{'constraint_tree'};
-    if ($codon_flag) {
+    if ($rh_opts->{'usegarli'}) {
+        _run_garli_on_genset($rh_opts,$ra_alns,$tag,$i);
+        _run_garli_on_genset($rh_opts,$ra_alns,$tag,$i,$tre);
+    } elsif ($codon_flag) {
         my $new_part = "$SCRATCH" . $NEW_PARTITION_FILE;
         my $ra_part_titles = _get_part_titles($part);
         my $ra_ranges = _print_ranges($ra_aln_len);
@@ -1296,6 +1370,45 @@ sub run_raxml_on_gen_alns {
     } else {
         _run_rax_on_genset($ra_alns,$mod,$part,$tre,$i,$restart,$tag);
     }
+}
+
+sub _run_garli_on_genset {
+    my $rh_opts = shift;
+    my $ra_alns = shift;
+    my $tag = shift;
+    my $i = shift;
+    my $const = shift;
+
+    my $conf = $rh_opts->{'garli_conf'};
+    my ($fh,$file) = File::Temp::tempfile( SUFFIX => '.garli.conf',
+                                            UNLINK => 1,
+                                            DIR => $SCRATCH);
+    open IN, $conf or die "cannot open $conf:$!";
+    print $fh "datafname = $ra_alns->[$i]\n";
+    if ($const) {
+        print $fh "ofprefix = $SCRATCH/t1.$tag.$i\n";
+    } else {
+        print $fh "ofprefix = $SCRATCH/ml.$tag.$i\n";
+    }
+    print $fh "searchreps = 1\n";
+    print $fh "outputphyliptree = 1\n";
+    if ($const) {
+        print $fh "constraintfile = $const\n";
+    }
+    while (my $line = <IN>) {
+        next if ($line =~ m/^\s*outputphyliptree\s*=\s/i);
+        next if ($line =~ m/^\s*datafname\s*=\s/i);
+        next if ($line =~ m/^\s*constraintfile\s*=\s/i);
+        next if ($line =~ m/^\s*ofprefix\s*=\s/i);
+        next if ($line =~ m/^\s*searchreps\s*=\s/i);
+        print $fh $line;
+    }
+    my $cmd = "$GARLI $file";
+    if ($QUIET) {
+        $cmd .= " >> ${DIR}sowh_stdout_$NAME.txt ";
+        $cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
+    }
+    safe_system($cmd);
 }
 
 # IN: parition file
@@ -1430,14 +1543,32 @@ sub evaluate_distribution {
     my $ts = shift;
     my $ch = shift;
     my $tag = shift;
+    my $rh_opts = shift;
     my $best_ml_score = 0;
     my $best_t1_score = 0;
 
     $ra_pen_score->[$ch] = $ra_current_score->[$ch];
 
-    my $ra_dist = _get_distribution($reps,0,$i,$tag);
-    my $ra_const_dist = _get_distribution($reps,1,$i,$tag);
-    if ($recalc) {
+    my ($ra_dist,$ra_const_dist);
+    if ($rh_opts->{'usegarli'}) {
+        $ra_dist = _get_distribution_from_garli($reps,0,$i,$tag);
+        $ra_const_dist = _get_distribution_from_garli($reps,1,$i,$tag);
+    } else {
+        $ra_dist = _get_distribution($reps,0,$i,$tag);
+        $ra_const_dist = _get_distribution($reps,1,$i,$tag);
+    }
+
+    if ($rh_opts->{'usegarli'} && $recalc) {
+        $best_ml_score = _get_best_garli_score("$SCRATCH" . "ml.$tag.screen.log");
+        $best_t1_score = _get_best_garli_score("$SCRATCH" . "t1.$tag.screen.log");
+        $ra_delta_dist->[$ch][$ts] = $best_ml_score - $best_t1_score;
+         
+    } elsif ($rh_opts->{'usegarli'}) {
+        $best_ml_score = _get_best_garli_score("$SCRATCH" . "ml.0.0.screen.log");
+        $best_t1_score = _get_best_garli_score("$SCRATCH" . "t1.0.0.screen.log");
+        $ra_delta_dist->[$ch][$ts] = $best_ml_score - $best_t1_score;
+        
+    } elsif ($recalc) {
         $best_ml_score = _get_best_score("$SCRATCH" . "RAxML_info.ml.$tag");
         $best_t1_score = _get_best_score("$SCRATCH" . "RAxML_info.t1.$tag");
         $ra_delta_dist->[$ch][$ts] = $best_ml_score - $best_t1_score;
@@ -1460,6 +1591,38 @@ sub evaluate_distribution {
 
     my $fd_file = _print_freq_dist($ra_deltaprime_dist->[$ch],$name,$reps);
     return ($best_ml_score,$best_t1_score,$rh_stats,$ra_deltaprime_dist->[$ch],$fd_file);
+}
+
+# IN: number of repetitions
+#     flag for constrained ml score
+#     iteration
+#     string consisting of rep and run
+# OUT: array of likelihood scores
+# JOB: parse likelihood scores from RAxML output
+sub _get_distribution_from_garli {
+    my $reps = shift;
+    my $w_const = shift;
+    my $j = shift;
+    my $tag = shift;
+    my @dist = ();
+    for (my $i = 0; $i <= $j; $i++) {
+        my $file = '';
+        if ($w_const) {
+            $file = "$SCRATCH" . "t1.$tag.$i.screen.log";
+        } else {
+            $file = "$SCRATCH" . "ml.$tag.$i.screen.log";
+        }
+        open IN, $file or _my_die("cannot open $file:$!");
+        while (my $line = <IN>) {
+            if ($line =~ m/^Final score = (\S+)/) {
+                my $likelihood = $1;
+                _my_die("unexpected multiple matches in $file") if ($dist[$i]);
+                $dist[$i] = $likelihood;
+            }
+            chomp $line;
+        }
+    }
+    return \@dist;
 }
 
 # IN: number of repetitions
@@ -1492,6 +1655,23 @@ sub _get_distribution {
         }
     }
     return \@dist;
+}
+
+# IN: filename
+# OUT: likelihood score
+# JOB: parse likelihood score of real data
+sub _get_best_garli_score {
+    my $file = shift;
+    my $ml_score = '';
+    open IN, $file or _my_die("cannot open $file:$!");
+    while (my $line = <IN>) {
+        chomp $line;
+        if ($line =~ m/^Final score = (\S+)/) {
+            $ml_score = $1;
+        }
+    }
+    die "could not get ml score from garli ($file)" unless ($ml_score);
+    return $ml_score;
 }
 
 
@@ -1807,8 +1987,13 @@ sub print_report {
         print OUT "  $arg \\\n";
     }
     print OUT "\n  \$SEQGEN variable set to $SEQGEN\n";
-    print OUT "  \$RAX variable set to $RAX\n";
-    print OUT "  RAxML was version $version\n";
+    if ($rh_opts->{'usegarli'}) {
+        print OUT "  \$GARLI variable set to $GARLI\n";
+        print OUT "  garli was version $version\n";
+    } else {
+        print OUT "  \$RAX variable set to $RAX\n";
+        print OUT "  RAxML was version $version\n";
+    }
     print OUT "\nDistributions and frequencies printed to:\n $fd_file\n";
     print OUT "\nTest Statistic:\n";
     print OUT "    ML value of best tree: $best_ml\n";
@@ -1867,6 +2052,7 @@ sub usage {
     --name=NAME_FOR_REPORT
     --model=MODEL
     --dir=DIR
+    --max
     [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS]
     [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS]
     [--usegarli]
@@ -1881,7 +2067,7 @@ sub usage {
     [--partition=PARTITION_FILE]
     [--rerun]
     [--restart]
-    [--gaps]
+    [--nogaps]
     [--debug]
     [--help]
     [--version]\n";
@@ -1899,7 +2085,7 @@ Samuel H. Church <samuel_church@brown.edu>, Joseph F. Ryan <joseph.ryan@whitney.
 
 =head1 SYNOPSIS 
 
-sowhat --constraint=NEWICK_CONSTRAINT_TREE --aln=PHYLIP_ALIGNMENT --name=NAME_FOR_REPORT --model=MODEL --dir=DIR [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] [--usegarli] [--garli=GARLI_BINARY_ORPATH_PLUS_OPTIONS] [--garli_conf=PATH_TO_GARLI_CONF_FILE] [--usepb] [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS] [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] [--reps=NUMBER_OF_REPLICATES] [--runs=NUMBER_OF_RUNS] [--partition=PARTITION_FILE] [--rerun] [--debug] [--help] [--version]\n";
+sowhat --constraint=NEWICK_CONSTRAINT_TREE --aln=PHYLIP_ALIGNMENT --name=NAME_FOR_REPORT --model=MODEL --dir=DIR [--max] [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] [--usegarli] [--garli=GARLI_BINARY_ORPATH_PLUS_OPTIONS] [--garli_conf=PATH_TO_GARLI_CONF_FILE] [--usepb] [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS] [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] [--reps=NUMBER_OF_REPLICATES] [--runs=NUMBER_OF_RUNS] [--partition=PARTITION_FILE] [--rerun] [--debug] [--help] [--version]\n";
 
 =head1 constraint
 
@@ -1944,6 +2130,9 @@ This is the directory where ouput files will be sent.
 =head1 OPTIONS
 
 =over 2
+
+=item B<--max>
+This option maximizes the number of free parameters used for simulations. 
 
 =item B<--rax>
 
@@ -2014,9 +2203,9 @@ This option will adjust the SOWH test to account for variability in the maximum 
 =item B<--restart>
 
 This option allows the user to restart a test without reconstructing the null distribution. The final two iterations are removed to eliminate any trees not fully completed. The statistics will be parsed again from the output files of RAxML and the report will be calculated at each iteration.
-=item B<--gaps>
+=item B<--nogaps>
 
-This option will propogate the undetermined sites in the original dataset into all simulated datasets before they are evaluted.
+By default sowhat will propogate the undetermined sites in the original dataset into all simulated datasets before they are evaluted.  Use this option to turn this behavior off. Simulated datasets will have no gaps.
 
 =item B<--debug>
 
