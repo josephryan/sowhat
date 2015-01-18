@@ -26,6 +26,7 @@ use strict;
 use warnings;
 use Getopt::Long;
 use Pod::Usage;
+use File::Temp;
 use Data::Dumper;
 use Cwd;
 #use local lib if installing Statistics::R without sudo cpan
@@ -184,6 +185,7 @@ sub process_options {
                                 "dir=s" => \$rh_opts->{'dir'},
                                  "gaps" => \$rh_opts->{'gaps'},
                               "garli=s" => \$rh_opts->{'garli'},
+                         "garli_conf=s" => \$rh_opts->{'garli_conf'},
                                  "help" => \$rh_opts->{'help'},
                               "model=s" => \$rh_opts->{'mod'},
                                "name=s" => \$rh_opts->{'name'},
@@ -206,6 +208,10 @@ sub process_options {
     $PPRED = $rh_opts->{'ppred'} if ($rh_opts->{'ppred'});
     if ($rh_opts->{'usegarli'}) {
         $rh_opts->{'garli_conf'} or die "--garli_conf is required with --usegarli\n";
+        if ($rh_opts->{'mod'}) {
+            warn "  cannot use --model with --usegarli\n";
+            die "  model should be supplied in conf file\n";
+        }
         $GARLI = $rh_opts->{'garli'} if ($rh_opts->{'garli'});
         check_garli_version();
     }
@@ -216,19 +222,48 @@ sub process_options {
     $QUIET = 0 if ($rh_opts->{'debug'});
     die "$VERSION\n" if ($rh_opts->{'version'});
     pod2usage({-exitval => 0, -verbose => 2}) if $rh_opts->{'help'};
-    unless ($rh_opts->{'constraint_tree'} &&
+    if ($rh_opts->{'usegarli'}) {
+        check_constraint_tree_for_operators($rh_opts->{'constraint_tree'});
+        unless ($rh_opts->{'constraint_tree'} &&
+                $rh_opts->{'aln'} &&
+                $rh_opts->{'name'}) {
+            warn "missing --constraint\n" unless ($rh_opts->{'constraint_tree'});
+            warn "missing --aln\n" unless ($rh_opts->{'aln'});
+            warn "missing --name\n" unless ($rh_opts->{'name'});
+            usage();
+        }
+    } else {
+        unless ($rh_opts->{'constraint_tree'} &&
             $rh_opts->{'aln'} &&
             $rh_opts->{'mod'} &&
             $rh_opts->{'name'}) {
-        warn "missing --constraint\n" unless ($rh_opts->{'constraint_tree'});
-        warn "missing --aln\n" unless ($rh_opts->{'aln'});
-        warn "missing --name\n" unless ($rh_opts->{'name'});
-        warn "missing --model\n" unless ($rh_opts->{'mod'});
-        usage();
+            warn "missing --constraint\n" unless ($rh_opts->{'constraint_tree'});
+            warn "missing --aln\n" unless ($rh_opts->{'aln'});
+            warn "missing --name\n" unless ($rh_opts->{'name'});
+            warn "missing --model\n" unless ($rh_opts->{'mod'});
+        }
     }
     $NAME = $rh_opts->{'name'};
     set_out_dir($rh_opts->{'dir'});
     return $rh_opts;
+}
+
+sub check_constraint_tree_for_operators {
+    my $tre = shift;
+    open IN, $tre or die "cannot open $tre:$!";
+    while (my $line = <IN>) {
+        if ($line =~ m/^\s*\(/) {
+            warn "error: garli constraint tree must start with '+' or '-'\n";
+            warn "       for example: '+((1,3,5),2,4,6,7,8);\n";
+            die "       see garli manual\n";
+        } elsif ($line =~ m/^\s*\+/) {
+            return 1;
+        } elsif ($line =~ m/^\s*\-/) {
+            return 1;
+        }
+    }
+    warn "unexpected constraint tree: $tre\n";
+    die "tree should look like: '+((1,3,5),2,4,6,7,8);'\n";
 }
 
 sub check_garli_version {
@@ -348,13 +383,51 @@ sub run_initial_trees {
     my $rh_opts = shift;
     my $restart = shift;
     my $tag = shift;
+    my $conf = $rh_opts->{'garli_conf'};
     my $aln = $rh_opts->{'aln'};
     my $part = $rh_opts->{'part'};
     my $mod = $rh_opts->{'mod'};
     my $tre = $rh_opts->{'constraint_tree'};
 
-    _run_best_tree('ml',$aln,$part,$mod,$restart,$tag);
-    _run_best_tree('t1',$aln,$part,$mod,$restart,$tag,$tre);
+    if ($rh_opts->{'usegarli'}) {
+        _run_best_tree_w_garli("ml.$tag",$conf,$aln,$restart);
+        _run_best_tree_w_garli("t1.$tag",$conf,$aln,$restart,$tre);
+    } else {
+        _run_best_tree_w_raxml('ml',$aln,$part,$mod,$restart,$tag);
+        _run_best_tree_w_raxml('t1',$aln,$part,$mod,$restart,$tag,$tre);
+    }
+}
+
+sub _run_best_tree_w_garli {
+    my $prefix = shift;
+    my $conf   = shift;
+    my $aln    = shift;
+    my $const  = shift;
+    my ($fh,$file) = File::Temp::tempfile( SUFFIX => '.garli.conf',
+                                   UNLINK => 1,
+                                   DIR => $SCRATCH);
+    open IN, $conf or die "cannot open $conf:$!";
+    print $fh "datafname = $aln\n";
+    print $fh "ofprefix = $SCRATCH/$prefix\n";
+    print $fh "searchreps = 1\n";
+    print $fh "outputphyliptree = 1\n";
+    if ($const) {
+        print $fh "constraintfile = $const\n";
+    }
+    while (my $line = <IN>) {
+        next if ($line =~ m/^\s*outputphyliptree\s*=\s/i);
+        next if ($line =~ m/^\s*datafname\s*=\s/i);
+        next if ($line =~ m/^\s*constraintfile\s*=\s/i);
+        next if ($line =~ m/^\s*ofprefix\s*=\s/i);
+        next if ($line =~ m/^\s*searchreps\s*=\s/i);
+        print $fh $line;
+    }
+    my $cmd = "$GARLI $file";
+    if ($QUIET) {
+        $cmd .= " >> ${DIR}sowh_stdout_$NAME.txt ";
+        $cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
+    }
+    safe_system($cmd);
 }
 
 # IN:  title          (-n for raxml)
@@ -367,7 +440,7 @@ sub run_initial_trees {
 # OUT: none
 # JOB: format the command line for running raxml tree
 #      only includes -q partitionfile or -t treefile if they are supplied     
-sub _run_best_tree {
+sub _run_best_tree_w_raxml {
     my $title   = shift;
     my $aln     = shift;
     my $part    = shift;
@@ -460,8 +533,15 @@ sub get_params {
     my $ra_params = ();
     my $ra_rates = ();
 
-    # ZZZ if garli
-    if ($mod =~ m/^GTRGAMMA/i) {
+    if ($rh_opts->{'usegarli'}) {
+        my $nt_or_aa = _get_nt_or_aa_from_garli_conf($rh_opts->{'garli_conf'});
+        if ($nt_or_aa eq 'nt') {
+            ($ra_aln_len,$codon_flag,$ra_params) = get_params_garli_nt($tag,$aln);
+            $rh_opts->{'mod'} = 'GTR';
+        } else {
+            ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) = get_params_garli_aa($tag,$aln);
+        }
+    } elsif ($mod =~ m/^GTRGAMMA/i) {
         ($ra_aln_len,$codon_flag,$ra_params) =
            _model_gtrgamma($aln,$part,$restart,$tre,$tag);
     } elsif ($mod =~ m/^PROT/i) {
@@ -481,6 +561,100 @@ sub get_params {
 #print Dumper $ra_rates;
 #exit;
     return ($ra_aln_len,$codon_flag,$ra_params,$ra_rates);   
+}
+
+sub get_params_garli_aa {
+    my $tag = shift;
+    my $aln = shift;
+    my $flag = 0;
+    my ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,0);
+    my %params = ('type' => 'AA');
+    my @rates = ();
+    open GARL, "$SCRATCH/t1.$tag.screen.log" or die "$SCRATCH/t1.$tag.screen.log:$!";
+    while (my $line = <GARL>) {
+        if ($line =~ m/Equilibrium State Frequencies/) {
+            $flag++;
+        } elsif ($flag == 2) {
+            $flag = 3;
+        } elsif ($flag == 3) {
+            if ($line =~ m/Rate Heterogeneity Model/) {
+                $flag = 4;
+            } else {
+                $line =~ s/^\s+//;
+                my @fs = split /\s+/, $line;
+                $params{'freqs'} .= "$fs[0] $fs[1] $fs[2] $fs[3] $fs[4] ";
+            }
+        } elsif ($flag == 4 && $line =~ m/Parameter estimates/) {
+            $flag = 5;
+        } elsif ($flag == 5) {
+            $flag = 6;
+        } elsif ($flag == 6) {
+            die "unexpected garli log:$line " unless ($line =~ m/^rep 1:/);
+            $line =~ s/^rep 1:\s+//;
+            my @fs = split /\s+/, $line;
+            $params{'pinv'}  = pop @fs;
+            $params{'alpha'} = pop @fs;
+            if (scalar(@fs) >= 190) {
+                my @garli_rates = @fs[0..189];
+                @rates = _resort_rates(\@garli_rates);
+            }
+            $flag = 0;
+        }
+    }
+    $params{'freqs'} = resort_freqs($params{'freqs'});
+    # weird array of params is because
+    # if this was partitioned we would have multiple params and rates
+    return ($ra_aln_len,$codon_flag,[\%params],\@rates);
+}
+
+sub get_params_garli_nt {
+    my $tag = shift;
+    my $aln = shift;
+    open GARL, "$SCRATCH/t1.$tag.screen.log" or die "$SCRATCH/t1.tag.screen.log:$!";
+    my $flag = 0;
+    my ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,0);
+    my %params = ('type' => 'DNA');
+    while (my $line = <GARL>) {
+        if ($line =~ m/Parameter estimates/) {
+            $flag = 1;
+        } elsif ($flag == 1) {
+            $flag = 2;
+        } elsif ($flag == 2) {
+            die "unexpected garli log:$line " unless ($line =~ m/^rep 1:/);
+            $line =~ s/^rep 1:\s+//;
+            my @fs = split /\s+/, $line;
+            die "unexpected # of elements:@fs " unless (scalar(@fs) == 12);
+            $params{'rates'}->{'ac'} = $fs[0];
+            $params{'rates'}->{'ag'} = $fs[1];
+            $params{'rates'}->{'at'} = $fs[2];
+            $params{'rates'}->{'ct'} = $fs[3];
+            $params{'rates'}->{'cg'} = $fs[4];
+            $params{'rates'}->{'gt'} = $fs[5];
+            $params{'freqs'} = "$fs[6] $fs[7] $fs[8] $fs[9] ";
+            $params{'alpha'} = $fs[10];
+            $params{'pinv'} = $fs[11];
+            $flag = 0;
+        }
+    }
+    return ($ra_aln_len,$codon_flag,[\%params]);
+}
+
+sub _get_nt_or_aa_from_garli_conf {
+    my $conf = shift;
+    open IN, $conf or die "cannot open $conf:$!";
+    while (my $line = <IN>) {
+        next unless ($line =~ m/^\s*datatype\s*=\s*(\S+)\s*/i);
+        my $dt = $1;
+        my $lc_dt = lc($dt);
+        if ($lc_dt eq 'aminoacid') {
+            return 'aa';
+        } elsif ($lc_dt eq 'nucleotide') {
+            return 'nt';
+        } else {
+            die "sowhat only accepts 'nucleotide' or 'aminoacid' as datatype. In your conf file ($conf) you provided $dt\n";
+        }
+    }
+    die "error:did not specificy datatype in garli_conf: $conf";
 }
 
 # IN: alignment file
@@ -776,21 +950,20 @@ sub generate_alignments {
     my $reps = shift;
     my $restart = shift;
     my $tag = shift;
-    my $recalc = $rh_opts->{'rerun'};
     my $gapflag = $rh_opts->{'gaps'};
-    my $mod = $rh_opts->{'mod'};
     my $aln = $rh_opts->{'aln'};
-    _run_seqgen($ra_aln_len,$ra_params,$ra_rates,$mod,$reps,$recalc,$restart,$tag);
+
+    _run_seqgen($rh_opts,$ra_aln_len,$ra_params,$ra_rates,$reps,$restart,$tag);
+exit;
     my $ra_ds = _build_datasets(scalar(@{$ra_params}),$aln,$gapflag,$tag);
     my $ra_alns = _make_alns($ra_ds,$aln,$tag);
 }
 
-# IN: array of alignment lengths
+# IN: opts hash
+#     array of alignment lengths
 #     array of parameter values
 #     array of transition rates
-#     model
 #     number of reps (datasets to generate)
-#     recalc flag
 #     restart flag
 #     string consisting of rep and run
 # OUT: none
@@ -801,15 +974,16 @@ sub generate_alignments {
 #      run seqgen
 #      if binary data, convert data type in simulated datasets
 sub _run_seqgen {
+    my $rh_opts    = shift;
     my $ra_part_lens = shift;
     my $ra_params = shift;
     my $ra_rates  = shift;
-    my $model     = shift;
     my $reps      = shift;
-    my $recalc    = shift;
     my $restart   = shift;
     my $tag       = shift;
     my $count     = 0;
+    my $recalc    = $rh_opts->{'rerun'};
+    my $model = $rh_opts->{'mod'};
     for (my $i = 0; $i < @{$ra_params}; $i++) {
         my $rh_part = $ra_params->[$i];
         my $cmd = "$SEQGEN -or ";
@@ -828,11 +1002,18 @@ sub _run_seqgen {
         } else {
             _my_die(qq~do not know how to handle type: "$rh_part->{'type'}"\n~);
         }
-        if ($recalc) {
-        $cmd .= " < $SCRATCH" . "$TRE_PREFIX.t1.$tag > $SCRATCH" . "seqgen.out.$tag.$count";
-        } else { 
-        $cmd .= " < $SCRATCH" . "$TRE_PREFIX.t1.0.0 > $SCRATCH" . "seqgen.out.$tag.$count";
+        my $tre = "$TRE_PREFIX.t1.0.0";
+         
+        if ($recalc && $rh_opts->{'usegarli'}) {
+            $tre = "t1.$tag.best.phy";
+        } elsif ($recalc) {
+            $tre = "$TRE_PREFIX.t1.$tag";
+        } elsif ($rh_opts->{'usegarli'}) {
+            $tre = 't1.0.0.best.phy';
+        } else {
+            die "unexpected";
         }
+        $cmd .= " < $SCRATCH" . "$tre > $SCRATCH" . "seqgen.out.$tag.$count";
         $cmd .= " 2>> ${DIR}sowh_stderr_$NAME.txt" if ($QUIET);
         $count++;
         safe_system($cmd) unless($restart);
