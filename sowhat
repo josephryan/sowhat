@@ -864,16 +864,26 @@ sub _get_params_from_const_rax {
         } if ($line =~ m/^alpha\[/) {
             @fields = split/alpha/, $line;
             foreach my $f (@fields) {
-                if ($f =~ m/^\[(\d+)\]: ([0-9.]+)(?: invar\[\d+\]: [0-9.]+)?( rates\[\d+\] ([^:]+): (.*))?/) {
+                if ($f =~ m/^\[(\d+)\]: ([0-9.]+)( invar\[\d+\]: ([0-9.]+))?( rates\[\d+\] ([^:]+): ([0-9.\s]+))?(\s?ML estimate base freqs\[\d+\]: ((([0-9.]+)\s)+))?/) {
                     $part_num = $1;
                     $data[$part_num]->{'alpha'} = $2;
-                    my $rate1 = $4;
-                    my $rate2 = $5;
-                    next unless ($rate1);
-                    my @code  = split /\s+/, $rate1 ;
-                    my @rates = split /\s+/, $rate2;
-                    for (my $i = 0; $i < @code; $i++) {
-                        $data[$part_num]->{'rates'}->{$code[$i]} = $rates[$i];
+                    my $invar1 = $4;
+                    my $rate1 = $6;
+                    my $rate2 = $7;
+                    my $freq1 = $9;
+                    next unless ($invar1||$rate1||$freq1);
+                    if ($invar1) {
+                        $data[$part_num]->{'pinv'} = $invar1;
+                    }
+                    if ($rate1) {
+                        my @code  = split /\s+/, $rate1;
+                        my @rates = split /\s+/, $rate2;
+                        for (my $i = 0; $i < @code; $i++) {
+                            $data[$part_num]->{'rates'}->{$code[$i]} = $rates[$i];
+                        }
+                    }
+                    if ($freq1) {
+                        $data[$part_num]->{'freqs'} = "$freq1";
                     }
                 }
             }
