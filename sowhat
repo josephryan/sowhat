@@ -62,7 +62,7 @@ MAIN: {
     } else {
         $ver = get_version();
     }
-    my $restart_num = 0;
+
     my $alns_to_gen = 1;
     my (@delta_dist,@deltaprime_dist,@mean,@current_mean); 
     my (@current_score,@pen_score,@ratio,@ratio_count);
@@ -72,11 +72,7 @@ MAIN: {
     my $ra_alns = [];
     my $ra_rates = [];
     my $ra_aln_len = [];
-
-    if ($rh_opts->{'restart'}) {
-        ($restart_num) = restart($rh_opts);
-    }
-
+    my $restart_num = restart($rh_opts);
     print_initial_messages($rh_opts);
     
     for (my $ts = 0; $ts < $rh_opts->{'reps'}; $ts++) {
@@ -376,21 +372,34 @@ sub get_version {
 #      where to resume the test
 sub restart {
     my $rh_opts = shift;
-    my $reps = $rh_opts->{'reps'};
-    die "cannot restart if using garli\n" if ($rh_opts->{'usegarli'});
-    my $max = 0;
+    my $high_file_num = 0;
     my $num = 0;
     my $fileml = '';
-    for (my $i = 0; $i < $reps; $i++) {
-        $fileml = "$SCRATCH/RAxML_info.ml.0.$i.0";
+    my $reps = $rh_opts->{'reps'};
+    for (my $i = 0; $i < $reps; $i++) { 
+        if($rh_opts->{'usegarli'}) {
+            $fileml = "$SCRATCH" . "ml.0.$i.0.screen.log";
+        } else {
+            $fileml = "$SCRATCH" . "RAxML_info.ml.0.$i.0";
+        }
         if (-e $fileml) {
-            $max = $i;
+            $high_file_num = $i;
         }
     }
-    unlink glob "$SCRATCH/*0.$max.0*";
-    $num = ($max - 1);
-    unlink glob "$SCRATCH/*0.$num.0*";
-    $num = ($max - 2);
+    if($rh_opts->{'restart'} && $rh_opts->{'usegarli'}) {
+        unlink glob "$SCRATCH/*0.$high_file_num.0*";
+        $num = ($high_file_num - 1);
+        unlink glob "$SCRATCH/*0.$num.0*";
+        $num = ($high_file_num - 2);        
+    } elsif($rh_opts->{'restart'}) {
+        unlink glob "$SCRATCH/*0.$high_file_num.0*";
+        $num = ($high_file_num - 1);
+        unlink glob "$SCRATCH/*0.$num.0*";
+        $num = ($high_file_num - 2);
+    } elsif($high_file_num) {
+        warn "    sowhat output files with that name already exist\n";
+        die  "     use --restart if you want to pick up where you left off\n";
+    } 
     return $num;
 }
 
