@@ -153,6 +153,72 @@ MAIN: {
     }
 }
 
+sub resort_freqs {
+    my $freq_str = shift;
+    my @fr = split /\s+/, $freq_str;
+    my $str = "$fr[0] $fr[14] $fr[11] $fr[2] $fr[1] $fr[13] $fr[3] $fr[5] $fr[6] $fr[7] $fr[9] $fr[8] $fr[10] $fr[4] $fr[12] $fr[15] $fr[16] $fr[18] $fr[19] $fr[17] ";
+    return $str;
+}
+
+#  IN: Garli-sorted rates
+# OUT: Garli rates in an order for seq-gen
+# garli rates are ordered differently than raxml and seq-gen so we
+# need to resort them.
+sub resort_rates {
+    my $ra_r = shift;
+    my %garli = ();
+    my @resorted = ();
+    my @aa = qw(A C D E F G H I K L M N P Q R S T V W Y);
+    my $count = 0;
+    for (my $i = 0; $i < @aa; $i++) {
+        for (my $j = 0; $j < @aa; $j++) {
+            next if ($i > $j);
+            if ($i == $j) {
+                $garli{$aa[$i]}->{$aa[$j]} = 0.0;
+            } else {
+                $garli{$aa[$i]}->{$aa[$j]} = $ra_r->[$count];
+                $garli{$aa[$j]}->{$aa[$i]} = $ra_r->[$count];
+                $count++;
+            }
+        }
+    }
+    my @rax_aa = qw(A R N D C Q E G H I L K M F P S T W Y V);
+    my $rax_count = 0;
+    for (my $i = 0; $i < @rax_aa; $i++) {
+        for (my $j = 0; $j < @rax_aa; $j++) {
+            $resorted[$i]->[$j] = $garli{$rax_aa[$i]}->{$rax_aa[$j]};
+        }
+        $rax_count++;
+    }
+    return \@resorted;
+}
+
+sub run_garli {
+    my $prefix = shift;
+    my $conf   = shift;
+    my $aln    = shift;
+    my $const  = shift;
+
+    my ($fh,$file) = File::Temp::tempfile( SUFFIX => '.garli.conf',
+                                   UNLINK => 1,
+                                   DIR => $SCRATCH);
+    open IN, $conf or die "cannot open $conf:$!";
+    print $fh "datafname = $aln\n";
+    print $fh "ofprefix = $SCRATCH/$prefix\n";
+    print $fh "searchreps = 1\n";
+    if ($const) {
+        print $fh "constraintfile = $const\n";
+    }
+    while (my $line = <IN>) {
+        next if ($line =~ m/^\s*datafname\s*=\s/i);
+        next if ($line =~ m/^\s*constraintfile\s*=\s/i);
+        next if ($line =~ m/^\s*ofprefix\s*=\s/i);
+        next if ($line =~ m/^\s*searchreps\s*=\s/i);
+        print $fh $line;
+    }
+    safe_system("$GARLI $file");
+}
+
 # IN: hashref with options
 # OUT: none
 # JOB: prints messages to user at beginning of run
@@ -623,7 +689,7 @@ sub get_params_garli_aa {
             $params{'alpha'} = pop @fs;
             if (scalar(@fs) >= 190) {
                 my @garli_rates = @fs[0..189];
-                @rates = _resort_rates(\@garli_rates);
+                @rates = resort_rates(\@garli_rates);
             }
             $flag = 0;
         }
