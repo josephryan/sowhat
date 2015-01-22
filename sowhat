@@ -83,7 +83,6 @@ MAIN: {
         #LOOP: For the number of runs, perform each repetition of the test.
         #      This loop allows multiple runs to be performed simultaneously.
 
-            my $pb_id = '';
             my $codon_flag = 0;
             my $tag = "$ch.$ts";
             
@@ -99,7 +98,7 @@ MAIN: {
             #and get the parameter values.
                 run_initial_trees($rh_opts,$restart_flag,$tag);
                 if ($rh_opts->{'usepb'}) {
-                    ($pb_id)=get_params_w_pb($rh_opts,$alns_to_gen,$restart_flag,$tag);
+                    get_params_w_pb($rh_opts,$alns_to_gen,$restart_flag,$tag);
                 } else {
                     ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) = 
                     get_params($rh_opts,$restart_flag,$tag);
@@ -108,7 +107,7 @@ MAIN: {
 
             if ($rh_opts->{'usepb'}) {
                 $ra_alns = generate_alignments_w_pb($rh_opts,$alns_to_gen,
-                $restart_flag,$tag,$pb_id);
+                $restart_flag,$tag);
             } else {
                 $ra_alns = generate_alignments($ra_aln_len,$ra_params,
                 $ra_rates,$rh_opts,$alns_to_gen,$restart_flag,$tag);
@@ -573,7 +572,6 @@ sub get_params_w_pb {
         $pb_cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
     }
     safe_system($pb_cmd) unless($restart);
-    return ($id);
 }
 
 # IN:  command-line options hash
@@ -590,7 +588,12 @@ sub generate_alignments_w_pb {
     my $reps = shift;
     my $restart = shift;
     my $tag = shift;
-    my $id = shift;
+    my $id = '';
+    if ($rh_opts->{'recalc'}) {
+        $id = "$SCRATCH" . $rh_opts->{'name'} . ".$tag"; 
+    } else {
+        $id = "$SCRATCH" . $rh_opts->{'name'} . ".0.0";
+    }
 
     my @alns = ();
     my $ppred_cmd = "$PPRED -x $PB_BURN $PB_SAMPLING_FREQ $id";
