@@ -64,9 +64,9 @@ MAIN: {
     }
 
     my $alns_to_gen = 1;
-    my (@delta_dist,@deltaprime_dist,@mean,@current_mean); 
-    my (@current_score,@pen_score,@ratio,@ratio_count);
-    my (@perc_ratio);
+    my (@delta_dist,@deltaprime_dist,@mean,@var,@stdev,@rse,@ks); 
+    my (@current_score,@pen_score,@ratio_mean,@ratio_var,@ratio_stdev,@ratio_rse,@ratio_count);
+    my (@perc_ratio,@mc_count,@pval_mc);
     my $ra_params = [];
     my $ra_recalc_flag = [];
     my $ra_alns = [];
@@ -123,28 +123,26 @@ MAIN: {
 
                 ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) =
                 evaluate_distribution($alns_to_gen,$rh_opts->{'name'},
-                    $rh_opts->{'rerun'},\@delta_dist,\@deltaprime_dist,\@mean,
-                    \@current_mean,\@current_score,\@pen_score,$i,$ts,$ch,
-                    $tag,$rh_opts);
+                    $rh_opts->{'rerun'},\@delta_dist,\@deltaprime_dist,
+                    \@mean,\@var,\@stdev,\@rse,\@ks,
+                    \@current_score,\@pen_score,$i,$ts,$ch,$tag,$rh_opts);
             }
 
             if ($ch == ($rh_opts->{'runs'} - 1)) {
             #After a successive iteration on all runs, 
-            #evaluate statistics across runs and create a graph
-
-                calculate_run_split(\@current_mean,\@mean,$ch,$tag);
-                if ($ch) {
-                    plot_runs(\@mean,$rh_opts->{'runs'},$ts);
-                }
+            #create a graph
+                plot_runs(\@mean,$rh_opts->{'runs'},$ts) if ($ch);
             }
 
             if($ts > 9) {
             #After 10 iterations on all runs,
             # begin to calculate and report the statistics.
-                calc_ratio($ch,$ts,\@current_score,\@pen_score,\@ratio,\@mean);
+                calc_ratio($ch,$ts,\@current_score,\@pen_score,
+                    \@ratio_mean,\@ratio_var,\@ratio_stdev,\@ratio_rse,
+                    \@mean,\@var,\@stdev,\@rse,\@ks);
                 print_report($ch,$ts,$best_ml,$best_t1,$rh_stats,$ra_diff,
-                \@delta_dist,\@ratio,$rh_opts,$fd_file,\@ratio_count,
-                \@perc_ratio,$ver);
+                \@delta_dist,\@ratio_mean,\@ratio_var,\@ratio_stdev,\@ratio_rse,
+                $rh_opts,$fd_file,\@ratio_count,\@perc_ratio,\@mc_count,\@pval_mc,$ver);
             } else {
                 print "-";
             }
@@ -505,14 +503,12 @@ sub _run_best_tree_w_garli {
                 }
                 
                 print $fh "ratehetmodel = gamma\n";
-                print $fh "numratecats = 4\n";
                 print $fh "invariantsites = estimate\n";
                 next;
             }
             next if ($line =~ m/^\s*ratematrix\s*=\s/i);
             next if ($line =~ m/^\s*statefrequencies\s*=\s/i);
             next if ($line =~ m/^\s*ratehetmodel\s*=\s/i);
-            next if ($line =~ m/^\s*numratecats\s*=\s/i);
             next if ($line =~ m/^\s*invariantsites\s*=\s/i);
         }
         print $fh $line;
@@ -523,8 +519,6 @@ sub _run_best_tree_w_garli {
         $cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
     }
     safe_system($cmd) unless($restart);
-    close IN;
-    File::Temp::cleanup();
 }
 
 # IN:  title          (-n for raxml)
@@ -703,7 +697,6 @@ sub _parse_info_from_garli_conf {
     } else {
         $model = "$rate";
     }
-    close IN;
     return ($datatype,$model);
 }
 
@@ -757,8 +750,6 @@ sub _model_garli_aa {
 sub _get_params_from_garli_nt {
     my $file = shift;
     my $datatype = shift;
-    my %paramflds = ();
-    my @tts = ();
     my %params = ();
     $params{'type'} = $datatype;
     open IN, $file or die "$file:$!";
@@ -767,43 +758,24 @@ sub _get_params_from_garli_nt {
         if ($line =~ m/Parameter estimates/) {
             $flag = 1;
         } elsif ($flag == 1) {
-            if ($line =~ m/Model contains no estimated parameters/) {
-                $params{'rates'}->{'ac'} = '1';
-                $params{'rates'}->{'ag'} = '1';
-                $params{'rates'}->{'at'} = '1';
-                $params{'rates'}->{'ct'} = '1';
-                $params{'rates'}->{'cg'} = '1';
-                $params{'rates'}->{'gt'} = '1';
-                $params{'freqs'} = "0.25 0.25 0.25 0.25 "; 
-                $flag = 0;
-            } else {
-                $line =~ s/^\s+//;
-                @tts = split /\s+/, $line;
-                $flag = 2;
-            }
-        } elsif ($flag == 2) { 
-            if ($line =~ m/^rep 1:/) {
-                $line =~ s/^rep 1:\s+//;
-                my @fs = split /\s+/, $line;
-                for(my $i = 0; $i < @tts; $i++) {
-                    $paramflds{"$tts[$i]"} = $fs[$i];
-                }
-                $params{'rates'}->{'ac'} = $paramflds{'r(AC)'};
-                $params{'rates'}->{'ag'} = $paramflds{'r(AG)'};
-                $params{'rates'}->{'at'} = $paramflds{'r(AT)'};
-                $params{'rates'}->{'ct'} = $paramflds{'r(CT)'};
-                $params{'rates'}->{'cg'} = $paramflds{'r(CG)'};
-                $params{'rates'}->{'gt'} = $paramflds{'r(GT)'};
-                $params{'freqs'} = "$paramflds{'pi(A)'} $paramflds{'pi(C)'} $paramflds{'pi(G)'} $paramflds{'pi(T)'} ";
-                $params{'alpha'} = $paramflds{'alpha'} || '0';
-                $params{'pinv'} = $paramflds{'pinv'} || '0';
-            } else {
-                die "unexpected garli log";
-            }
+            $flag = 2;
+        } elsif ($flag == 2) {
+            die "unexpected garli log:$line " unless ($line =~ m/^rep 1:/);
+            $line =~ s/^rep 1:\s+//;
+            my @fs = split /\s+/, $line;
+            die "unexpected # of elements:@fs " unless (scalar(@fs) == 12);
+            $params{'rates'}->{'ac'} = $fs[0];
+            $params{'rates'}->{'ag'} = $fs[1];
+            $params{'rates'}->{'at'} = $fs[2];
+            $params{'rates'}->{'ct'} = $fs[3];
+            $params{'rates'}->{'cg'} = $fs[4];
+            $params{'rates'}->{'gt'} = $fs[5];
+            $params{'freqs'} = "$fs[6] $fs[7] $fs[8] $fs[9] ";
+            $params{'alpha'} = $fs[10];
+            $params{'pinv'} = $fs[11];
             $flag = 0;
         }
     }
-    close IN;
     return ([\%params]);
 }
 
@@ -811,8 +783,6 @@ sub _get_params_from_garli_aa {
     my $file = shift;
     my $datatype = shift;
     my $flag = 0;
-    my %paramflds = ();
-    my @tts = ();
     my %params = ();
     $params{'type'} = $datatype;
     my @rates = ();
@@ -833,18 +803,13 @@ sub _get_params_from_garli_aa {
         } elsif ($flag == 4 && $line =~ m/Parameter estimates/) {
             $flag = 5;
         } elsif ($flag == 5) {
-            $line =~ s/^\s+//;
-            @tts = split /\s+/, $line;
             $flag = 6;
         } elsif ($flag == 6) {
             die "unexpected garli log:$line " unless ($line =~ m/^rep 1:/);
             $line =~ s/^rep 1:\s+//;
             my @fs = split /\s+/, $line;
-            for(my $i = 0; $i < @tts; $i++) {
-                $paramflds{"$tts[$i]"} = $fs[$i];
-            }            
-            $params{'pinv'}  = $paramflds{'pinv'} || '0';
-            $params{'alpha'} = $paramflds{'alpha'} || '0';
+            $params{'pinv'}  = pop @fs;
+            $params{'alpha'} = pop @fs;
             if (scalar(@fs) >= 190) {
                 my @garli_rates = @fs[0..189];
                 @rates = @garli_rates;
@@ -854,7 +819,6 @@ sub _get_params_from_garli_aa {
         }
     }
     $params{'freqs'} = resort_freqs($params{'freqs'});
-    close IN;
     # weird array of params is because
     # if this were partitioned we would have multiple params and rates
     return ([\%params],\@rates);
@@ -885,9 +849,9 @@ sub _model_gtrgamma {
     } elsif ($rh_opts->{'max'}) {
         if ($part) {
             my $ra_part_names = _make_unlinked_partition_file($part,'DNAX',$new_part);
-            _run_best_tree_w_raxml('par',$aln,$new_part,'GTRGAMMAIX',$restart,$tag,$tre);
+            _run_best_tree_w_raxml('par',$aln,$new_part,'GTRGAMMAX',$restart,$tag,$tre);
         } else {
-            _run_best_tree_w_raxml('par',$aln,$part,'GTRGAMMAIX',$restart,$tag,$tre);
+            _run_best_tree_w_raxml('par',$aln,$part,'GTRGAMMAX',$restart,$tag,$tre);
         }
         $ra_params = _get_params_from_const_rax("$SCRATCH" ."RAxML_info.par.$tag");
     } else {
@@ -930,10 +894,10 @@ sub _model_prot {
     } elsif ($rh_opts->{'max'}) {
         if ($part) {
             my $ra_part_names = _make_unlinked_partition_file($part,'GTR_UNLINKED',$new_part);
-            _run_best_tree_w_raxml('par',$aln,$new_part,'PROTGAMMAIGTR_UNLINKED',$restart,$tag,$tre);
+            _run_best_tree_w_raxml('par',$aln,$new_part,'PROTGAMMAGTR_UNLINKED',$restart,$tag,$tre);
             $ra_rates = _parse_rates($tag,'par',$ra_part_names);
         } else {
-            _run_best_tree_w_raxml('par',$aln,$part,'PROTGAMMAIGTR_UNLINKED',$restart,$tag,$tre);
+            _run_best_tree_w_raxml('par',$aln,$part,'PROTGAMMAGTR_UNLINKED',$restart,$tag,$tre);
             $ra_rates = _parse_rates($tag,'par');
         }
         $ra_params = _get_params_from_const_rax("$SCRATCH" ."RAxML_info.par.$tag");
@@ -966,7 +930,7 @@ sub _model_character_data {
     my $part = $rh_opts->{'part'};
     my $tre = $rh_opts->{'tre'};
     my ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,$part);
-    if ($rh_opts->{'mod'} =~ m/MULTIGAMMAIX/i) {
+    if ($rh_opts->{'mod'} =~ m/MULTIGAMMAX/i) {
         $ra_params = _get_params_from_const_rax("$SCRATCH" ."RAxML_info.t1.$tag");
     } elsif ($rh_opts->{'max'}) {
         _run_best_tree_w_raxml('par',$aln,$part,'MULTIGAMMAX',$restart,$tag,$tre);
@@ -1005,7 +969,6 @@ sub _get_partition_lengths {
                 _my_die("unexpected line in $part");
             }
         }
-        close IN;
     } else {
         open IN, $aln or _my_die("cannot open $aln:$!");
         my $line = <IN>;
@@ -1014,7 +977,6 @@ sub _get_partition_lengths {
         } else {
             _my_die("Alignment file should be in PHYLIP format\n");
         }
-        close IN;
     }
     return (\@lens,$codon_flag);
 }
@@ -1077,7 +1039,6 @@ sub _get_params_from_const_rax {
             }
         }
     }
-    close IN;
     return \@data;
 } 
 
@@ -1115,7 +1076,6 @@ sub _get_aa_part_info {
         $name_range[0] =~ s/\s//g;
         push @names, $name_range[0];
    }
-   close IN;
    return (\@part_info,\@names);
 }
 
@@ -1132,7 +1092,6 @@ sub _print_unlinked_part {
     for (my $i = 0; $i < @{$part_info}; $i++) {
        print OUT "$model," . "$part_info->[$i]\n";
     }
-    close OUT;
 }
 
 # IN: string consisting of rep and run
@@ -1154,7 +1113,6 @@ sub _parse_rates {
                 push @local_rates, \@fields;
             }
             push @rates, \@local_rates;
-            close IN;
         }
     } else {
         my $matrix = "$SCRATCH" . $PART_RATE_MATRIX_PREFIX . ".$par_or_t1.$tag" . "_Partition_No Name Provided";
@@ -1163,7 +1121,6 @@ sub _parse_rates {
             my @fields = split/\s/, $line;
             push @{$rates[0]}, \@fields;
         }
-        close IN;
     }
     return \@rates;
 }
@@ -1223,9 +1180,8 @@ sub _run_seqgen {
         my $rh_part = $ra_params->[$i];
         my $cmd = "$SEQGEN -or ";
         $cmd .= "-l$ra_part_lens->[$i] ";
-        $cmd .= "-a$rh_part->{'alpha'} " if($rh_part->{'alpha'});
+        $cmd .= "-a$rh_part->{'alpha'} ";
         $cmd .= "-n$reps ";
-        $cmd .= "-i$rh_part->{'pinv'} " if($rh_part->{'pinv'});
         if ($rh_part->{'type'} eq 'DNA') {
             $cmd .= "-mGTR ";
             $cmd .= _get_dna_params($rh_part);
@@ -1437,7 +1393,6 @@ sub _get_ids_from_seqgen_out {
         my @fields = split /\s+/, $line;
         push @ids, $fields[0];
     }
-    close OUT;
     return \@ids;
 }
 
@@ -1460,7 +1415,6 @@ sub _get_seqs_from_seqgen_out {
         my @fields = split /\s+/, $line;
         push @{$seqs[$count]}, $fields[1];
     }
-    close OUT;
     return \@seqs;
 }
 
@@ -1556,7 +1510,6 @@ sub _make_alns {
         open OUT, ">$file" or _my_die("cannot open >$file:$!");
         print OUT $ra_ds->[$i];
         push @files, $file;
-        close OUT;
     }
     return \@files;
 }
@@ -1633,9 +1586,7 @@ sub _run_garli_on_genset {
         $cmd .= " >> ${DIR}sowh_stdout_$NAME.txt ";
         $cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
     }
-    close IN;
     safe_system($cmd) unless($restart);
-    File::Temp::cleanup();
 }
 
 # IN: parition file
@@ -1655,7 +1606,6 @@ sub _get_part_titles {
             _my_die("unexpected line in $part");
         }
     }
-    close IN;
     return \@titles;
 }
 
@@ -1689,7 +1639,6 @@ sub _print_new_part_file {
         print OUT "$ra_part_titles->[$i]";
         print OUT "$ra_ranges->[$i]\n";
     }
-    close OUT;
 }
 
 # IN: array of simulated alignments
@@ -1765,7 +1714,10 @@ sub evaluate_distribution {
     my $ra_delta_dist = shift;
     my $ra_deltaprime_dist = shift;
     my $ra_mean = shift;
-    my $ra_current_mean = shift;
+    my $ra_var = shift;
+    my $ra_stdev = shift;
+    my $ra_rse = shift;
+    my $ra_ks = shift;
     my $ra_current_score = shift;
     my $ra_pen_score = shift;
     my $i = shift;
@@ -1815,8 +1767,12 @@ sub evaluate_distribution {
 
     my $rh_stats = _get_stats($ra_delta_dist->[$ch],$ra_deltaprime_dist->[$ch]);
     $ra_mean->[$ch][$ts] = $rh_stats->{'mean'};
-    $ra_current_mean->[$ch] = $rh_stats->{'mean'};
-    $ra_current_score->[$ch] = $rh_stats->{'mean'};
+    $ra_var->[$ch][$ts] = $rh_stats->{'var'};
+    $ra_stdev->[$ch][$ts] = $rh_stats->{'stdev'};
+    $ra_rse->[$ch][$ts] = $rh_stats->{'rse'};
+    $ra_ks->[$ch][$ts] = $rh_stats->{'ks'};
+
+    $ra_current_score->[$ch] = $rh_stats;
 
     my $fd_file = _print_freq_dist($ra_deltaprime_dist->[$ch],$name,$reps);
     return ($best_ml_score,$best_t1_score,$rh_stats,$ra_deltaprime_dist->[$ch],$fd_file);
@@ -1850,7 +1806,6 @@ sub _get_distribution_from_garli {
             }
             chomp $line;
         }
-        close OUT;
     }
     return \@dist;
 }
@@ -1883,7 +1838,6 @@ sub _get_distribution {
             }
             chomp $line;
         }
-        close OUT;
     }
     return \@dist;
 }
@@ -1902,7 +1856,6 @@ sub _get_best_garli_score {
         }
     }
     die "could not get ml score from garli ($file)" unless ($ml_score);
-    close OUT;
     return $ml_score;
 }
 
@@ -1923,7 +1876,6 @@ sub _get_best_score {
             $ml_score = $1;
         }
     }
-    close OUT;
     return $ml_score;
 }
 
@@ -1934,47 +1886,56 @@ sub _get_best_score {
 sub _get_stats {
     my $ra_delta_dist = shift;
     my $ra_deltaprime_dist = shift;
+
     my $ts = scalar(@{$ra_deltaprime_dist});
     my $delta_string = @{$ra_delta_dist};
     my $deltaprime_string = @{$ra_deltaprime_dist};
+
     if($ts > 1) {
         $delta_string = join ', ', @{$ra_delta_dist};
         $deltaprime_string = join ', ', @{$ra_deltaprime_dist};
     }
-    my $R = Statistics::R->new() ;
-my $cmds = <<EOF;
-dtb <- c($deltaprime_string)
-teststat <- mean(c($delta_string))
-n <- $ts
-mn <- mean(dtb)
-md <- median(dtb)
-if (n > 9) {
-    q25 <- quantile(dtb,0.25,names=FALSE)
-    q75 <- quantile(dtb,0.75,names=FALSE)
-    rk <- length(dtb[dtb > teststat])
-    p <- (rk / n)
-    pu <- (p + (1.96)*sqrt((1/n)*(p*(1-p))))
-    pl <- (p - (1.96)*sqrt((1/n)*(p*(1-p)))) 
-} else {
-    q25 <- NULL
-    q75 <- NULL
-    rk <- NULL
-    p <- NULL
-    pu <- NULL
-    pl <- NULL
-}
-mn
-n
-teststat
-rk
-p
-pu
-pl
-md
-q25
-q75
+
+
+
+    my $R = Statistics::R->new();
+    $R->startR();
+     
+    my $cmds = <<EOF;
+    options(warn=-1)
+    statmean <- mean(c($deltaprime_string))
+    statsd <- sd(c($deltaprime_string))
+    statnum <- $ts
+    stattest <- mean(c($delta_string))
+    oldz <- (stattest - statmean)/(statsd/sqrt(statnum))
+    oldp <-  pnorm(oldz, lower.tail = FALSE)
+    statvar <- var(c($deltaprime_string))
+    statse <- (statsd/sqrt(statnum))
+    statrse <- abs((statse/statmean) * 100)
+    x <- c()
+    ksmean <- 0
+    if (statnum > 4) {
+        for (i in 1:100) {
+            half1 <- sample(c($deltaprime_string),statnum/2)
+            half2 <- setdiff(c($deltaprime_string),half1)
+            ks <- ks.test(half1,half2)
+            ksp <- ks\$p.value
+            x[i] <- ksp
+            ksmean <- mean(x)
+        }
+    }
+    statmean
+    statsd
+    statnum
+    stattest
+    oldp
+    statvar
+    statse
+    statrse
+    ksmean
 EOF
     my $r_out = $R->run($cmds);
+    $R->stopR();
     my $rh_stats = _parse_stats($r_out);
     return $rh_stats;
 }
@@ -1988,15 +1949,14 @@ sub _parse_stats {
     $str =~ s/^\[\d+\] // or warn "unexpected output from R";
     my @data = split /\n\[\d+\] /, $str;
     $stats{'mean'} = $data[0];
-    $stats{'sample_size'} = $data[1];
-    $stats{'teststat'} = $data[2];
-    $stats{'rank'} = $data[3];
-    $stats{'pval'} = $data[4];
-    $stats{'pu'} = $data[5];
-    $stats{'pl'} = $data[6];
-    $stats{'median'} = $data[7];
-    $stats{'firstquart'} = $data[8];
-    $stats{'thridquart'} = $data[9];
+    $stats{'stdev'} = $data[1];
+    $stats{'sample_size'} = $data[2];
+    $stats{'diff'} = $data[3];
+    $stats{'oldp'} = $data[4];
+    $stats{'var'} = $data[5];
+    $stats{'se'} = $data[6];
+    $stats{'rse'} = $data[7];
+    $stats{'ks'} = $data[8];
     return \%stats;
 }
 
@@ -2055,7 +2015,9 @@ sub plot_runs {
             $ra_mean_str->[$i] = "m[,($i + 1)] <- c(" . join ( ', ', @{$ra_mean->[$i]}) . ');';
             $i++;
         }
-        my $ra_str = join ( "\n", @{$ra_mean_str});  
+        my $ra_str = join ( "\n", @{$ra_mean_str});
+        $R->startR();
+  
         my $cmds = <<EOF;
 m <- data.frame(row.names=1:($ts + 1))
 $ra_str
@@ -2068,36 +2030,8 @@ lines(m[,i],type="l",col=i)
 dev.off()
 EOF
         my $r_out = $R->run($cmds);
+        $R->stopR();
     }
-}
-
-# IN: array of current mean of null
-#     array of all means of null
-#     run
-#     rep
-# OUT: none
-# JOB: calculate difference between runs
-sub calculate_run_split {
-    my $ra_current_mean = shift;
-    my $ra_mean = shift;
-    my $ch = shift;
-    my $tag = shift;
-    my $file = $DIR . "sowhat.runs.info";
-    open OUT, ">$file" or _my_die("cannot open >$file:$!");
-    foreach my $ra_m (@{$ra_mean}) {
-        print OUT "\nMean of null distribution of run as sample increases: \n";
-        foreach my $val (@{$ra_m}) {
-            print OUT "$val\n";
-        }
-    }
-    foreach my $val (@{$ra_current_mean}) { 
-        print OUT "\nFinal Mean of Run = $val";
-    }
-    for (my $i = 1; $i <= $ch; $i++) {
-        my $diff = $ra_current_mean->[$i] - $ra_current_mean ->[($i - 1)];
-        print OUT "\nDifference between runs " . ($i - 1) .  " and $i: $diff\n";
-    }
-    close OUT;
 }
 
 # IN: run
@@ -2115,42 +2049,107 @@ sub calc_ratio {
     my $ts = shift;
     my $ra_current_score = shift;
     my $ra_pen_score = shift;
-    my $ra_ratio = shift;
+    my $ratio_mean = shift;
+    my $ratio_var = shift;
+    my $ratio_stdev = shift;
+    my $ratio_rse = shift;
     my $ra_mean = shift;
-    my $calc_ratio = 0;
-    my $current_score = $ra_current_score->[$ch];
-    my $pen_score = $ra_pen_score->[$ch];
-    if($pen_score) {
-        $calc_ratio = $current_score / $pen_score;
-    } else {
-        $calc_ratio = '0';
+    my $ra_var = shift;
+    my $ra_stdev = shift;
+    my $ra_rse = shift;
+    my $ra_ks = shift;
+    
+    my $rh_current = $ra_current_score->[$ch];
+    my $rh_pen= $ra_pen_score->[$ch];
+    
+    $ratio_mean->[$ch][$ts] = abs(1-($rh_current->{'mean'} / $rh_pen->{'mean'}));
+    $ratio_var->[$ch][$ts] = abs(1-($rh_current->{'var'} / $rh_pen->{'var'}));
+    $ratio_stdev->[$ch][$ts] = abs(1-($rh_current->{'stdev'} / $rh_pen->{'stdev'}));
+    $ratio_rse->[$ch][$ts] = abs(1-($rh_current->{'rse'} / $rh_pen->{'rse'}));
+
+    for(my $j=0; $j < 11; $j++) {
+        $ratio_mean->[$ch][$j] = 0;
+        $ratio_var->[$ch][$j] = 0;
+        $ratio_stdev->[$ch][$j] = 0;
+        $ratio_rse->[$ch][$j] = 0;
+        $ra_mean->[$ch][$j] = 0;
+        $ra_var->[$ch][$j] = 0;
+        $ra_stdev->[$ch][$j] = 0;
+        $ra_rse->[$ch][$j] = 0;
+        $ra_ks->[$ch][$j] = 0;
     }
-    $ra_ratio->[$ch][$ts] = abs(1-$calc_ratio);
 
-    my $R = Statistics::R->new();
-    for(my $j=0; $j < 10; $j++) {
-        $ra_ratio->[$ch][$j] = 0;
-    }
+    my $ratio_m = $ratio_mean->[$ch];
+    my $ratio_v = $ratio_var->[$ch];
+    my $ratio_s = $ratio_stdev->[$ch];
+    my $ratio_r = $ratio_rse->[$ch];
 
-    $ra_ratio = $ra_ratio->[$ch]; 
-    $ra_mean = $ra_mean->[$ch]; 
+    my $ra_m = $ra_mean->[$ch];
+    my $ra_v = $ra_var->[$ch];
+    my $ra_s = $ra_stdev->[$ch];
+    my $ra_r = $ra_rse->[$ch];
+    my $ra_k = $ra_ks->[$ch];
 
-    if(scalar(@{$ra_ratio}) > 1) {
-        my $ratio_str = join ', ', @{$ra_ratio};
-        my $mean_str = join ', ', @{$ra_mean};
-        my $cmds = <<EOF;
-rationull <- c($ratio_str)
-postscript("$DIR/ratio.$ch.eps",horizontal = FALSE, onefile = FALSE, paper = "special",width=4.0,height=4.0)
-par(mar=c(5, 4, 4, 2) + 0.1)
-plot(rationull,ylim=c(min(rationull),max(rationull)),ylab="1 - Ratio", xlab="Sample Size",pch=20) 
-dev.off()
-meannull <- c($mean_str)
-postscript("$DIR/mean.$ch.eps",horizontal = FALSE, onefile = FALSE, paper = "special",width=4.0,height=4.0)
-par(mar=c(5, 4, 4, 2) + 0.1)
-plot(meannull,type="l",ylim=c(min(meannull),max(meannull)),ylab="Cumulative Mean of Null Distribution", xlab="Sample Size") 
-dev.off()
-EOF
-        my $r_out = $R->run($cmds);
+    if(scalar(@{$ra_m}) > 1) {
+        my $ratio_mean_str = join ', ', @{$ratio_m};
+        my $ratio_var_str = join ', ', @{$ratio_v};
+        my $ratio_stdev_str = join ', ', @{$ratio_s};
+        my $ratio_rse_str = join ', ', @{$ratio_r};
+
+        my $mean_str = join ', ', @{$ra_m};
+        my $var_str = join ', ', @{$ra_v};
+        my $stdev_str = join ', ', @{$ra_s};
+        my $rse_str = join ', ', @{$ra_r};
+        my $ks_str = join ', ', @{$ra_k};
+    
+        my $file = "$DIR" . "stopping.stats.r";
+        open OUT, ">$file" or _my_die("cannot open >$file:$!");
+        print OUT "rationull <- c($ratio_mean_str)\n";
+        print OUT "postscript(\"$DIR/ratiom.$ch.eps\",horizontal = FALSE, onefile = FALSE, paper = \"special\",width=4.0,height=4.0)\n";
+        print OUT "par(mar=c(5, 4, 4, 2) + 0.1)\n";
+        print OUT "plot(rationull,ylim=c(min(rationull),max(rationull)),ylab=\"1 - Ratio\", xlab=\"Sample Size\",pch=20)\n"; 
+        print OUT "dev.off()\n";
+        print OUT "rationull <- c($ratio_var_str)\n";
+        print OUT "postscript(\"$DIR/ratiov.$ch.eps\",horizontal = FALSE, onefile = FALSE, paper = \"special\",width=4.0,height=4.0)\n";
+        print OUT "par(mar=c(5, 4, 4, 2) + 0.1)\n";
+        print OUT "plot(rationull,ylim=c(min(rationull),max(rationull)),ylab=\"1 - Ratio\", xlab=\"Sample Size\",pch=20)\n"; 
+        print OUT "dev.off()\n";
+        print OUT "rationull <- c($ratio_stdev_str)\n";
+        print OUT "postscript(\"$DIR/ratios.$ch.eps\",horizontal = FALSE, onefile = FALSE, paper = \"special\",width=4.0,height=4.0)\n";
+        print OUT "par(mar=c(5, 4, 4, 2) + 0.1)\n";
+        print OUT "plot(rationull,ylim=c(min(rationull),max(rationull)),ylab=\"1 - Ratio\", xlab=\"Sample Size\",pch=20)\n"; 
+        print OUT "dev.off()\n";
+        print OUT "rationull <- c($ratio_rse_str)\n";
+        print OUT "postscript(\"$DIR/ratior.$ch.eps\",horizontal = FALSE, onefile = FALSE, paper = \"special\",width=4.0,height=4.0)\n";
+        print OUT "par(mar=c(5, 4, 4, 2) + 0.1)\n";
+        print OUT "plot(rationull,ylim=c(min(rationull),max(rationull)),ylab=\"1 - Ratio\", xlab=\"Sample Size\",pch=20)\n"; 
+        print OUT "dev.off()\n";
+        print OUT "meannull <- c($mean_str)\n";
+        print OUT "postscript(\"$DIR/mean.$ch.eps\",horizontal = FALSE, onefile = FALSE, paper = \"special\",width=4.0,height=4.0)\n";
+        print OUT "par(mar=c(5, 4, 4, 2) + 0.1)\n";
+        print OUT "plot(meannull,type=\"l\",ylim=c(min(meannull),max(meannull)),ylab=\"Cumulative Mean of Null Distribution\", xlab=\"Sample Size\")\n"; 
+        print OUT "dev.off()\n";
+        print OUT "meannull <- c($var_str)\n";
+        print OUT "postscript(\"$DIR/var.$ch.eps\",horizontal = FALSE, onefile = FALSE, paper = \"special\",width=4.0,height=4.0)\n";
+        print OUT "par(mar=c(5, 4, 4, 2) + 0.1)\n";
+        print OUT "plot(meannull,type=\"l\",ylim=c(min(meannull),max(meannull)),ylab=\"Cumulative Mean of Null Distribution\", xlab=\"Sample Size\")\n"; 
+        print OUT "dev.off()\n";
+        print OUT "meannull <- c($stdev_str)\n";
+        print OUT "postscript(\"$DIR/stdev.$ch.eps\",horizontal = FALSE, onefile = FALSE, paper = \"special\",width=4.0,height=4.0)\n";
+        print OUT "par(mar=c(5, 4, 4, 2) + 0.1)\n";
+        print OUT "plot(meannull,type=\"l\",ylim=c(min(meannull),max(meannull)),ylab=\"Cumulative Mean of Null Distribution\", xlab=\"Sample Size\")\n"; 
+        print OUT "dev.off()\n";
+        print OUT "meannull <- c($rse_str)\n";
+        print OUT "postscript(\"$DIR/rse.$ch.eps\",horizontal = FALSE, onefile = FALSE, paper = \"special\",width=4.0,height=4.0)\n";
+        print OUT "par(mar=c(5, 4, 4, 2) + 0.1)\n";
+        print OUT "plot(meannull,type=\"l\",ylim=c(min(meannull),max(meannull)),ylab=\"Cumulative Mean of Null Distribution\", xlab=\"Sample Size\")\n"; 
+        print OUT "dev.off()\n";
+        print OUT "meannull <- c($ks_str)\n";
+        print OUT "postscript(\"$DIR/ks.$ch.eps\",horizontal = FALSE, onefile = FALSE, paper = \"special\",width=4.0,height=4.0)\n";
+        print OUT "par(mar=c(5, 4, 4, 2) + 0.1)\n";
+        print OUT "plot(meannull,type=\"l\",ylim=c(min(meannull),max(meannull)),ylab=\"Cumulative Mean of Null Distribution\", xlab=\"Sample Size\")\n"; 
+        print OUT "dev.off()\n";
+
     }
 }
 
@@ -2166,6 +2165,8 @@ EOF
 #    frequency filename
 #    stopping ratio count
 #    stopping ration percent
+#    mc count
+#    mc p-value
 #    version
 # OUT: none
 # JOB: calculate percent of stopping score to sample
@@ -2180,13 +2181,18 @@ sub print_report {
     my $current_d = $ra_d->[$ts];
     my $ra_delta_dist = shift;
     $ra_delta_dist = $ra_delta_dist->[$ch];
-    my $ra_ratio = shift;
+    my $ratio_mean = shift;
+    my $ratio_var = shift;
+    my $ratio_stdev = shift;
+    my $ratio_rse = shift;
     my $rh_opts = shift;
     my $fd_file = shift;
     my $ra_ratio_count = shift;
     my $ra_perc_ratio = shift;
+    my $ra_mc_count = shift;
+    my $ra_pval_mc = shift;
     my $version = shift;
-    my $ratio = $ra_ratio->[$ch][$ts];
+    my $ratio = $ratio_rse->[$ch][$ts];
     my $file = '';
 
     if ($rh_opts->{'runs'} > 1) {
@@ -2202,9 +2208,15 @@ sub print_report {
         print ".";
     }
 
+    if($current_d >= $rh_s->{'diff'}) {
+        $ra_mc_count->[$ch]++;
+    }
+
     $ra_ratio_count->[$ch] = $ra_ratio_count->[$ch] || 0;
+    $ra_mc_count->[$ch] = $ra_mc_count->[$ch] || 0;
     
     $ra_perc_ratio->[$ch] = ($ra_ratio_count->[$ch] / $rh_s->{'sample_size'}) * 100;
+    $ra_pval_mc->[$ch]    = ($ra_mc_count->[$ch] / $rh_s->{'sample_size'});
     if($ra_perc_ratio->[$ch] > 50 && $rh_s->{'sample_size'} > 100) {
         exit if($rh_opts->{'stop'});
     }
@@ -2229,13 +2241,14 @@ sub print_report {
     print OUT "\nTest Statistic:\n";
     print OUT "    ML value of best tree: $best_ml\n";
     print OUT "    ML value of best tree w/constraint: $const_ml\n";
-    print OUT "    Difference between $best_ml and $const_ml: $rh_s->{'teststat'}\n";
+    print OUT "    Difference between $best_ml and $const_ml: $rh_s->{'diff'}\n";
     print OUT "\nStatistics of the null distribution:\n";
     print OUT "    Size of null distribution: $rh_s->{'sample_size'}\n";
     print OUT "    Mean of null distribution: $rh_s->{'mean'}\n";
-    print OUT "    Median of null distribution: $rh_s->{'median'}\n";
-    print OUT "    First quartile of null distribution: $rh_s->{'firstquart'}\n";
-    print OUT "    Third quartile of null distribution: $rh_s->{'thridquart'}\n";
+    print OUT "    Standard deviation of null distribution: $rh_s->{'stdev'}\n";
+    print OUT "    Standard error of null distribution: $rh_s->{'se'}\n";
+    print OUT "    Relative standard error: $rh_s->{'rse'}" . "%\n";
+    print OUT "    Variance of null distribution: $rh_s->{'var'}\n";
     print OUT "\nStopping Criteria:\n";
     print OUT "    The value of 1 - ratio of z-scores as the sample size increases\n";
     print OUT "    will approach 0. The percent of iterations which return values\n";
@@ -2244,13 +2257,9 @@ sub print_report {
     print OUT "\nSOWH test results:\n";
     print OUT "    The p-value represents the probability that the test statistic\n";
     print OUT "    would be observed under the null hypothesis.\n";
-    print OUT "\n    Rank of test statistic: $rh_s->{'rank'}\n";
-    print OUT "    p-value: $rh_s->{'pval'}\n";
-    print OUT "    Lower confidence interval of p-value: $rh_s->{'pl'}\n";
-    print OUT "    Upper confidence interval of p-value: $rh_s->{'pu'}\n";
-
-
-
+    print OUT "\n    Monte Carlo count $ra_mc_count->[$ch]\n";
+    print OUT "    Monte Carlo p-value: $ra_pval_mc->[$ch]\n";
+    print OUT "\n    Parametric test p-value: $rh_s->{'oldp'}\n";
     close OUT;
     open OUT, ">>$fd_file" or _my_die("cannot open >$fd_file:$!");
     print OUT "\nNull Distribution:\n";
@@ -2276,7 +2285,6 @@ sub _my_die {
     }
     warn "sowhat died unexpectedly\n";
     die $msg;
-    close IN;
 }
 
 sub usage {
