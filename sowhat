@@ -108,7 +108,7 @@ MAIN: {
                     ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) = 
                     get_params($rh_opts,$restart_flag,$tag);
                 }
-                if ($rh_opts->{'zeroconst'}) {
+                unless ($rh_opts->{'resolved'}) {
                     $rh_opts->{'gentree'} = generate_zero_const($rh_opts,$tag);
                 }
             }
@@ -260,6 +260,7 @@ sub process_options {
                               "ppred=s" => \$rh_opts->{'ppred'},
                                 "rax=s" => \$rh_opts->{'rax'},
                                "reps=i" => \$rh_opts->{'reps'},
+                             "resolved" => \$rh_opts->{'resolved'},
                                 "rerun" => \$rh_opts->{'rerun'},
                               "restart" => \$rh_opts->{'restart'},
                                "runs=i" => \$rh_opts->{'runs'},
@@ -269,7 +270,6 @@ sub process_options {
                              "useraxml" => \$rh_opts->{'useraxml'},
                          "usegentree=s" => \$rh_opts->{'gentree'},
                               "version" => \$rh_opts->{'version'},
-                             "zero_con" => \$rh_opts->{'zeroconst'},
                            );
     
     $PPRED = $rh_opts->{'ppred'} if ($rh_opts->{'ppred'});
