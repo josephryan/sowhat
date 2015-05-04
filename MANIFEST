@@ -7,8 +7,8 @@ sowhat
 sowhat.bibtex
 t/sowhat.t
 examples/H0.tre
-examples/H1.tre
-examples/H2.tre
+examples/H0.garli.tre
+examples/garli.conf
 examples/aa.partitions
 examples/aa.phy
 examples/nt.partitions
