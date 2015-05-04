@@ -2,50 +2,39 @@
 
 # The following are a set of tests that can be used to make sure
 # sowhat is running correctly and provide examples 
-# 
-# To make tests go faster add --reps=10
-# or --rax='raxmlHPC-PTHREADS -T3'
-# this is especially relevant to amino acid tests which take a while
-# 
 
-# Get set up
-mkdir -p test.output
+# TEST1: Datatype = DNA, Model = GTRGAMMA, ML Software = GARLI
+sowhat --constraint=examples/H0.garli.tre --aln=examples/nt.phy --garli_conf=examples/garli.conf --dir=test.output/test1 --name=test
 
+# TEST2: Datatype = AA, Model = GTRGAMMA, ML Software = GARLI
+sowhat --constraint=examples/H0.garli.tre --aln=examples/aa.phy --garli_conf=examples/aa.garli.conf --dir=test.output/test2 --name=test
 
-# TEST1: Nucleotide data under GTRGAMMA without partitions
-# constraint tree is much less likely than tree w/highest likelihood
-# p-value should be 0 or close to 0
-sowhat --constraint=examples/H1.tre --aln=examples/nt.phy --model=GTRGAMMA --dir=test.output/test1 --name=nt.H1
+# TEST3: Datatype = DNA, Model = GTRGAMMA, ML Software = RAxML
+sowhat --constraint=examples/H0.tre --aln=examples/nt.phy --useraxml --raxml_model=GTRGAMMA --dir=test.output/test3 --name=test
 
-# TEST2:
-# constraint tree is a viable hypothesis but not the tree w/highest likelihood
-# p-value should be > 0.05 
-sowhat --constraint=examples/H0.tre --aln=examples/nt.phy --model=GTRGAMMA --dir=test.output/test2 --name=nt.H0
+# TEST4: Datatype = AA, Model = GTRGAMMA, ML Software = RAxML
+sowhat --constraint=examples/H0.tre --aln=examples/aa.phy --useraxml --raxml_model=PROTGAMMAWAG --dir=test.output/test4 --name=test
 
-# TEST3:
-# this is a case where the SOWH test fails to provide a consistent answer
-# as to whether the constraint tree is a viable hypothesis 
-# p-value will vary (run several times and you will see)
-sowhat --constraint=examples/H2.tre --aln=examples/nt.phy --model=GTRGAMMA --dir=test.output/test3 --name=nt.H2
+# TEST5: Datatype = CHAR, Model = GTRGAMMA, ML Software = RAxML
+sowhat --constraint=examples/H0.tre --aln=examples/char.phy --useraxml --raxml_model=GTRGAMMA --dir=test.output/test5 --name=test
 
-# TEST4: Amino acid data under PROTGAMMAWAG with partitions
-# constraint tree is much less likely than tree w/highest likelihood
-# p-value should be 0 or close to 0
-sowhat --constraint=examples/H1.tre --aln=examples/aa.phy --partition=examples/aa.partitions --model=PROTGAMMAWAG --dir=test.output/test4 --name=aa.H1.parts
+# TEST6: Datatype = DNA, Model = GTRGAMMA, ML Software = RAxML, partitioned
+sowhat --constraint=examples/H0.tre --aln=examples/nt.phy --useraxml --raxml_model=GTRGAMMA --dir=test.output/test6 --name=test --partition=examples/nt.partitions
 
-# TEST5: Nucleotide data under GTRCAT with partitions
-# constraint tree is much less likely than tree w/highest likelihood
-# p-value should be 0 or close to 0
-sowhat --constraint=examples/H1.tre --aln=examples/nt.phy --partition=examples/nt.partitions --model=GTRCAT --dir=test.output/test5 --name=nt.H1.parts
+# TEST7: Datatype = AA, Model = GTRGAMMA, ML Software = GARLI, nogaps
+sowhat --constraint=examples/H0.garli.tre --aln=examples/aa.gaps.phy --garli_conf=examples/aa.garli.conf --dir=test.output/test7 --name=test --nogaps
 
-# TEST6: Binary character data 
-# constraint tree is much less likely than tree w/highest likelihood
-# p-value should be 0 or close to 0
-sowhat --constraint=examples/H1.tre --aln=examples/char.phy --model=MULTIGAMMA --dir=test.output/test6 --name=char.H1
+# TEST8: Datatype = DNA, Model = GTRGAMMA, ML Software = GARLI, rerun
+sowhat --constraint=examples/H0.garli.tre --aln=examples/nt.phy --garli_conf=examples/garli.conf --dir=test.output/test8 --name=test --rerun
 
-# TEST7: Nucleotide data using PhyloBayes for the null distribution
-sowhat --constraint=examples/H1.tre --aln=examples/nt.phy --model=GTRGAMMA --dir=test.output/test7 --name=nt.H1.pb --usepb
+# TEST9: Datatype = DNA, Model = GTRGAMMA, ML Software = GARLI, resolved generating topology
+sowhat --constraint=examples/H0.garli.tre --aln=examples/nt.phy --garli_conf=examples/garli.conf --dir=test.output/test9 --name=test --resolved
 
-# TEST8: CURRENT TEST - RUNS and RECALCULATE:
-sowhat --constraint=examples/H1.tre --aln=examples/nt.phy --model=GTRGAMMA --dir=test.output/test8 --name=nt.H1   --runs=2 --reps=100 --rerun
+# TEST10: Datatype = DNA, Model (likelihood) = GTRGAMMA, Model (simulate) = CAT_GTR (PhyloBayes), ML Software = RAxML, usepb
+sowhat --constraint=examples/H0.tre --aln=examples/nt.phy --useraxml --raxml_model=GTRGAMMA --dir=test.output/test10 --name=test --usepb
 
+# TEST11: Datatype = DNA, Model (likelihood) = JC69, Model (simulate) = GTRGAMMAI, ML Software = GARLI, max
+sowhat --constraint=examples/H0.garli.tre --aln=examples/nt.phy --garli_conf=examples/jc69.garli.conf --dir=test.output/test11 --name=test --max
+
+# TEST12: Datatype = DNA, Model = GTRGAMMA, ML Software = GARLI, number of tests = 100
+sowhat --constraint=examples/H0.garli.tre --aln=examples/nt.phy --garli_conf=examples/garli.conf --dir=test.output/test12 --name=test --runs=100

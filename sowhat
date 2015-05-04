@@ -276,15 +276,6 @@ sub process_options {
     if ($rh_opts->{'useraxml'}) {
         $USEGARLI = 0;
     }
-    if ($USEGARLI)  {
-        $rh_opts->{'garli_conf'} or die "--garli_conf is required with GARLI\n";
-        if ($rh_opts->{'mod'}) {
-            warn "  cannot use --model with GARLI\n";
-            die "  model should be supplied in conf file\n";
-        }
-        $GARLI = $rh_opts->{'garli'} if ($rh_opts->{'garli'});
-        $rh_opts->{'garli_version'} = check_garli_version();
-    }
     $PB = $rh_opts->{'pb'} if ($rh_opts->{'pb'});
     $PB_BURN = $rh_opts->{'pb_burn'} if ($rh_opts->{'pb_burn'});
     $RAX = $rh_opts->{'rax'} if ($rh_opts->{'rax'});
@@ -293,14 +284,21 @@ sub process_options {
     die "$VERSION\n" if ($rh_opts->{'version'});
     pod2usage({-exitval => 0, -verbose => 2}) if $rh_opts->{'help'};
     if ($USEGARLI)  {
+        $GARLI = $rh_opts->{'garli'} if ($rh_opts->{'garli'});
+        $rh_opts->{'garli_version'} = check_garli_version();
         check_constraint_tree_for_operators($rh_opts->{'constraint_tree'});
         unless ($rh_opts->{'constraint_tree'} &&
                 $rh_opts->{'aln'} &&
-                $rh_opts->{'name'}) {
+                $rh_opts->{'name'} &&
+                $rh_opts->{'garli_conf'}) {
             warn "missing --constraint\n" unless ($rh_opts->{'constraint_tree'});
             warn "missing --aln\n" unless ($rh_opts->{'aln'});
             warn "missing --name\n" unless ($rh_opts->{'name'});
             usage();
+        }
+        if ($rh_opts->{'mod'}) {
+            warn "  cannot use --model with GARLI\n";
+            die "  model should be supplied in conf file\n";
         }
     } else {
         unless ($rh_opts->{'constraint_tree'} &&
@@ -310,7 +308,7 @@ sub process_options {
             warn "missing --constraint\n" unless ($rh_opts->{'constraint_tree'});
             warn "missing --aln\n" unless ($rh_opts->{'aln'});
             warn "missing --name\n" unless ($rh_opts->{'name'});
-            warn "missing --model\n" unless ($rh_opts->{'mod'});
+            warn "missing --raxml_model\n" unless ($rh_opts->{'mod'});
         }
     }
     $NAME = $rh_opts->{'name'};
@@ -1994,15 +1992,19 @@ n <- $ts
 mn <- mean(dtb)
 md <- median(dtb)
 if (n > 9) {
-    q25 <- quantile(dtb,0.25,names=FALSE)
+    q0 <- quantile(dtb,0,names=FALSE)
     q75 <- quantile(dtb,0.75,names=FALSE)
+    q25 <- quantile(dtb,0.25,names=FALSE)
+    q100 <- quantile(dtb,1,names=FALSE)
     rk <- length(dtb[dtb > teststat])
     p <- (rk / n)
     pu <- (p + (1.96)*sqrt((1/n)*(p*(1-p))))
     pl <- (p - (1.96)*sqrt((1/n)*(p*(1-p)))) 
 } else {
+    q0 <- NULL
     q25 <- NULL
     q75 <- NULL
+    q100 <- NULL
     rk <- NULL
     p <- NULL
     pu <- NULL
@@ -2016,8 +2018,10 @@ p
 pu
 pl
 md
+q0
 q25
 q75
+q100
 EOF
     my $r_out = $R->run($cmds);
     my $rh_stats = _parse_stats($r_out);
@@ -2040,8 +2044,10 @@ sub _parse_stats {
     $stats{'pu'} = $data[5];
     $stats{'pl'} = $data[6];
     $stats{'median'} = $data[7];
-    $stats{'firstquart'} = $data[8];
-    $stats{'thridquart'} = $data[9];
+    $stats{'lowest'} = $data[8];
+    $stats{'firstquart'} = $data[9];
+    $stats{'thridquart'} = $data[10];
+    $stats{'highest'} = $data[11];
     return \%stats;
 }
 
@@ -2278,22 +2284,19 @@ sub print_report {
     print OUT "\nStatistics of the null distribution:\n";
     print OUT "    Size of null distribution: $rh_s->{'sample_size'}\n";
     print OUT "    Mean of null distribution: $rh_s->{'mean'}\n";
-    print OUT "    Median of null distribution: $rh_s->{'median'}\n";
-    print OUT "    First quartile of null distribution: $rh_s->{'firstquart'}\n";
-    print OUT "    Third quartile of null distribution: $rh_s->{'thridquart'}\n";
-    print OUT "\nStopping Criteria:\n";
-    print OUT "    The value of 1 - ratio of z-scores as the sample size increases\n";
-    print OUT "    will approach 0. The percent of iterations which return values\n";
-    print OUT "    of 1-ratio < 0.01 is shown. Sufficient sampling is >50%\n";
-    print OUT "    Percent Ratio: $ra_perc_ratio->[$ch]" . "%\n";
+    print OUT "    Quartiles:\n";
+    print OUT "        0%   = $rh_s->{'lowest'}\n";
+    print OUT "        25%  = $rh_s->{'firstquart'}\n";
+    print OUT "        50%  = $rh_s->{'median'}\n";
+    print OUT "        75%  = $rh_s->{'thridquart'}\n";
+    print OUT "        100% = $rh_s->{'highest'}\n";
     print OUT "\nSOWH test results:\n";
     print OUT "    The p-value represents the probability that the test statistic\n";
     print OUT "    would be observed under the null hypothesis.\n";
     print OUT "\n    Rank of test statistic: $rh_s->{'rank'}\n";
-    print OUT "    p-value: $rh_s->{'pval'}\n";
     print OUT "    Lower confidence interval of p-value: $rh_s->{'pl'}\n";
-    print OUT "    Upper confidence interval of p-value: $rh_s->{'pu'}\n";
-
+    print OUT "    Upper confidence interval of p-value: $rh_s->{'pu'}\n"; 
+    print OUT "\n    p-value: $rh_s->{'pval'}\n\n";
 
 
     close OUT;
@@ -2329,26 +2332,30 @@ sub usage {
     --constraint=NEWICK_CONSTRAINT_TREE
     --aln=PHYLIP_ALIGNMENT
     --name=NAME_FOR_REPORT
-    --model=MODEL
     --dir=DIR
-    --max
-    [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS]
-    [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS]
-    [--useraxml]
+    --garli_conf=PATH_TO_GARLI_CONF_FILE
+    [--debug]
     [--garli=GARLI_BINARY_OR_PATH_PLUS_OPTIONS]
-    [--garli_conf=PATH_TO_GARLI_CONF_FILE]
-    [--usepb]
-    [--stop]
+    [--help]
+    [--initial]
+    [--max]
+    [--raxml_model=MODEL_FOR_RAXML]
+    [--nogaps]
+    [--partition=PARTITION_FILE]
     [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS]
     [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS]
+    [--ppred=PPRED_BINARY_OR_PATH_PLUS_OPTIONS]
+    [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS]    
     [--reps=NUMBER_OF_REPLICATES]
-    [--runs=NUMBER_OF_RUNS]
-    [--partition=PARTITION_FILE]
+    [--resolved]
     [--rerun]
     [--restart]
-    [--nogaps]
-    [--debug]
-    [--help]
+    [--runs=NUMBER_OF_TESTS_TO_RUN]
+    [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS]
+    [--stop]
+    [--usepb]
+    [--useraxml]
+    [--usegentree=NEWICK_TREE_FOR_SIMULATING_DATA]
     [--version]\n";
 }
 
@@ -2356,15 +2363,14 @@ __END__
 
 =head1 NAME
 
-B<sowhat> - The SOWH-Test: A Paramentric Test of Topologies
+B<sowhat> - The SOWH Test: A Paramentric Test of Topologies
 
 =head1 AUTHOR
 
 Samuel H. Church <samuel_church@brown.edu>, Joseph F. Ryan <joseph.ryan@whitney.ufl.edu>, Casey W. Dunn <casey_dunn@brown.edu>
 
 =head1 SYNOPSIS 
-
-sowhat --constraint=NEWICK_CONSTRAINT_TREE --aln=PHYLIP_ALIGNMENT --name=NAME_FOR_REPORT --model=MODEL --dir=DIR [--max] [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] [--useraxml] [--garli=GARLI_BINARY_ORPATH_PLUS_OPTIONS] [--garli_conf=PATH_TO_GARLI_CONF_FILE] [--usepb] [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS] [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] [--reps=NUMBER_OF_REPLICATES] [--runs=NUMBER_OF_RUNS] [--partition=PARTITION_FILE] [--rerun] [--debug] [--help] [--version]\n";
+ sowhat --constraint=NEWICK_CONSTRAINT_TREE --aln=PHYLIP_ALIGNMENT --name=NAME_FOR_REPORT --dir=DIR [--debug] [--garli=GARLI_BINARY_OR_PATH_PLUS_OPTIONS] [--garli_conf=PATH_TO_GARLI_CONF_FILE] [--help] [--initial] [--max] [--raxml_model=MODEL_FOR_RAXML] [--nogaps] [--partition=PARTITION_FILE] [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS] [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] [--ppred=PPRED_BINARY_OR_PATH_PLUS_OPTIONS] [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS]     [--reps=NUMBER_OF_REPLICATES] [--resolved] [--rerun] [--restart] [--runs=NUMBER_OF_TESTS_TO_RUN] [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] [--stop] [--usepb] [--useraxml] [--usegentree=NEWICK_TREE_FOR_SIMULATING_DATA] [--version]\n";
 
 =head1 constraint
 
@@ -2390,14 +2396,6 @@ This is the name of the output files.
 
 =back
 
-=head1 model
-
-=over 2
-
-This is the model which will be used to estimate the likelihood scores of the original dataset the scores of each of the generated datasets with and without the topology constrained according to the hypothesis. GammaGTR is used to generate parameters for null dataset regardless of the model specified (unless --usepb is specified, in which case phylobayes is used to generate parameters).
-
-=back
-
 =head1 dir
 
 =over 2
@@ -2410,9 +2408,6 @@ This is the directory where ouput files will be sent.
 
 =over 2
 
-=item B<--max>
-This option maximizes the number of free parameters used for simulations. 
-
 =item B<--rax>
 
 <default: raxmlHPC>
@@ -2421,6 +2416,10 @@ This allows the user to specify the RAxML binary to be used in the analysis. It 
     --rax='raxmlHPC-PTHREADS-SSE3 -T 8'
 
     --rax='mpirun -n 8 raxmlHPC-MPI'
+
+=head1 raxml_model
+
+This is the model which will be used to estimate the likelihood scores of the original dataset the scores of each of the generated datasets with and without the topology constrained according to the hypothesis. GammaGTR is used to generate parameters for null dataset regardless of the model specified (unless --usepb is specified, in which case phylobayes is used to generate parameters).
 
 =item B<--seqgen>
 
@@ -2482,9 +2481,26 @@ This option will adjust the SOWH test to account for variability in the maximum 
 =item B<--restart>
 
 This option allows the user to restart a test without reconstructing the null distribution. The final two iterations are removed to eliminate any trees not fully completed. The statistics will be parsed again from the output files of RAxML and the report will be calculated at each iteration.
+
 =item B<--nogaps>
 
 By default sowhat will propogate the undetermined sites in the original dataset into all simulated datasets before they are evaluted.  Use this option to turn this behavior off. Simulated datasets will have no gaps.
+
+=item B<--initial>
+
+This will only run the first two trees, which are a constrained and unconstrained search of the provided dataset.
+
+=item B<--usegentree>
+
+By default SOWHAT will use the zero-costrained tree as the generating topology for simulated data. This option allows the user to provide some other topology.
+
+=item B<--resolved>
+
+By default SOWHAT will use the zero-constrained tree as the generating topology. This option causes data to be simulated instead on a fully resolved tree which conforms to the constraint tree (the alternative hypothesis to be tested).
+
+=item B<--max>
+
+By default SOWHAT performs likelihood searches and data simulation under the same user specified model. This option causes data to be simulated under a model which maximizes the number of free parameters.
 
 =item B<--debug>
 
