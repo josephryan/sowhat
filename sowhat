@@ -36,6 +36,7 @@ use Statistics::R;
 
 our $RAX = 'raxmlHPC';
 our $GARLI = 'garli';
+our $USEGARLI = '1';
 our $SEQGEN = 'seq-gen';
 our $PB = 'pb -f';
 our $PPRED = 'ppred';
@@ -58,7 +59,7 @@ our $SUBZERO = 0.001;
 MAIN: {
     my $rh_opts = process_options();
     my $ver = '';
-    if ($rh_opts->{'usegarli'}) {
+    if ($USEGARLI)  {
         $ver = $rh_opts->{'garli_version'};
     } else {
         $ver = get_version();
@@ -250,7 +251,7 @@ sub process_options {
                                  "help" => \$rh_opts->{'help'},
                               "initial" => \$rh_opts->{'initial'},
                                   "max" => \$rh_opts->{'max'},
-                              "model=s" => \$rh_opts->{'mod'},
+                        "raxml_model=s" => \$rh_opts->{'mod'},
                                "name=s" => \$rh_opts->{'name'},
                                "nogaps" => \$rh_opts->{'nogaps'},
                           "partition=s" => \$rh_opts->{'part'},
@@ -265,17 +266,20 @@ sub process_options {
                              "seqgen=s" => \$rh_opts->{'seqgen'},
                                  "stop" => \$rh_opts->{'stop'},
                                 "usepb" => \$rh_opts->{'usepb'},
-                             "usegarli" => \$rh_opts->{'usegarli'},
+                             "useraxml" => \$rh_opts->{'useraxml'},
                          "usegentree=s" => \$rh_opts->{'gentree'},
                               "version" => \$rh_opts->{'version'},
-                            "zeroconst" => \$rh_opts->{'zeroconst'},
+                             "zero_con" => \$rh_opts->{'zeroconst'},
                            );
-
+    
     $PPRED = $rh_opts->{'ppred'} if ($rh_opts->{'ppred'});
-    if ($rh_opts->{'usegarli'}) {
-        $rh_opts->{'garli_conf'} or die "--garli_conf is required with --usegarli\n";
+    if ($rh_opts->{'useraxml'}) {
+        $USEGARLI = 0;
+    }
+    if ($USEGARLI)  {
+        $rh_opts->{'garli_conf'} or die "--garli_conf is required with GARLI\n";
         if ($rh_opts->{'mod'}) {
-            warn "  cannot use --model with --usegarli\n";
+            warn "  cannot use --model with GARLI\n";
             die "  model should be supplied in conf file\n";
         }
         $GARLI = $rh_opts->{'garli'} if ($rh_opts->{'garli'});
@@ -288,7 +292,7 @@ sub process_options {
     $QUIET = 0 if ($rh_opts->{'debug'});
     die "$VERSION\n" if ($rh_opts->{'version'});
     pod2usage({-exitval => 0, -verbose => 2}) if $rh_opts->{'help'};
-    if ($rh_opts->{'usegarli'}) {
+    if ($USEGARLI)  {
         check_constraint_tree_for_operators($rh_opts->{'constraint_tree'});
         unless ($rh_opts->{'constraint_tree'} &&
                 $rh_opts->{'aln'} &&
@@ -426,7 +430,7 @@ sub restart {
     my $fileml = '';
     my $reps = $rh_opts->{'reps'};
     for (my $i = 0; $i < $reps; $i++) { 
-        if($rh_opts->{'usegarli'}) {
+        if($USEGARLI)  {
             $fileml = "$SCRATCH" . "ml.0.$i.0.screen.log";
         } else {
             $fileml = "$SCRATCH" . "RAxML_info.ml.0.$i.0";
@@ -435,7 +439,7 @@ sub restart {
             $high_file_num = $i;
         }
     }
-    if($rh_opts->{'restart'} && $rh_opts->{'usegarli'}) {
+    if($rh_opts->{'restart'} && $USEGARLI) {
         unlink glob "$SCRATCH/*0.$high_file_num.0*";
         $num = ($high_file_num - 1);
         unlink glob "$SCRATCH/*0.$num.0*";
@@ -468,7 +472,7 @@ sub run_initial_trees {
     my $mod = $rh_opts->{'mod'};
     my $tre = $rh_opts->{'constraint_tree'};
 
-    if ($rh_opts->{'usegarli'}) {
+    if ($USEGARLI)  {
         _run_best_tree_w_garli('ml',$conf,$aln,0,$restart,$tag);
         _run_best_tree_w_garli('t1',$conf,$aln,0,$restart,$tag,$tre);
     } else {
@@ -594,11 +598,11 @@ sub generate_zero_const {
     my $ml_tre = '';
     my $const_tre = $rh_opts->{'constraint_tree'};
     my $zero_const = "$DIR" . "zero_const.$tag.tre";
-    if ($rh_opts->{'rerun'} && $rh_opts->{'usegarli'}) {
+    if ($rh_opts->{'rerun'} && $USEGARLI) {
         $ml_tre = "$SCRATCH" . "ml.$tag.best.phy";
     } elsif ($rh_opts->{'rerun'}) {
         $ml_tre = "$SCRATCH" . "$TRE_PREFIX.ml.$tag";
-    } elsif ($rh_opts->{'usegarli'}) {
+    } elsif ($USEGARLI)  {
         $ml_tre  = "$SCRATCH" . "ml.0.0.best.phy";
     } else {
         $ml_tre  = "$SCRATCH" . "$TRE_PREFIX.ml.0.0";
@@ -668,7 +672,7 @@ sub get_params {
     my $ra_params = ();
     my $ra_rates = ();
 
-    if ($rh_opts->{'usegarli'}) {
+    if ($USEGARLI)  {
         my ($datatype,$model) = _parse_info_from_garli_conf($rh_opts->{'garli_conf'});
         $rh_opts->{'mod'} = $model;
 
@@ -1285,11 +1289,11 @@ sub _run_seqgen {
         
         if ($rh_opts->{'gentree'}) {
             $tre = $rh_opts->{'gentree'};
-        } elsif ($recalc && $rh_opts->{'usegarli'}) {
+        } elsif ($recalc && $USEGARLI) {
             $tre = "$SCRATCH" . "t1.$tag.best.phy";
         } elsif ($recalc) {
             $tre = "$SCRATCH" . "$TRE_PREFIX.t1.$tag";
-        } elsif ($rh_opts->{'usegarli'}) {
+        } elsif ($USEGARLI)  {
             $tre = "$SCRATCH" . "t1.0.0.best.phy";
         } else {
             $tre = "$SCRATCH" . "$TRE_PREFIX.t1.0.0";
@@ -1311,7 +1315,7 @@ sub _translate_model {
     my $mod = $rh_opts->{'mod'};
     $mod = uc($mod);
     my $core_mod = 0;
-    if ($rh_opts->{'usegarli'}) {
+    if ($USEGARLI)  {
         $core_mod = $mod;
         if ($core_mod =~ m/JONES/) {
             return 'JTT';
@@ -1623,7 +1627,7 @@ sub run_gen_trees {
     my $part = $rh_opts->{'part'};
     my $mod = $rh_opts->{'mod'};
     my $tre = $rh_opts->{'constraint_tree'};
-    if ($rh_opts->{'usegarli'}) {
+    if ($USEGARLI)  {
         _run_garli_on_genset($rh_opts,$ra_alns,$restart,$tag,$i);
         _run_garli_on_genset($rh_opts,$ra_alns,$restart,$tag,$i,$tre);
     } elsif ($codon_flag) {
@@ -1820,7 +1824,7 @@ sub evaluate_distribution {
     $ra_pen_score->[$ch] = $ra_current_score->[$ch];
 
     my ($ra_dist,$ra_const_dist);
-    if ($rh_opts->{'usegarli'}) {
+    if ($USEGARLI)  {
         $ra_dist = _get_distribution_from_garli($reps,0,$i,$tag);
         $ra_const_dist = _get_distribution_from_garli($reps,1,$i,$tag);
     } else {
@@ -1828,12 +1832,12 @@ sub evaluate_distribution {
         $ra_const_dist = _get_distribution($reps,1,$i,$tag);
     }
 
-    if ($rh_opts->{'usegarli'} && $recalc) {
+    if ($USEGARLI && $recalc) {
         $best_ml_score = _get_best_garli_score("$SCRATCH" . "ml.$tag.screen.log");
         $best_t1_score = _get_best_garli_score("$SCRATCH" . "t1.$tag.screen.log");
         $ra_delta_dist->[$ch][$ts] = $best_ml_score - $best_t1_score;
          
-    } elsif ($rh_opts->{'usegarli'}) {
+    } elsif ($USEGARLI)  {
         $best_ml_score = _get_best_garli_score("$SCRATCH" . "ml.0.0.screen.log");
         $best_t1_score = _get_best_garli_score("$SCRATCH" . "t1.0.0.screen.log");
         $ra_delta_dist->[$ch][$ts] = $best_ml_score - $best_t1_score;
@@ -2259,7 +2263,7 @@ sub print_report {
         print OUT "  $arg \\\n";
     }
     print OUT "\n  \$SEQGEN variable set to $SEQGEN\n";
-    if ($rh_opts->{'usegarli'}) {
+    if ($USEGARLI)  {
         print OUT "  \$GARLI variable set to $GARLI\n";
         print OUT "  garli was version $version\n";
     } else {
@@ -2330,7 +2334,7 @@ sub usage {
     --max
     [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS]
     [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS]
-    [--usegarli]
+    [--useraxml]
     [--garli=GARLI_BINARY_OR_PATH_PLUS_OPTIONS]
     [--garli_conf=PATH_TO_GARLI_CONF_FILE]
     [--usepb]
@@ -2360,7 +2364,7 @@ Samuel H. Church <samuel_church@brown.edu>, Joseph F. Ryan <joseph.ryan@whitney.
 
 =head1 SYNOPSIS 
 
-sowhat --constraint=NEWICK_CONSTRAINT_TREE --aln=PHYLIP_ALIGNMENT --name=NAME_FOR_REPORT --model=MODEL --dir=DIR [--max] [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] [--usegarli] [--garli=GARLI_BINARY_ORPATH_PLUS_OPTIONS] [--garli_conf=PATH_TO_GARLI_CONF_FILE] [--usepb] [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS] [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] [--reps=NUMBER_OF_REPLICATES] [--runs=NUMBER_OF_RUNS] [--partition=PARTITION_FILE] [--rerun] [--debug] [--help] [--version]\n";
+sowhat --constraint=NEWICK_CONSTRAINT_TREE --aln=PHYLIP_ALIGNMENT --name=NAME_FOR_REPORT --model=MODEL --dir=DIR [--max] [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] [--useraxml] [--garli=GARLI_BINARY_ORPATH_PLUS_OPTIONS] [--garli_conf=PATH_TO_GARLI_CONF_FILE] [--usepb] [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS] [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] [--reps=NUMBER_OF_REPLICATES] [--runs=NUMBER_OF_RUNS] [--partition=PARTITION_FILE] [--rerun] [--debug] [--help] [--version]\n";
 
 =head1 constraint
 
@@ -2432,17 +2436,17 @@ Use PhyloBayes (pb and ppred programs) to calculate null distribution parameters
 <default: pb>
 This allows the user to specify the pb binary or path to the binary to be used in the analysis. It could be useful to pass additional parameters to pb (only useful with --usepb)
 
-=item B<--usegarli>
+=item B<--useraxml>
 
-Use GARLI instead of RAXML for nucleotide data.
+Use RAXML instead of GARLI for nucleotide data.
 
 =item B<--garli>
 
 <default: garli>
-This allows the user to specify the garli binary or path to the binary to be used in the analysis. It could be useful to pass additional parameters to garli (only useful with --usegarli)
+This allows the user to specify the garli binary or path to the binary to be used in the analysis. It could be useful to pass additional parameters to garli.
 
 =item B<--garli_conf=PATH_TO_GARLI_CONF_FILE>
-If using garli (--usegarli) a garli conf file must be supplied (see examples directory of sowhat distribution for example)
+If using garli, a garli conf file must be supplied (see examples directory of sowhat distribution for example)
 
 =item B<--stop>
 
