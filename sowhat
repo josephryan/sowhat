@@ -20,7 +20,7 @@
 #    with this program; if not, write to the Free Software Foundation, Inc.,
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-our $VERSION = 0.20;
+our $VERSION = 0.21;
 
 use strict;
 use warnings;
@@ -51,6 +51,7 @@ our $FREQ_BIN_NUMBER = 10;
 our $TRE_PREFIX = 'RAxML_bestTree';
 our $NEW_PARTITION_FILE = 'new.part.txt';
 our $PART_RATE_MATRIX_PREFIX = 'RAxML_proteinGTRmodel';
+our $UTILITY = 'dependencies/utility_functions.R';
 our $NAME = '';
 our $SUBZERO = 0.001;
 
@@ -97,11 +98,17 @@ MAIN: {
             #For the first iteration of each run only, run the initial trees
             #and get the parameter values.
                 run_initial_trees($rh_opts,$restart_flag,$tag);
+                if ($rh_opts->{'initial'}) {
+                    exit;
+                }
                 if ($rh_opts->{'usepb'}) {
                     get_params_w_pb($rh_opts,$alns_to_gen,$restart_flag,$tag);
                 } else {
                     ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) = 
                     get_params($rh_opts,$restart_flag,$tag);
+                }
+                if ($rh_opts->{'zeroconst'}) {
+                    $rh_opts->{'gentree'} = generate_zero_const($rh_opts,$tag);
                 }
             }
 
@@ -241,6 +248,7 @@ sub process_options {
                               "garli=s" => \$rh_opts->{'garli'},
                          "garli_conf=s" => \$rh_opts->{'garli_conf'},
                                  "help" => \$rh_opts->{'help'},
+                              "initial" => \$rh_opts->{'initial'},
                                   "max" => \$rh_opts->{'max'},
                               "model=s" => \$rh_opts->{'mod'},
                                "name=s" => \$rh_opts->{'name'},
@@ -258,7 +266,9 @@ sub process_options {
                                  "stop" => \$rh_opts->{'stop'},
                                 "usepb" => \$rh_opts->{'usepb'},
                              "usegarli" => \$rh_opts->{'usegarli'},
+                         "usegentree=s" => \$rh_opts->{'gentree'},
                               "version" => \$rh_opts->{'version'},
+                            "zeroconst" => \$rh_opts->{'zeroconst'},
                            );
 
     $PPRED = $rh_opts->{'ppred'} if ($rh_opts->{'ppred'});
@@ -576,6 +586,33 @@ sub get_params_w_pb {
         $pb_cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
     }
     safe_system($pb_cmd) unless($restart);
+}
+
+sub generate_zero_const {
+    my $rh_opts = shift;
+    my $tag = shift;
+    my $ml_tre = '';
+    my $const_tre = $rh_opts->{'constraint_tree'};
+    my $zero_const = "$DIR" . "zero_const.$tag.tre";
+    if ($rh_opts->{'rerun'} && $rh_opts->{'usegarli'}) {
+        $ml_tre = "$SCRATCH" . "ml.$tag.best.phy";
+    } elsif ($rh_opts->{'rerun'}) {
+        $ml_tre = "$SCRATCH" . "$TRE_PREFIX.ml.$tag";
+    } elsif ($rh_opts->{'usegarli'}) {
+        $ml_tre  = "$SCRATCH" . "ml.0.0.best.phy";
+    } else {
+        $ml_tre  = "$SCRATCH" . "$TRE_PREFIX.ml.0.0";
+    }
+        my $R = Statistics::R->new() ;
+my $cmds = <<EOF;
+source("$UTILITY")
+phy1 <- read.tree("$ml_tre")
+phy2 <- read.tree("$const_tre")
+zc <- zero_constrained(phy1,phy2)
+write.tree(zc,file="$zero_const")
+EOF
+    $R->run($cmds);
+    return($zero_const);
 }
 
 # IN:  command-line options hash
@@ -1218,6 +1255,7 @@ sub _run_seqgen {
     my $restart   = shift;
     my $tag       = shift;
     my $count     = 0;
+    my $tre       = 0;
     my $recalc    = $rh_opts->{'rerun'};
     for (my $i = 0; $i < @{$ra_params}; $i++) {
         my $rh_part = $ra_params->[$i];
@@ -1244,17 +1282,20 @@ sub _run_seqgen {
         } else {
             _my_die(qq~do not know how to handle type: "$rh_part->{'type'}"\n~);
         }
-        my $tre = "$TRE_PREFIX.t1.0.0";
-         
-        if ($recalc && $rh_opts->{'usegarli'}) {
-            $tre = "t1.$tag.best.phy";
+        
+        if ($rh_opts->{'gentree'}) {
+            $tre = $rh_opts->{'gentree'};
+        } elsif ($recalc && $rh_opts->{'usegarli'}) {
+            $tre = "$SCRATCH" . "t1.$tag.best.phy";
         } elsif ($recalc) {
-            $tre = "$TRE_PREFIX.t1.$tag";
+            $tre = "$SCRATCH" . "$TRE_PREFIX.t1.$tag";
         } elsif ($rh_opts->{'usegarli'}) {
-            $tre = 't1.0.0.best.phy';
+            $tre = "$SCRATCH" . "t1.0.0.best.phy";
+        } else {
+            $tre = "$SCRATCH" . "$TRE_PREFIX.t1.0.0";
         }
 
-        $cmd .= " < $SCRATCH" . "$tre > $SCRATCH" . "seqgen.out.$tag.$count";
+        $cmd .= " < $tre > $SCRATCH" . "seqgen.out.$tag.$count";
         $cmd .= " 2>> ${DIR}sowh_stderr_$NAME.txt" if ($QUIET);
         $count++;
         safe_system($cmd) unless($restart);
