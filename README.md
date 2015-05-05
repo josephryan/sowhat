@@ -3,16 +3,21 @@
 
 ## DESCRIPTION
 
+`sowhat` automates the SOWH phylogenetic topology test (described by the manuscripts listed in FURTHER READING below). It works on amino acid, nucleotide, and binary character state datasets. Partitions (including codon position partitioning) can be specified. 
+ 
+A manuscript describing the `sowhat` and the SOWH is available at bioRxiv: http://biorxiv.org/content/early/2014/05/19/005264
 
-`sowhat` is being actively developed. Please use with caution. We appreciate hearing about your experience with the program.
+`sowhat` includes several features that provide flexibility and aid in the interpretation and assessment of SOWH test results, including: 
 
-`sowhat` automates the steps required for the SOWH phylogenetic topology test (described by the manuscripts listed in FURTHER READING below). `sowhat` depends on the freely available Seq-Gen and RAxML software packages. It works on amino acid, nucleotide, and binary character state datasets. Partitions (including codon position partitioning) can be specified. It is also possible to use PhyloBayes to generate the null distribution for nucleotide and amino acid data. 
-A manuscript describing the `sowhat` and the SOWH test has been released to the bioRxiv: http://biorxiv.org/content/early/2014/05/19/005264
-
-`sowhat` includes several features that aid in the interpretation and assessment of SOWH test results, including: 
-
+- The test can be run with the adjustment suggested by Susko 2014 (http://dx.doi.org/10.1093/molbev/msu039), which is the default behavior, or as originally described.
+- Gaps are propagated from the original dataset to the simulated dataset.
+- Likelihood searches can be performed with RAxML or GARLI
+- Boostrap replicate datasets can be simulated with Seq-Gen or PhyloBayes.
+- Different models can be used for simulation and inference.
+- Confidence intervals are estimated for the p-value, which helps the investigator assess if a sufficient number of bootstrap replicates have been sampled. 
 - The option to account for variability in the maximum likelihood searches by estimating the test statistic and parameters for each new alignment.
-- Tools for assessing if a sufficient number of replicates have been run. 
+
+`sowhat` is in active development. Please use with caution. We appreciate hearing about your experience with the program via the issue tracker.
 
 
 ## AVAILABILITY
@@ -53,8 +58,10 @@ with the indicated dependency versions. Other versions may be incompatible, and 
 used with caution.
 
 Phylogenetic programs: 
+- [GARLI]()
 - [RAxML](https://github.com/stamatak/standard-RAxML), v7.7 
 - [Seq-Gen](http://tree.bio.ed.ac.uk/software/seqgen/), v1.3.3
+- [ape](http://cran.r-project.org/web/packages/ape/index.html), v3.2
 
 General system tools:
 - [Perl](http://www.cpan.org/), which comes with most operating systems
@@ -158,7 +165,7 @@ inference. (1996): 407-514. http://www.sinauer.com/molecular-systematics.html
 ## COPYRIGHT AND LICENSE
 
 
-Copyright (C) 2013 Samuel H. Church, Joseph F. Ryan, Casey W. Dunn
+Copyright (C) 2015 Samuel H. Church, Joseph F. Ryan, Casey W. Dunn
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
