@@ -1,18 +1,30 @@
-Protein.benchmark
+Information regarding the datasets in this directory can be found in the following publications:
 
-This data set was tested in Guindon, (2010) as proteic_M1384_11x391_2003.phy. Please see references therein for more information regarding their origin. 
+Dunnetal2005
 
-Guindon, S., Dufayard, J.-F., Lefort, V., Anisimova, M., Hordijk, W., & Gascuel, O. (2010). New Algorithms and Methods to Estimate Maximum-Likelihood Phylogenies: Assessing the Performance of PhyML 3.0. Systematic Biology, 59(3), 307–321. 
+Dunn, C. W., P. R. Pugh, and S. H. Haddock. 2005. Molecular phylogenetics of the siphonophora (cnidaria), with implications for the evolution of functional specialization. Systematic Biology 54:916–935.
+
+Edwardsetal2005
+
+Edwards, E. J., R. Nyffeler, and M. J. Donoghue. 2005. Basal cactus phylogeny: implications of pereskia (cactaceae) paraphyly for the transition to the cactus life form. American Journal of Botany 92:1177–1188.
+
+Liuetal2005
+
+Liu, Y., J. M. Budke, and B. Goffinet. 2012. Phylogenetic inference rejects sporophyte based classification of the funariaceae (bryophyta): rapid radiation suggests rampant homoplasy in sporophyte evolution. Molecular phylogenetics and evolution 62:130–145.
 
 Sullivan12S
 
-This data set was tested in Buckley, 2002. Please see references therein
-for more information regarding their origin.
+Sullivan, J., K. E. Holsinger, and C. Simon. 1995. Among-site rate variation and phylogenetic analysis of 12s rrna in sigmodontine rodents. Molecular Biology and Evolution 12:988–1001.
 
-Buckley, Thomas R. "Model misspecification and probabilistic tests of topology: evidence from empirical data sets." Systematic Biology 51.3 (2002): 509-523.
+Sullivanetal2000
 
-Hox 
+Sullivan, J., E. Arellano, and D. S. Rogers. 2000. Comparative phylogeography of mesoamerican highland rodents: concerted versus independent response to past climatic fluctuations. The American Naturalist 155:755–768.
 
-This data set was tested in Ryan et al ...
+dixonetal2007
 
+Dixon, C. J., P. Schoenswetter, and G. M. Schneeweiss. 2007. Traces of ancient range shifts in a mountain plant group (androsace halleri complex, primulaceae). Molecular ecology 16:3890–3901.
+
+wangetal2008
+
+Wang, I. J., A. J. Crawford, and E. Bermingham. 2008. Phylogeography of the pygmy rain frog (pristimantis ridens) across the lowland wet forests of isthmian central america. Molecular phylogenetics and evolution 47:992–1004.
 
