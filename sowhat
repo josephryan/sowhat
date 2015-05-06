@@ -35,7 +35,7 @@ use Cwd;
 use Statistics::R;
 
 our $RAX = 'raxmlHPC';
-our $GARLI = 'garli';
+our $GARLI = 'Garli';
 our $USEGARLI = '1';
 our $SEQGEN = 'seq-gen';
 our $PB = 'pb -f';
