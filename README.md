@@ -105,6 +105,63 @@ on these datasets, execute:
 See `examples.sh` and the resulting `test.output/` directory for more on the specifics of 
 `sowhat` use.
 
+__Warning__: Many of the examples take a very long time (especially those that use Garli).  For a quick example run _make test_ and see the output in the _test.output_ directory.
+
+## GETTING STARTED WITH YOUR OWN ANALYSES
+
+### Preperation
+
+#### 1. Alignment (DNA, AA, or binary characters)
+
+__Format:__ non-interleaved PHYLIP format
+
+Description: This can be DNA, amino acid, or binary characters. Usually, you would have performed phylogenetic analyses on this alignment and recovered a result that was in conflict with an _a priori_ hypothesis.  You will specify the _a priori_ hypothesis in a constraint tree (next section).
+
+#### 2. Constraint tree
+
+__Format:__ Newick format
+
+The constraint tree represents a hypothesis that you would like to compare to the ML tree. In most cases you will want a tree that is only resolved in regions being tested.  For example if you received a tree that showed a sister relationship between two taxa 'A' and 'B' and you want to compare this result to a sister relationship between 'A' and 'C,' you would create the following constraint tree:
+
+  ((A,C),B,D,E,F);
+
+Note that B, D, E, and F are unresolved.
+
+#### 3. Garli conf file
+
+Example Garli configuration files are available (examples.garli.conf and examples/aa.garli.conf). For an in-depth explanation of all of the options, see the Garli manual available from: http://www.bio.utexas.edu/faculty/antisense/garli/garli.html
+
+For most cases, you can start by copying either examples/garli.conf (for nucleotide analyses) or examples/aa.garli.conf for amino acid analyses and changing the following fields:
+
+
+#### 4. For using RAxML in place of GARLI
+
+RAxML is much faster than Garli and can use multiple processors, but as we report in our paper, Garli appears to be more suitable for the SOWH test. To use RAxML, you need to provide the option:
+
+  _--useraxml_
+
+The only other required parameter when using RAxML is
+
+  _--raxml_model_.
+
+This can be any of the models that are available to RAxML. Running _raxmlHPC -h_ from the command line will give you a list of models available to RAxML.
+
+Other parameters (including number of threads) can be specified with the option:
+
+  _--rax*_
+
+for example:
+
+  _--rax='/usr/local/bin/raxmlHPC-PTHREADS -T 20'
+
+### Running sowhat
+
+See examples.sh for examples of sowhat command lines
+
+### Examining the results
+
+The results of the SOWH test are included in a file called _sowhat.results_, which can be found in the directory specified with the _--dir_ option in the _sowhat_ command line.  The bottom of _sowhat.results_ includes a p-value representing the probability that the test statistic would be observed under the null hypothesis.
+
 ## RUN
 
     sowhat \
