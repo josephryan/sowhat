@@ -82,6 +82,7 @@ machine with the following commands (executables will be placed in `/usr/local/b
     cd ~
     git clone https://github.com/josephryan/sowhat.git
     cd sowhat/
+    # To work on the development branch (not recommended) execute: git checkout -b Development origin/Development
     sudo ./build_3rd_party.sh
     perl Makefile.PL
     make
