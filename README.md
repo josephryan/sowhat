@@ -46,7 +46,7 @@ To install without root privelages try:
 
 ### SYSTEM REQUIREMENTS
 
-We have tested `sowhat` on OS X 10.9 and Ubuntu 13.04. It will likely work on a variety 
+We have tested `sowhat` on OS X 10.9 and Ubuntu 15.04. It will likely work on a variety 
 of other Unix-like operating systems.
 
 ### DEPENDENCIES
@@ -72,12 +72,13 @@ General system tools:
 To use more complex models, you will need to install the following optional dependency:
 - [PhyloBayes](http://www.phylobayes.org)
 
-You can install SOWHAT and all the required dependencies listed above on a clean Ubuntu 14.04 
+You can install SOWHAT and all the required dependencies listed above on a clean Ubuntu 15.04 
 machine with the following commands (executables will be placed in `/usr/local/bin`):
 
     sudo apt-get update
     sudo apt-get install -y r-base-core cpanminus unzip gcc git
     sudo cpanm Statistics::R
+    Rscript -e "install.packages('ape', dependencies = T, repos='http://cran.rstudio.com/')"
     cd ~
     git clone https://github.com/josephryan/sowhat.git
     cd sowhat/
