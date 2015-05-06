@@ -46,7 +46,7 @@ To install without root privelages try:
 
 ### SYSTEM REQUIREMENTS
 
-We have tested `sowhat` on OS X 10.9, Ubuntu Server 10.04 (Amazon ami-d05e75b8), and Ubuntu Desktop 15.04. It will likely work on a variety of other Unix-like operating systems.
+We have tested `sowhat` on OS X 10.9, OS X 10.10, Ubuntu Server 10.04 (Amazon ami-d05e75b8), and Ubuntu Desktop 15.04. It will likely work on a variety of other Unix-like operating systems.
 
 ### DEPENDENCIES
 
