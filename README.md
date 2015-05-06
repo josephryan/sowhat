@@ -52,10 +52,10 @@ of other Unix-like operating systems.
 ### DEPENDENCIES
 
 The dependencies listed below are required by `sowhat`. They must be installed and 
-available in the appropriate PATH. If they are not installed already, follow the 
+available in the appropriate `PATH`. If they are not installed already, follow the 
 installation instructions in the links provided for each tool. We have tested `sowhat` 
 with the indicated dependency versions. Other versions may be incompatible, and should be 
-used with caution.
+used with caution. These external tools are the result of a considerable amount of work by other investigators, please also cite them when you cite `sowhat`.
 
 Phylogenetic programs: 
 - [GARLI](https://code.google.com/p/garli/), v2.01.1067
