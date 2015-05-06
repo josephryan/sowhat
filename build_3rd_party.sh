@@ -125,7 +125,7 @@ fi
 # URL=""
 FILE="garli-2.01.tar.gz "
 # SHA1=""
-if need_programs seq-gen
+if need_programs Garli
 then
 	echo "Intalling Garli..." >&2
 	# download $URL $SHA1 $FILE

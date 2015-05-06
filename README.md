@@ -78,7 +78,7 @@ machine with the following commands (executables will be placed in `/usr/local/b
     sudo apt-get update
     sudo apt-get install -y r-base-core cpanminus unzip gcc git
     sudo cpanm Statistics::R
-    Rscript -e "install.packages('ape', dependencies = T, repos='http://cran.rstudio.com/')"
+    sudo Rscript -e "install.packages('ape', dependencies = T, repos='http://cran.rstudio.com/')"
     cd ~
     git clone https://github.com/josephryan/sowhat.git
     cd sowhat/
