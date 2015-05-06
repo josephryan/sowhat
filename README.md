@@ -58,8 +58,8 @@ with the indicated dependency versions. Other versions may be incompatible, and 
 used with caution.
 
 Phylogenetic programs: 
-- [GARLI]()
-- [RAxML](https://github.com/stamatak/standard-RAxML), v7.7 
+- [GARLI](https://code.google.com/p/garli/), v2.01.1067
+- [RAxML](https://github.com/stamatak/standard-RAxML), 8.1.20 
 - [Seq-Gen](http://tree.bio.ed.ac.uk/software/seqgen/), v1.3.3
 - [ape](http://cran.r-project.org/web/packages/ape/index.html), v3.2
 
