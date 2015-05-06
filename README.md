@@ -131,7 +131,11 @@ Note that B, D, E, and F are unresolved.
 
 Example Garli configuration files are available (examples.garli.conf and examples/aa.garli.conf). For an in-depth explanation of all of the options, see the Garli manual available from: http://www.bio.utexas.edu/faculty/antisense/garli/garli.html
 
-For most cases, you can simply copy either examples/garli.conf (for nucleotide analyses) or examples/aa.garli.conf (for amino acid analyses).
+The nucleotide model specified in _examples/garli.conf_ is GTR+GAMMA. The amino acid model specified in _examples/aa.garli.conf_ is WAG+GAMMA. To adjust either of these the following parameters should be adjusted in garli.conf:
+
+    _ratematrix_, _statefrequencies_, _ratehetmode_, _numratecats_, _invariantsites_
+
+We highly recommend not adjusting other parameters in the garli conf files as this could cause sowhat to fail.
 
 #### 4. For using RAxML in place of GARLI
 
@@ -147,7 +151,7 @@ This option can specify any of the models that are available to RAxML. Running _
 
 Other RAxML parameters (including number of threads) can be specified with the option:
 
-  _--rax*_
+  _--rax_
 
 for example:
 
