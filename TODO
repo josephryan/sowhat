@@ -1,7 +1,5 @@
 * escape spaces in pathnames returned from getcwd (this needs to be a system independent method using Perl module)
 
-* add support for garli
-
 * Come up with an alternative to IPC::Run for the test suite. This does not seem to be installed by default with Perl.
 
 * Under Linux, I am getting an error in Statistics::R related to a flag sent to R (--gui=none). My fix was to 
