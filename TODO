@@ -11,15 +11,11 @@
 
 * Allow for comparison of two suboptimal hypotheses rather than most likely topology vs. a single alternative.
 
-* Come up with a way to start and stop runs
-
 * Add support for threads (multiCPU)
 
 * true support for multistate. Will require running seq-gen in aminoacid mode and up to 20 substitutions.
   - multistate currently fails with: "expecting 2 frequencies. Multi-State only works w/binary matrix"
-
-* add in hash which checks the model - warns about unsupported model
-
+  
 * add in documentation about using local::lib - bootstrapping the package in and using that to cpan R
 
 * need to check that constraint tree, dataset share taxa - names are consistent. The error that currently is output is a confusing message from RAxML.
