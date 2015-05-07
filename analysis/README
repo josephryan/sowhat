@@ -1,10 +1,75 @@
-The tests contained in this directory were performed using SOWHAT commit ID:
-https://github.com/josephryan/sowhat/commit/3137601014e24274ebc115acabe086290b5f46e7
+###   This directory contains commands used to evaluate the SOWH test with 
+###   SOWHAT. These commands were performed on the computing cluster at Brown 
+###   University. Included in this directory are the 
+###   configuration files needed by SOWHAT to perform selected analyses.
 
-The results of these tests are described in the preprint article:
-Automation and Evaluation of the SOWH Test of Phylogenetic Topologies with SOWHAT
+###   The tests contained in this directory were performed using SOWHAT
+###   commit ID: https://github.com/josephryan/sowhat/commit/3137601014e24274ebc115acabe086290b5f46e7
+  
+###   The results of these tests are described in the preprint article: 
+###   Automation and Evaluation of the SOWH Test with SOWHAT.
+###   Samuel H. Church , Joseph F. Ryan , Casey W. Dunn. 
+###   doi: http://dx.doi.org/10.1101/005264
+   
+###   The analyses included are as follows:
+   
+###   Sensitivity to Sample Size:
+###   B59.sh - Buckley dataset, sample size 100
+###   B60.sh - Buckley dataset, sample size 500
+###   S61.sh - Sullivan dataset, sample size 100
+###   S62.sh - Sullivan dataset, sample size 500
+###   D65.sh - Dixon dataset, sample size 100
+###   D66.sh - Dixon dataset, sample size 500
+   
+###   Sensitivity to Likelihood Software
+###   B1.sh - Buckley dataset, RAxML, GTR+GAMMA
+###   B7.sh - Buckley dataset, GARLI, GTR+GAMMA
+###   B8.sh - Buckley dataset, GARLI, GTR+I+GAMMA
+###   B9.sh - Buckley dataset, RAxML, GTR+I+GAMMA
+###   D12.sh - Dixon dataset, GARLI, HKY+GAMMA
+###   D14.sh - Dixon dataset, GARLI, HKY
+###   W19.sh - Wang dataset, RAxML
+###   W20.sh - Wang dataset, GARLI
+###   S34.sh - Sullivan dataset, RAxML
+###   S35.sh - Sullivan dataset, GARLI
+###   D39.sh - Dunn dataset, RAxML
+###   D40.sh - Dunn dataset, GARLI
+###   L44.sh - Liu dataset, RAxML
+###   L45.sh - Liu dataset, GARLI
+###   E49.sh - Edwards dataset, RAxML
+###   E50.sh - Edwards dataset, GARLI
+   
+###   Sensitivity to Treatment of Gaps
+###   W21.sh - Wang dataset, no gaps
+###   D41.sh - Dunn dataset, no gaps
+###   L46.sh - Liu dataset, no gaps
+###   E51.sh - Edwards datset, no gaps
+   
+###   Sensitivity to Model Specification
+###   B57.sh - Buckley, JC69 + max
+###   B10.sh - Buckley, CAT-GTR, PhyloBayes
+###   D58.sh - Dixon, JC69 + max
+###   W64.sh - Wang, JC69 + max
+###   W22.sh - Wang, CAT-GTR, PhyloBayes
+###   S56.sh - Sullivan, JC69 + max
+###   S37.sh - Sullivan, CAT-GTR, PhyloBayes
+###   D55.sh - Dunn, JC69 + max
+###   D42.sh - Dunn, CAT-GTR, PhyloBayes
+###   L63.sh - Liu, JC69 + max
+###   L47.sh - Liu, CAT-GTR, PhyloBayes
+###   E54.sh - Edwards, JC69 + max
+###   E52.sh - Edwards, CAT-GTR, PhyloBayes
+   
+###   Sensitivity to Generating Topology
+###   B67.sh - Buckley, GTR+GAMMA, Susko Tree
+###   B68.sh - Buckley, GTR+I+GAMMA, Susko Tree
+###   D69.sh - Dixon, HKY+GAMMA, Susko Tree
+###   D70.sh - Dixon, HKY, Susko Tree
+###   D71.sh - Dunn, Susko Tree
+###   E72.sh - Edwards, Susko Tree
+###   L73.sh - Liu, Susko Tree
+###   S74.sh - Sullivan, Susko Tree
+###   W75.sh - Wang, Susko Tree
 
-Samuel H. Church , Joseph F. Ryan , Casey W. Dunn
-doi: http://dx.doi.org/10.1101/005264
 
 
