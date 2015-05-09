@@ -6,13 +6,13 @@
 # TEST1: Datatype = DNA, Model = GTRGAMMA, ML Software = GARLI
 sowhat --constraint=examples/H0.garli.tre --aln=examples/nt.phy --garli_conf=examples/garli.conf --dir=test.output/test1 --name=test
 
-# TEST2: Datatype = AA, Model = GTRGAMMA, ML Software = GARLI
+# TEST2: Datatype = AA, Model = WAG, ML Software = GARLI
 sowhat --constraint=examples/H0.garli.tre --aln=examples/aa.phy --garli_conf=examples/aa.garli.conf --dir=test.output/test2 --name=test
 
 # TEST3: Datatype = DNA, Model = GTRGAMMA, ML Software = RAxML
 sowhat --constraint=examples/H0.tre --aln=examples/nt.phy --useraxml --raxml_model=GTRGAMMA --dir=test.output/test3 --name=test
 
-# TEST4: Datatype = AA, Model = GTRGAMMA, ML Software = RAxML
+# TEST4: Datatype = AA, Model = WAG, ML Software = RAxML
 sowhat --constraint=examples/H0.tre --aln=examples/aa.phy --useraxml --raxml_model=PROTGAMMAWAG --dir=test.output/test4 --name=test
 
 # TEST5: Datatype = CHAR, Model = GTRGAMMA, ML Software = RAxML
@@ -21,7 +21,7 @@ sowhat --constraint=examples/H0.tre --aln=examples/char.phy --useraxml --raxml_m
 # TEST6: Datatype = DNA, Model = GTRGAMMA, ML Software = RAxML, partitioned
 sowhat --constraint=examples/H0.tre --aln=examples/nt.phy --useraxml --raxml_model=GTRGAMMA --dir=test.output/test6 --name=test --partition=examples/nt.partitions
 
-# TEST7: Datatype = AA, Model = GTRGAMMA, ML Software = GARLI, nogaps
+# TEST7: Datatype = AA, Model = WAG, ML Software = GARLI, nogaps
 sowhat --constraint=examples/H0.garli.tre --aln=examples/aa.gaps.phy --garli_conf=examples/aa.garli.conf --dir=test.output/test7 --name=test --nogaps
 
 # TEST8: Datatype = DNA, Model = GTRGAMMA, ML Software = GARLI, rerun
