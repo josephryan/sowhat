@@ -1170,13 +1170,14 @@ sub _model_prot {
         } else {
             $ra_rates = _parse_rates($tag,'t1');
         }
+        $ra_params = _get_params_from_const_rax("$SCRATCH" ."RAxML_info.t1.$tag");
     } elsif ($rh_opts->{'max'}) {
         if ($part) {
             my $ra_part_names = _make_unlinked_partition_file($part,'GTR_UNLINKED',$new_part);
-            _run_best_tree_w_raxml('par',$aln,$new_part,'PROTGAMMAIGTR_UNLINKED',$restart,$tag,$tre);
+            _run_best_tree_w_raxml('par',$aln,$new_part,'PROTGAMMAGTR_UNLINKED',$restart,$tag,$tre);
             $ra_rates = _parse_rates($tag,'par',$ra_part_names);
         } else {
-            _run_best_tree_w_raxml('par',$aln,$part,'PROTGAMMAIGTR_UNLINKED',$restart,$tag,$tre);
+            _run_best_tree_w_raxml('par',$aln,$part,'PROTGAMMAGTR_UNLINKED',$restart,$tag,$tre);
             $ra_rates = _parse_rates($tag,'par');
         }
         $ra_params = _get_params_from_const_rax("$SCRATCH" ."RAxML_info.par.$tag");
@@ -1314,6 +1315,9 @@ sub _get_params_from_const_rax {
                 next;
             } elsif ($line =~ m/DataType: (\S+)/) {
                 $data[$lflag - 1]->{'type'} = $1;
+                next;
+            } elsif ($line =~ m/Substitution Matrix: (\S+)/) {
+                $data[$lflag - 1]->{'submat'} = $1;
                 $lflag = 0;
             } else {
                 _my_die("unexpected line: $line");
@@ -1462,6 +1466,7 @@ sub _run_seqgen {
     my $tag       = shift;
     my $count     = 0;
     my $tre       = 0;
+    my $trans_model = '';
     my $recalc    = $rh_opts->{'rerun'};
     for (my $i = 0; $i < @{$ra_params}; $i++) {
         my $rh_part = $ra_params->[$i];
@@ -1477,8 +1482,12 @@ sub _run_seqgen {
             if (scalar(@{$ra_rates})) {
                 $cmd .= "-mGENERAL ";
                 $cmd .= _get_aa_params($rh_part,$ra_rates->[$i]);
+            } elsif ($rh_opts->{'part'}) {
+                $trans_model = _translate_model($rh_part->{'submat'});
+                $cmd .= "-m$trans_model ";
+                $cmd .= _get_aa_params($rh_part,0);
             } else {
-                my $trans_model = _translate_model($rh_opts);
+                $trans_model = _translate_model($rh_opts->{'mod'});
                 $cmd .= "-m$trans_model ";
                 $cmd .= _get_aa_params($rh_part,0);
             }
@@ -1513,12 +1522,9 @@ sub _run_seqgen {
 }
 
 sub _translate_model {
-    my $rh_opts = shift;
-    my $mod = $rh_opts->{'mod'};
-    $mod = uc($mod);
-    my $core_mod = 0;
+    my $mod = shift;
+    my $core_mod = uc($mod);
     if ($USEGARLI)  {
-        $core_mod = $mod;
         if ($core_mod =~ m/JONES/) {
             return 'JTT';
         } elsif ($core_mod =~ m/WAG/) {
@@ -1534,9 +1540,7 @@ sub _translate_model {
             warn "    either run: jones WAG dayhoff mtREV mtmam\n";
             die  "    or specify --max\n";
         }
-    }
-    elsif ($mod =~ m/(?:ASC_)?PROT(?:GAMMA|CAT)(\S+)/) {
-        $core_mod = $1;
+    } else {
         if ($core_mod =~ m/JTT/) {
             return 'JTT';
         } elsif ($core_mod =~ m/WAG/) {
@@ -1556,8 +1560,6 @@ sub _translate_model {
             warn "    either run: WAG DAYHOFF BLOSUM62 MTREV MTART CPREV45\n";
             die  "    or specify --max\n";
         }
-    } else {
-        die "unexpected model: $mod\n";
     }
 }
 
