@@ -557,7 +557,7 @@ sub _run_best_tree_w_raxml {
     my $tag     = shift;
     my $tre     = shift;
 
-    my $cmd = "$RAX -f d -p 1234 -w $SCRATCH -m $mod -s $aln -n $title.$tag";
+    my $cmd = "$RAX -f d -p 1234 --no-bfgs -w $SCRATCH -m $mod -s $aln -n $title.$tag";
     $cmd .= " -q $part" if ($part);
     $cmd .= " -g $tre" if ($tre);
     if ($QUIET) {
@@ -1956,7 +1956,7 @@ sub _run_rax_on_genset {
     my $i       = shift;
     my $restart = shift;
     my $tag     = shift;
-    $cmd  = "$RAX -p 1234 -w $SCRATCH -m $mod -s $ra_alns->[$i] ";
+    $cmd  = "$RAX -p 1234 --no-bfgs -w $SCRATCH -m $mod -s $ra_alns->[$i] ";
     $cmd .= "-n ml.$tag.$i";
     if ($part) {
         $cmd .= " -q $SCRATCH" . "$SIM_PARTITION_FILE ";
@@ -1966,7 +1966,7 @@ sub _run_rax_on_genset {
         $cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
     }
     safe_system($cmd) unless($restart);
-    $cmd  = "$RAX -p 1234 -w $SCRATCH -m $mod -s $ra_alns->[$i] ";
+    $cmd  = "$RAX -p 1234 --no-bfgs -w $SCRATCH -m $mod -s $ra_alns->[$i] ";
     $cmd .= "-n t1.$tag.$i -g $tre";
     if ($part) {
         $cmd .= " -q $SCRATCH" . "$SIM_PARTITION_FILE ";
