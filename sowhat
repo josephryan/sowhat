@@ -308,6 +308,7 @@ sub process_options {
             warn "missing --aln\n" unless ($rh_opts->{'aln'});
             warn "missing --name\n" unless ($rh_opts->{'name'});
             warn "missing --raxml_model\n" unless ($rh_opts->{'mod'});
+            usage();
         }
     }
     $NAME = $rh_opts->{'name'};
@@ -398,11 +399,13 @@ sub get_version {
     my $version_st = `$RAX -v`;
     my @lines= split /\n/, $version_st;
     my $version = '';
+    my $long_version = '';
     my $possible_error = '';
     foreach my $l (@lines) {
         $possible_error .= $l;
-        next unless $l =~ m/^This is RAxML version (\d+\.\d+)/;
-        $version = $1;
+        next unless $l =~ m/^This is RAxML version ((\d+\.\d+).\d+)/;
+        $long_version = $1;
+        $version = $2;
         last;
     }
     if ($version eq '') {
@@ -413,7 +416,7 @@ sub get_version {
         warn "You are running version $version of RAxML\n";
         die  "sowhat requires version 7.7 or higher\n";
     }
-    return $version;
+    return $long_version;
 }
 
 # IN: command-line options hash
