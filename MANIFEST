@@ -70,7 +70,6 @@ build_3rd_party.sh
 dependencies/garli-2.01.tar.gz
 dependencies/Seq-Gen.v1.3.3.tgz
 dependencies/standard-RAxML-master.zip
-dependencies/utility_functions.R
 examples.sh
 examples/aa.ga
 examples/aa.gaps.phy
@@ -130,4 +129,3 @@ sowhat
 sowhat.bibtex
 sull.sh
 t/sowhat.t
-TODO
