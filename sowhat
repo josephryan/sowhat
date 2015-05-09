@@ -20,7 +20,7 @@
 #    with this program; if not, write to the Free Software Foundation, Inc.,
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-our $VERSION = 0.21;
+our $VERSION = 0.22;
 
 use strict;
 use warnings;
@@ -50,7 +50,8 @@ our $DIR = '';
 our $SCRATCH = '';
 our $FREQ_BIN_NUMBER = 10;
 our $TRE_PREFIX = 'RAxML_bestTree';
-our $NEW_PARTITION_FILE = 'new.part.txt';
+our $UNLINKED_PARTITION_FILE = 'unlinked.part.txt';
+our $SIM_PARTITION_FILE = 'sim.part.txt';
 our $PART_RATE_MATRIX_PREFIX = 'RAxML_proteinGTRmodel';
 our $NAME = '';
 our $SUBZERO = 0.001;
@@ -84,7 +85,6 @@ MAIN: {
         #LOOP: For the number of runs, perform each repetition of the test.
         #      This loop allows multiple runs to be performed simultaneously.
 
-            my $codon_flag = 0;
             my $tag = "$ch.$ts";
             
             my $restart_flag = 0;
@@ -104,7 +104,7 @@ MAIN: {
                 if ($rh_opts->{'usepb'}) {
                     get_params_w_pb($rh_opts,$alns_to_gen,$restart_flag,$tag);
                 } else {
-                    ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) = 
+                    ($ra_aln_len,$ra_params,$ra_rates) = 
                     get_params($rh_opts,$restart_flag,$tag);
                 }
                 unless ($rh_opts->{'resolved'}) {
@@ -126,7 +126,7 @@ MAIN: {
             #      This loop is necessary when $alns_to_gen is >1
 
                 run_gen_trees($ra_alns,$rh_opts,$ra_aln_len,
-                              $codon_flag,$i,$restart_flag,$tag);
+                              $i,$restart_flag,$tag);
 
                 ($best_ml,$best_t1,$rh_stats,$ra_diff,$fd_file) =
                 evaluate_distribution($alns_to_gen,$rh_opts->{'name'},
@@ -308,6 +308,7 @@ sub process_options {
             warn "missing --aln\n" unless ($rh_opts->{'aln'});
             warn "missing --name\n" unless ($rh_opts->{'name'});
             warn "missing --raxml_model\n" unless ($rh_opts->{'mod'});
+            usage();
         }
     }
     $NAME = $rh_opts->{'name'};
@@ -398,11 +399,13 @@ sub get_version {
     my $version_st = `$RAX -v`;
     my @lines= split /\n/, $version_st;
     my $version = '';
+    my $long_version = '';
     my $possible_error = '';
     foreach my $l (@lines) {
         $possible_error .= $l;
-        next unless $l =~ m/^This is RAxML version (\d+\.\d+)/;
-        $version = $1;
+        next unless $l =~ m/^This is RAxML version ((\d+\.\d+).\d+)/;
+        $long_version = $1;
+        $version = $2;
         last;
     }
     if ($version eq '') {
@@ -413,7 +416,7 @@ sub get_version {
         warn "You are running version $version of RAxML\n";
         die  "sowhat requires version 7.7 or higher\n";
     }
-    return $version;
+    return $long_version;
 }
 
 # IN: command-line options hash
@@ -557,7 +560,7 @@ sub _run_best_tree_w_raxml {
     my $tag     = shift;
     my $tre     = shift;
 
-    my $cmd = "$RAX -f d -p 1234 -w $SCRATCH -m $mod -s $aln -n $title.$tag";
+    my $cmd = "$RAX -f d -p 1234 --no-bfgs -w $SCRATCH -m $mod -s $aln -n $title.$tag";
     $cmd .= " -q $part" if ($part);
     $cmd .= " -g $tre" if ($tre);
     if ($QUIET) {
@@ -860,7 +863,6 @@ sub generate_alignments_w_pb {
 #     restart flag
 #     string consistent of rep and run
 # OUT: alignment length
-#      flag for partitions by codon positions
 #      array of parameter values
 #      array of rates
 # JOB: based on the model, uses one of four methods to parse params.
@@ -870,7 +872,6 @@ sub get_params {
     my $tag = shift;
     my $mod = $rh_opts->{'mod'};
     my $ra_aln_len = ();
-    my $codon_flag = 0;
     my $ra_params = ();
     my $ra_rates = ();
 
@@ -880,10 +881,10 @@ sub get_params {
 
         if ($datatype eq 'nucleotide') {
             my $type = 'DNA';
-            ($ra_aln_len,$codon_flag,$ra_params) = _model_garli_nt($rh_opts,$type,$restart,$tag);
+            ($ra_aln_len,$ra_params) = _model_garli_nt($rh_opts,$type,$restart,$tag);
         } elsif ($datatype eq 'aminoacid') {
             my $type = 'AA';
-            ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) = _model_garli_aa($rh_opts,$type,$restart,$tag);
+            ($ra_aln_len,$ra_params,$ra_rates) = _model_garli_aa($rh_opts,$type,$restart,$tag);
         } else {
             warn "   sowhat only accepts 'nucleotide' or 'aminoacid' as datatype.";
             die  "    In your conf file ($rh_opts->{'garli_conf'}) you provided $datatype\n";
@@ -894,16 +895,16 @@ sub get_params {
     } elsif ($mod =~ m/^BIN/i) {
         die("for binary character datasets, use MULTI models ...");
     } elsif ($mod =~ m/^(ASC_)?GTR/i) {
-        ($ra_aln_len,$codon_flag,$ra_params) = _model_gtrgamma($rh_opts,$restart,$tag);
+        ($ra_aln_len,$ra_params) = _model_gtrgamma($rh_opts,$restart,$tag);
     } elsif ($mod =~ m/PROT/i) {
-        ($ra_aln_len,$codon_flag,$ra_params,$ra_rates) = _model_prot($rh_opts,$restart,$tag);
+        ($ra_aln_len,$ra_params,$ra_rates) = _model_prot($rh_opts,$restart,$tag);
     } elsif ($mod =~ m/MULTI/i) {
-        ($ra_aln_len,$codon_flag,$ra_params) = _model_character_data($rh_opts,$restart,$tag);
+        ($ra_aln_len,$ra_params) = _model_character_data($rh_opts,$restart,$tag);
     } else {
         die("model not recognized by sowhat. Full list of models: ...");
     }
 
-    return ($ra_aln_len,$codon_flag,$ra_params,$ra_rates);
+    return ($ra_aln_len,$ra_params,$ra_rates);
 }
 
 
@@ -960,7 +961,7 @@ sub _model_garli_nt {
     my $part = $rh_opts->{'part'};
     my $tre = $rh_opts->{'tre'};
     my $conf = $rh_opts->{'garli_conf'};
-    my ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,0);
+    my ($ra_aln_len) = _get_partition_lengths($aln,0);
     if ($rh_opts->{'mod'} =~ m/DNAGARLI/i) {
         $ra_params = _get_params_from_garli_nt("$SCRATCH" . "t1.$tag.screen.log",$datatype);
     } elsif ($rh_opts->{'max'}) {
@@ -970,7 +971,7 @@ sub _model_garli_nt {
     } else {
         $ra_params = _get_params_from_garli_nt("$SCRATCH" . "t1.$tag.screen.log",$datatype);
     }
-    return ($ra_aln_len,$codon_flag,$ra_params);
+    return ($ra_aln_len,$ra_params);
 }
 
 sub _model_garli_aa {
@@ -984,7 +985,7 @@ sub _model_garli_aa {
     my $part = $rh_opts->{'part'};
     my $tre = $rh_opts->{'tre'};
     my $conf = $rh_opts->{'garli_conf'};
-    my ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,0);
+    my ($ra_aln_len) = _get_partition_lengths($aln,0);
     if ($rh_opts->{'mod'} =~ m/AAGARLI/i) {
         ($ra_params,$ra_rates) = _get_params_from_garli_aa("$SCRATCH" . "t1.$tag.screen.log",$datatype);
     } elsif ($rh_opts->{'max'}) {
@@ -994,7 +995,7 @@ sub _model_garli_aa {
     } else {
         ($ra_params,$ra_rates) = _get_params_from_garli_aa("$SCRATCH" . "t1.$tag.screen.log",$datatype);
     }
-    return ($ra_aln_len,$codon_flag,$ra_params,$ra_rates);
+    return ($ra_aln_len,$ra_params,$ra_rates);
 }
 
 sub _get_params_from_garli_nt {
@@ -1109,7 +1110,6 @@ sub _get_params_from_garli_aa {
 #     tree file
 #     string consisting of rep and run
 # OUT: alignment length
-#      flag for partitions by codon position
 #      array of parameter values
 # JOB: gets part lengths using the _get_partition_lengths method
 #      gets parameters using the _get_params_from_const_rax method
@@ -1117,12 +1117,12 @@ sub _model_gtrgamma {
     my $rh_opts = shift;
     my $restart = shift;
     my $tag = shift;
-    my $new_part = "$SCRATCH" . $NEW_PARTITION_FILE;
+    my $new_part = "$SCRATCH" . $UNLINKED_PARTITION_FILE;
     my $ra_params = [];
     my $aln = $rh_opts->{'aln'};
     my $part = $rh_opts->{'part'};
     my $tre = $rh_opts->{'tre'};
-    my ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,$part);
+    my ($ra_aln_len) = _get_partition_lengths($aln,$part);
     if ($rh_opts->{'mod'} =~ m/GTRGAMMAX/i) {
         $ra_params = _get_params_from_const_rax("$SCRATCH" . "RAxML_info.t1.$tag");
     } elsif ($rh_opts->{'max'}) {
@@ -1136,7 +1136,7 @@ sub _model_gtrgamma {
     } else {
         $ra_params = _get_params_from_const_rax("$SCRATCH" ."RAxML_info.t1.$tag");
     }
-    return ($ra_aln_len,$codon_flag,$ra_params);
+    return ($ra_aln_len,$ra_params);
 }
 
 # IN: alignment file
@@ -1145,7 +1145,6 @@ sub _model_gtrgamma {
 #     tree file
 #     string consisting of rep and run
 # OUT: alignment length
-#      flag for partitions by codon position
 #      array of parameter values
 #      array of rates
 # JOB: if partitioned, makes new part file using _make_unlinked_partition_file
@@ -1156,13 +1155,13 @@ sub _model_prot {
     my $rh_opts = shift;
     my $restart = shift;
     my $tag = shift;
-    my $new_part = "$SCRATCH" . $NEW_PARTITION_FILE;
+    my $new_part = "$SCRATCH" . $UNLINKED_PARTITION_FILE;
     my $ra_params = [];
     my $ra_rates = [];
     my $aln = $rh_opts->{'aln'};
     my $part = $rh_opts->{'part'};
     my $tre = $rh_opts->{'tre'};
-    my ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,$part);
+    my ($ra_aln_len) = _get_partition_lengths($aln,$part);
     if ($rh_opts->{'mod'} =~ m/PROTGAMMAGTR_UNLINKED/i) {
         if ($part) {
             my $ra_part_names = _make_unlinked_partition_file($part,'GTR_UNLINKED',$new_part);
@@ -1170,13 +1169,14 @@ sub _model_prot {
         } else {
             $ra_rates = _parse_rates($tag,'t1');
         }
+        $ra_params = _get_params_from_const_rax("$SCRATCH" ."RAxML_info.t1.$tag");
     } elsif ($rh_opts->{'max'}) {
         if ($part) {
             my $ra_part_names = _make_unlinked_partition_file($part,'GTR_UNLINKED',$new_part);
-            _run_best_tree_w_raxml('par',$aln,$new_part,'PROTGAMMAIGTR_UNLINKED',$restart,$tag,$tre);
+            _run_best_tree_w_raxml('par',$aln,$new_part,'PROTGAMMAGTR_UNLINKED',$restart,$tag,$tre);
             $ra_rates = _parse_rates($tag,'par',$ra_part_names);
         } else {
-            _run_best_tree_w_raxml('par',$aln,$part,'PROTGAMMAIGTR_UNLINKED',$restart,$tag,$tre);
+            _run_best_tree_w_raxml('par',$aln,$part,'PROTGAMMAGTR_UNLINKED',$restart,$tag,$tre);
             $ra_rates = _parse_rates($tag,'par');
         }
         $ra_params = _get_params_from_const_rax("$SCRATCH" ."RAxML_info.par.$tag");
@@ -1186,7 +1186,7 @@ sub _model_prot {
     } else {
         $ra_params = _get_params_from_const_rax("$SCRATCH" ."RAxML_info.t1.$tag");
     }
-    return ($ra_aln_len,$codon_flag,$ra_params,$ra_rates);
+    return ($ra_aln_len,$ra_params,$ra_rates);
 }
 
 # IN: alignment file
@@ -1195,7 +1195,6 @@ sub _model_prot {
 #     tree file
 #     string consisting of rep and run
 # OUT: alignment length
-#      flag for partitions by codon position
 #      array of parameter values
 # JOB: gets part lengths using the _get_partition_lengths method
 #      gets parameters using the _get_params_from_const_rax method
@@ -1203,12 +1202,12 @@ sub _model_character_data {
     my $rh_opts = shift;
     my $restart = shift;
     my $tag = shift;    
-    my $new_part = "$SCRATCH" . $NEW_PARTITION_FILE;
+    my $new_part = "$SCRATCH" . $UNLINKED_PARTITION_FILE;
     my $ra_params = [];
     my $aln = $rh_opts->{'aln'};
     my $part = $rh_opts->{'part'};
     my $tre = $rh_opts->{'tre'};
-    my ($ra_aln_len,$codon_flag) = _get_partition_lengths($aln,$part);
+    my ($ra_aln_len) = _get_partition_lengths($aln,$part);
     if ($rh_opts->{'mod'} =~ m/MULTIGAMMAIX/i) {
         $ra_params = _get_params_from_const_rax("$SCRATCH" ."RAxML_info.t1.$tag");
     } elsif ($rh_opts->{'max'}) {
@@ -1217,35 +1216,44 @@ sub _model_character_data {
     } else {
         $ra_params = _get_params_from_const_rax("$SCRATCH" ."RAxML_info.t1.$tag");
     }
-    return ($ra_aln_len,$codon_flag,$ra_params);
+    return ($ra_aln_len,$ra_params);
 }
 
 # IN: alignment file
 #     partition file
 # OUT: array of lengths
-#      flag for partitions by codon position
 # JOB: if partitioning scheme included
 #      return the length of each partition for data
 #      to be simulated separately
 sub _get_partition_lengths {
     my $aln = shift;
     my $part = shift;
-    my $codon_flag = 0;
     my @lens = ();
+    my @sums = ();
     if ($part) {
         open IN, $part or _my_die("cannot open $part:$!");
         while (my $line = <IN>) {
             chomp $line;
             next if ($line =~ m/^\s*$/);
-            if ($line =~ m/^[^,]+,\s*\S+\s*=\s*(\d+)-(\d+)\s*$/) {
-                my $len = ($2 - $1 + 1);
-                push @lens, $len;
-            } elsif ($line =~ m/^[^,]+,\s*\S+\s*=\s*(\d+)-(\d+)\S(\d+)\s*$/) {
-                my $len = ($2 - $1)/$3 + 1;
-                push @lens, $len;
-                $codon_flag = 1;
-            } else {
-                _my_die("unexpected line in $part");
+            if ($line =~ m/^[^,]+,\s*\S+\s*=\s*(.+)*/) {
+                my $sum = 0;
+                @sums = split/[,]/, $1;
+                foreach my $s (@sums) {
+                    if ($s =~ m/\s*(\d+)-(\d+)\s*$/) {
+                        my $len_sum = ($2 - $1 + 1);
+                        $sum += $len_sum;
+                    } elsif ($s =~ m/\s*(\d+)-(\d+)\s*\\(3)\s*$/) {
+                        my $sum1 = (($2 - $1)/3);
+                        my @s1 = split/[.]/, $sum1;
+                        my $len_sum = ($s1[0]+1);
+                        $sum += $len_sum;
+                    } elsif ($s =~ m/\s*(\d+)\s*$/) {
+                        $sum += 1;
+                    } else {
+                        _my_die("unexpected line in $part");
+                    }
+                }
+                push @lens, $sum;
             }
         }
         close IN;
@@ -1259,7 +1267,7 @@ sub _get_partition_lengths {
         }
         close IN;
     }
-    return (\@lens,$codon_flag);
+    return (\@lens);
 }
 
 # IN: filename
@@ -1314,6 +1322,9 @@ sub _get_params_from_const_rax {
                 next;
             } elsif ($line =~ m/DataType: (\S+)/) {
                 $data[$lflag - 1]->{'type'} = $1;
+                next;
+            } elsif ($line =~ m/Substitution Matrix: (\S+)/) {
+                $data[$lflag - 1]->{'submat'} = $1;
                 $lflag = 0;
             } else {
                 _my_die("unexpected line: $line");
@@ -1332,34 +1343,37 @@ sub _make_unlinked_partition_file {
     my $part = shift;
     my $model = shift;
     my $new_part = shift;
-    my ($ra_aa_part_ranges,$ra_part_names) = _get_aa_part_info($part);
-    _print_unlinked_part($ra_aa_part_ranges,$model,$new_part);
-    return $ra_part_names;
+    my ($ra_models,$ra_names,$ra_ranges) = _get_part_info($part);
+    _print_unlinked_part($ra_names,$ra_ranges,$model,$new_part);
+    return $ra_names;
 }
 
 # IN: partition file
 # OUT: number and lengths of partitions
 #      name of partitions
 # JOB: get partition lengths and names for new file
-sub _get_aa_part_info {
+sub _get_part_info {
     my $part = shift;
     open IN, $part or _my_die("cannot open $part:$!");
     my @fields = ();
-    my @part_info = ();
+    my @models = ();
+    my @ranges = ();
     my @names = ();
     while (my $line = <IN>) {
         chomp $line;
         next if ($line =~ m/^\s*$/);
-        @fields = split/\,/, $line;
-        $fields[1] or _my_die("unexpected line in part file:$line\nexpecting comma");
-        push @part_info, $fields[1];
-        my @name_range = split /=/, $fields[1];
-        $name_range[1] or _my_die("unexpected line in part file:$line\nexpecting =");
-        $name_range[0] =~ s/\s//g;
-        push @names, $name_range[0];
+        @fields = split /=/, $line;
+        $fields[1] or _my_die("unexpected line in part file:$line\nexpecting =");
+        push @ranges, $fields[1];
+        my @model_name = split/\,/, $fields[0];
+        $model_name[1] or _my_die("unexpected line in part file:$line\nexpecting comma");
+        $model_name[0] =~ s/\s//g;
+        $model_name[1] =~ s/\s//g;
+        push @models, $model_name[0];
+        push @names, $model_name[1];
    }
    close IN;
-   return (\@part_info,\@names);
+   return (\@models,\@names,\@ranges);
 }
 
 # IN: partition info
@@ -1368,12 +1382,13 @@ sub _get_aa_part_info {
 # JOB: print new paritition info with the GTR_UNLINKED model
 #      necessary for amino acid data
 sub _print_unlinked_part {
-    my $part_info = shift;
+    my $ra_part_names = shift;
+    my $ra_part_ranges = shift;
     my $model = shift;
     my $new_part = shift;
     open OUT, ">$new_part" or _my_die("cannot open $new_part:$!");
-    for (my $i = 0; $i < @{$part_info}; $i++) {
-       print OUT "$model," . "$part_info->[$i]\n";
+    for (my $i = 0; $i < @{$ra_part_names}; $i++) {
+       print OUT "$model, " . "$ra_part_names->[$i] = $ra_part_ranges->[$i]\n";
     }
     close OUT;
 }
@@ -1432,8 +1447,12 @@ sub generate_alignments {
     my $tag = shift;
     my $gapflag = $rh_opts->{'nogaps'};
     my $aln = $rh_opts->{'aln'};
+    my $part = $rh_opts->{'part'};
 
     _run_seqgen($rh_opts,$ra_aln_len,$ra_params,$ra_rates,$reps,$restart,$tag);
+    if ($part) {
+        _make_sim_part($ra_params,$ra_aln_len,$part);
+    }
     my $ra_ds = _build_datasets(scalar(@{$ra_params}),$aln,$gapflag,$tag);
     my $ra_alns = _make_alns($ra_ds,$aln,$tag);
 }
@@ -1462,6 +1481,7 @@ sub _run_seqgen {
     my $tag       = shift;
     my $count     = 0;
     my $tre       = 0;
+    my $trans_model = '';
     my $recalc    = $rh_opts->{'rerun'};
     for (my $i = 0; $i < @{$ra_params}; $i++) {
         my $rh_part = $ra_params->[$i];
@@ -1477,8 +1497,12 @@ sub _run_seqgen {
             if (scalar(@{$ra_rates})) {
                 $cmd .= "-mGENERAL ";
                 $cmd .= _get_aa_params($rh_part,$ra_rates->[$i]);
+            } elsif ($rh_opts->{'part'}) {
+                $trans_model = _translate_model($rh_part->{'submat'});
+                $cmd .= "-m$trans_model ";
+                $cmd .= _get_aa_params($rh_part,0);
             } else {
-                my $trans_model = _translate_model($rh_opts);
+                $trans_model = _translate_model($rh_opts->{'mod'});
                 $cmd .= "-m$trans_model ";
                 $cmd .= _get_aa_params($rh_part,0);
             }
@@ -1513,12 +1537,9 @@ sub _run_seqgen {
 }
 
 sub _translate_model {
-    my $rh_opts = shift;
-    my $mod = $rh_opts->{'mod'};
-    $mod = uc($mod);
-    my $core_mod = 0;
+    my $mod = shift;
+    my $core_mod = uc($mod);
     if ($USEGARLI)  {
-        $core_mod = $mod;
         if ($core_mod =~ m/JONES/) {
             return 'JTT';
         } elsif ($core_mod =~ m/WAG/) {
@@ -1534,9 +1555,7 @@ sub _translate_model {
             warn "    either run: jones WAG dayhoff mtREV mtmam\n";
             die  "    or specify --max\n";
         }
-    }
-    elsif ($mod =~ m/(?:ASC_)?PROT(?:GAMMA|CAT)(\S+)/) {
-        $core_mod = $1;
+    } else {
         if ($core_mod =~ m/JTT/) {
             return 'JTT';
         } elsif ($core_mod =~ m/WAG/) {
@@ -1556,8 +1575,6 @@ sub _translate_model {
             warn "    either run: WAG DAYHOFF BLOSUM62 MTREV MTART CPREV45\n";
             die  "    or specify --max\n";
         }
-    } else {
-        die "unexpected model: $mod\n";
     }
 }
 
@@ -1808,21 +1825,63 @@ sub _make_alns {
     return \@files;
 }
 
+sub _make_sim_part {
+    my $ra_params = shift;
+    my $ra_aln_len = shift;
+    my $part = shift;
+    my $new_part = "$SCRATCH" . "$SIM_PARTITION_FILE";
+    my ($ra_part_models,$ra_part_names,$ra_part_ranges) = _get_part_info($part);
+    my $ra_ranges = _print_ranges($ra_aln_len);
+    _print_new_part_file($ra_part_models,$ra_part_names,$ra_ranges,$new_part);
+}
+
+# IN: alignment length
+# OUT: array of partition lengths
+# JOB: parse partition lengths
+sub _print_ranges {
+    my $ra_lens = shift;
+    my $i = 0;
+    my $last = 0;
+    my @ranges = ();
+    foreach my $d (@{$ra_lens}) {
+        my $lt = ($last + 1);
+        my $rt = ($last + $d);
+        push @ranges, "$lt-$rt";
+        $last += $d;
+    }
+   return \@ranges;
+}
+
+# IN: array of partition titles
+#     array of partition lengths
+# OUT: none
+# JOB: print new partition files
+sub _print_new_part_file {
+    my $ra_part_models = shift;
+    my $ra_part_names = shift;
+    my $ra_ranges = shift;
+    my $file = shift;
+    open OUT, ">$file" or _my_die("cannot open $file:$!");
+    for (my $i = 0; $i < @{$ra_ranges}; $i++) {
+        print OUT "$ra_part_models->[$i], $ra_part_names->[$i] = ";
+        print OUT "$ra_ranges->[$i]\n";
+    }
+    close OUT;
+}
+
 # IN: array of simulated alignments
 #     command-line hash of options
 #     length of alignments
-#     flag for partitioning by codon position
 #     iteration
 #     restart flag
 #     string containing rep and run
 # OUT: none
-# JOB: if partitioned by codon position, create new partitioning scheme
+# JOB: create new partitioning scheme
 #      run RAxML on simulated alignments
 sub run_gen_trees {
     my $ra_alns = shift;
     my $rh_opts = shift;
     my $ra_aln_len = shift;
-    my $codon_flag = shift;
     my $i = shift;
     my $restart = shift;
     my $tag = shift;
@@ -1832,12 +1891,6 @@ sub run_gen_trees {
     if ($USEGARLI)  {
         _run_garli_on_genset($rh_opts,$ra_alns,$restart,$tag,$i);
         _run_garli_on_genset($rh_opts,$ra_alns,$restart,$tag,$i,$tre);
-    } elsif ($codon_flag) {
-        my $new_part = "$SCRATCH" . $NEW_PARTITION_FILE;
-        my $ra_part_titles = _get_part_titles($part);
-        my $ra_ranges = _print_ranges($ra_aln_len);
-        _print_new_part_file($ra_part_titles,$ra_ranges,$new_part);
-        _run_rax_on_genset($ra_alns,$mod,$new_part,$tre,$i,$restart,$tag);
     } else {
         _run_rax_on_genset($ra_alns,$mod,$part,$tre,$i,$restart,$tag);
     }
@@ -1885,60 +1938,6 @@ sub _run_garli_on_genset {
     File::Temp::cleanup();
 }
 
-# IN: parition file
-# OUT: array of partition titles
-# JOB: parse partition titles
-sub _get_part_titles {
-    my $part = shift;
-    my @titles = ();
-    open IN, $part or _my_die("cannot open $part:$!");
-    while (my $line = <IN>) {
-        chomp $line;
-        next if ($line =~ m/^\s*$/);
-        if ($line =~ m/^(\s*\S+,\s*\S+\s*=\s*)\d+-\d+\S*\s*$/) {
-            my $title = $1;
-            push @titles, $title;
-        } else {
-            _my_die("unexpected line in $part");
-        }
-    }
-    close IN;
-    return \@titles;
-}
-
-# IN: alignment length
-# OUT: array of partition lengths
-# JOB: parse partition lengths
-sub _print_ranges {
-    my $ra_lens = shift;
-    my $i = 0;
-    my $last = 0;
-    my @ranges = ();
-    foreach my $d (@{$ra_lens}) {
-        my $lt = ($last + 1);
-        my $rt = ($last + $d);
-        push @ranges, "$lt-$rt";
-        $last += $d;
-    }
-   return \@ranges;
-}
-
-# IN: array of partition titles
-#     array of partition lengths
-# OUT: none
-# JOB: print new partition files for codon positions
-sub _print_new_part_file {
-    my $ra_part_titles = shift;
-    my $ra_ranges = shift;
-    my $file = shift;
-    open OUT, ">$file" or _my_die("cannot open $file:$!");
-    for (my $i = 0; $i < @{$ra_ranges}; $i++) {
-        print OUT "$ra_part_titles->[$i]";
-        print OUT "$ra_ranges->[$i]\n";
-    }
-    close OUT;
-}
-
 # IN: array of simulated alignments
 #     model
 #     partition file
@@ -1960,20 +1959,20 @@ sub _run_rax_on_genset {
     my $i       = shift;
     my $restart = shift;
     my $tag     = shift;
-    $cmd  = "$RAX -p 1234 -w $SCRATCH -m $mod -s $ra_alns->[$i] ";
+    $cmd  = "$RAX -p 1234 --no-bfgs -w $SCRATCH -m $mod -s $ra_alns->[$i] ";
     $cmd .= "-n ml.$tag.$i";
     if ($part) {
-        $cmd .= " -q $part ";
+        $cmd .= " -q $SCRATCH" . "$SIM_PARTITION_FILE ";
     }
     if ($QUIET) {
         $cmd .= " >> ${DIR}sowh_stdout_$NAME.txt ";
         $cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
     }
     safe_system($cmd) unless($restart);
-    $cmd  = "$RAX -p 1234 -w $SCRATCH -m $mod -s $ra_alns->[$i] ";
+    $cmd  = "$RAX -p 1234 --no-bfgs -w $SCRATCH -m $mod -s $ra_alns->[$i] ";
     $cmd .= "-n t1.$tag.$i -g $tre";
     if ($part) {
-        $cmd .= " -q $part ";
+        $cmd .= " -q $SCRATCH" . "$SIM_PARTITION_FILE ";
     }
     if ($QUIET) {
         $cmd .= " >> ${DIR}sowh_stdout_$NAME.txt ";

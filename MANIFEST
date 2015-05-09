@@ -1,4 +1,3 @@
-analysis.sh
 analysis/B1.sh
 analysis/B10.sh
 analysis/B57.conf
@@ -70,7 +69,6 @@ build_3rd_party.sh
 dependencies/garli-2.01.tar.gz
 dependencies/Seq-Gen.v1.3.3.tgz
 dependencies/standard-RAxML-master.zip
-dependencies/utility_functions.R
 examples.sh
 examples/aa.ga
 examples/aa.gaps.phy
@@ -128,6 +126,4 @@ published_datasets/wangetal2008.W75.susko.tre
 README.md
 sowhat
 sowhat.bibtex
-sull.sh
 t/sowhat.t
-TODO
