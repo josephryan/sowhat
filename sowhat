@@ -20,7 +20,7 @@
 #    with this program; if not, write to the Free Software Foundation, Inc.,
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-our $VERSION = 0.23;
+our $VERSION = 0.24;
 
 use strict;
 use warnings;
@@ -411,10 +411,10 @@ sub get_version {
     if ($version eq '') {
         die "Error from RAxML (check --rax option):\n$possible_error";
     }
-    if ($version < 7.7) {
+    if ($version < 8.1) {
         warn "sowhat ERROR:\n";
         warn "You are running version $version of RAxML\n";
-        die  "sowhat requires version 7.7 or higher\n";
+        die  "sowhat requires version 8.1 or higher\n";
     }
     return $long_version;
 }
@@ -560,7 +560,7 @@ sub _run_best_tree_w_raxml {
     my $tag     = shift;
     my $tre     = shift;
 
-    my $cmd = "$RAX -f d -p 1234 -no-bfgs -w $SCRATCH -m $mod -s $aln -n $title.$tag";
+    my $cmd = "$RAX -f d -p 1234 --no-bfgs -w $SCRATCH -m $mod -s $aln -n $title.$tag";
     $cmd .= " -q $part" if ($part);
     $cmd .= " -g $tre" if ($tre);
     if ($QUIET) {
@@ -1959,7 +1959,7 @@ sub _run_rax_on_genset {
     my $i       = shift;
     my $restart = shift;
     my $tag     = shift;
-    $cmd  = "$RAX -p 1234 -no-bfgs -w $SCRATCH -m $mod -s $ra_alns->[$i] ";
+    $cmd  = "$RAX -p 1234 --no-bfgs -w $SCRATCH -m $mod -s $ra_alns->[$i] ";
     $cmd .= "-n ml.$tag.$i";
     if ($part) {
         $cmd .= " -q $SCRATCH" . "$SIM_PARTITION_FILE ";
@@ -1969,7 +1969,7 @@ sub _run_rax_on_genset {
         $cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
     }
     safe_system($cmd) unless($restart);
-    $cmd  = "$RAX -p 1234 -no-bfgs -w $SCRATCH -m $mod -s $ra_alns->[$i] ";
+    $cmd  = "$RAX -p 1234 --no-bfgs -w $SCRATCH -m $mod -s $ra_alns->[$i] ";
     $cmd .= "-n t1.$tag.$i -g $tre";
     if ($part) {
         $cmd .= " -q $SCRATCH" . "$SIM_PARTITION_FILE ";
