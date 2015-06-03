@@ -83,7 +83,6 @@ examples/H0.tre
 examples/jc69.garli.conf
 examples/nt.partitions
 examples/nt.phy
-examples/t.conf
 LICENSE
 Makefile.PL
 MANIFEST
