@@ -20,7 +20,7 @@
 #    with this program; if not, write to the Free Software Foundation, Inc.,
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-our $VERSION = 0.24;
+our $VERSION = 0.30;
 
 use strict;
 use warnings;
@@ -36,7 +36,7 @@ use Statistics::R;
 
 our $RAX = 'raxmlHPC';
 our $GARLI = 'Garli';
-our $USEGARLI = '1';
+our $USEGARLI = '0';
 our $SEQGEN = 'seq-gen';
 our $PB = 'pb -f';
 our $PPRED = 'ppred';
@@ -266,14 +266,14 @@ sub process_options {
                              "seqgen=s" => \$rh_opts->{'seqgen'},
                                  "stop" => \$rh_opts->{'stop'},
                                 "usepb" => \$rh_opts->{'usepb'},
-                             "useraxml" => \$rh_opts->{'useraxml'},
+                             "usegarli" => \$rh_opts->{'usegarli'},
                          "usegentree=s" => \$rh_opts->{'gentree'},
                               "version" => \$rh_opts->{'version'},
                            );
     
     $PPRED = $rh_opts->{'ppred'} if ($rh_opts->{'ppred'});
-    if ($rh_opts->{'useraxml'}) {
-        $USEGARLI = 0;
+    if ($rh_opts->{'usegarli'}) {
+        $USEGARLI = 1;
     }
     $PB = $rh_opts->{'pb'} if ($rh_opts->{'pb'});
     $PB_BURN = $rh_opts->{'pb_burn'} if ($rh_opts->{'pb_burn'});
