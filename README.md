@@ -57,8 +57,8 @@ with the indicated dependency versions. Other versions may be incompatible, and 
 used with caution. These external tools are the result of a considerable amount of work by other investigators, please also cite them when you cite `sowhat`.
 
 Phylogenetic programs: 
-- [GARLI](https://code.google.com/p/garli/), v2.01.1067
 - [RAxML](https://github.com/stamatak/standard-RAxML), 8.1.20 
+- [GARLI](https://code.google.com/p/garli/), v2.01.1067
 - [Seq-Gen](http://tree.bio.ed.ac.uk/software/seqgen/), v1.3.3
 - [ape](http://cran.r-project.org/web/packages/ape/index.html), v3.2
 
@@ -127,21 +127,7 @@ The constraint tree represents a hypothesis that you would like to compare to th
 
 Note that B, D, E, and F are unresolved.
 
-#### 3. Garli conf file
-
-Example Garli configuration files are available (examples.garli.conf and examples/aa.garli.conf). For an in-depth explanation of all of the options, see the Garli manual available from: http://www.bio.utexas.edu/faculty/antisense/garli/garli.html
-
-The nucleotide model specified in _examples/garli.conf_ is GTR+GAMMA. The amino acid model specified in _examples/aa.garli.conf_ is WAG+GAMMA. To adjust either of these the following parameters should be adjusted in garli.conf:
-
-    _ratematrix_, _statefrequencies_, _ratehetmode_, _numratecats_, _invariantsites_
-
-We highly recommend not adjusting other parameters in the garli conf files as this could cause sowhat to fail.
-
-#### 4. For using RAxML in place of GARLI
-
-RAxML is much faster than Garli and can use multiple processors, but as we report in our paper, Garli appears to be more suitable for the SOWH test. To use RAxML, you need to provide the option:
-
-  _--useraxml_
+#### 3. RAxML model
 
 The only other required parameter when using RAxML is
 
@@ -156,6 +142,24 @@ Other RAxML parameters (including number of threads) can be specified with the o
 for example:
 
   _--rax='/usr/local/bin/raxmlHPC-PTHREADS -T 20'
+
+#### 4. For using GARLI instead of RAxML
+
+RAxML is much faster than Garli and can use multiple processors, but GARLI has more available models. To use GARLI, you need to provide the option:
+
+  _--usegarli
+
+  and
+
+  _--garli_conf_
+
+Example Garli configuration files are available (examples.garli.conf and examples/aa.garli.conf). For an in-depth explanation of all of the options, see the Garli manual available from: http://www.bio.utexas.edu/faculty/antisense/garli/garli.html
+
+The nucleotide model specified in _examples/garli.conf_ is GTR+GAMMA. The amino acid model specified in _examples/aa.garli.conf_ is WAG+GAMMA. To adjust either of these the following parameters should be adjusted in garli.conf:
+
+    _ratematrix_, _statefrequencies_, _ratehetmode_, _numratecats_, _invariantsites_
+
+We highly recommend not adjusting other parameters in the garli conf files as this could cause sowhat to fail.
 
 ### Running sowhat
 
