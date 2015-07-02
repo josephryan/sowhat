@@ -5,7 +5,7 @@
 
 `sowhat` automates the SOWH phylogenetic topology test (described by the manuscripts listed in FURTHER READING below). It works on amino acid, nucleotide, and binary character state datasets. Partitions (including codon position partitioning) can be specified. 
  
-A manuscript describing the `sowhat` and the SOWH is available at bioRxiv: http://biorxiv.org/content/early/2014/05/19/005264
+A manuscript describing the `sowhat` and the SOWH is available at bioRxiv: http://biorxiv.org/content/early/2015/06/15/005264
 
 `sowhat` includes several features that provide flexibility and aid in the interpretation and assessment of SOWH test results, including: 
 
@@ -208,7 +208,7 @@ can be viewed by running any of the following:
 
 A manuscript describing `sowhat` and the performance of the SOWH test has been posted to the bioRxiv:
 
-Automation and Evaluation of the SOWH Test of Phylogenetic Topologies with SOWHAT
+Automation and Evaluation of the SOWH Test with SOWHAT
 Samuel H. Church, Joseph F. Ryan, Casey W. Dunn
 bioRxivdoi: http://dx.doi.org/10.1101/005264
 
