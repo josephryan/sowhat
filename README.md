@@ -172,29 +172,36 @@ The results of the SOWH test are included in a file called _sowhat.results_, whi
 ## RUN
 
     sowhat \
-    --constraint=NEWICK_CONSTRAINT_TREE \
-    --aln=PHYLIP_ALIGNMENT \
-    --name=NAME_FOR_REPORT \
-    --model=MODEL \
-    --dir=DIR \
-    [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] \
-    [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] \
-    [--usepb] \
-    [--stop] \
-    [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS] \
-    [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] \
-    [--reps=NUMBER_OF_REPLICATES] \
-    [--runs=NUMBER_OF_RUNS] \
-    [--partition=PARTITION_FILE] \
-    [--rerun] \
-    [--restart] \
-    [--gaps] \
-    [--debug] \
-    [--help] \
-    [--version] \
+    --constraint=NEWICK_CONSTRAINT_TREE
+    --aln=PHYLIP_ALIGNMENT
+    --name=NAME_FOR_REPORT
+    --dir=DIR
+    [--max]
+    [--raxml_model=MODEL_FOR_RAXML]
+    [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS]
+    [--nogaps]
+    [--partition=PARTITION_FILE]
+    [--usegentree=NEWICK_TREE_FOR_SIMULATING_DATA]
+    [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] 
+    [--usegarli]
+    [--garli=GARLI_BINARY_OR_PATH_PLUS_OPTIONS]
+    [--garli_conf=PATH_TO_GARLI_CONF_FILE]
+    [--usepb]
+    [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS]
+    [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS]
+    [--ppred=PPRED_BINARY_OR_PATH_PLUS_OPTIONS]
+    [--reps=NUMBER_OF_REPLICATES]
+    [--runs=NUMBER_OF_TESTS_TO_RUN]
+    [--resolved]
+    [--initial]
+    [--rerun]
+    [--restart]
+    [--stop]
+    [--debug]
+    [--help]
+    [--version]
 
 ## DOCUMENTATION
-
 
 Extensive documentation is embedded inside of `sowhat` in POD format and
 can be viewed by running any of the following:
