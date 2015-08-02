@@ -20,7 +20,7 @@
 #    with this program; if not, write to the Free Software Foundation, Inc.,
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-our $VERSION = 0.30;
+our $VERSION = 0.31;
 
 use strict;
 use warnings;
@@ -98,9 +98,21 @@ MAIN: {
             #For the first iteration of each run only, run the initial trees
             #and get the parameter values.
                 run_initial_trees($rh_opts,$restart_flag,$tag);
+
+                if ($rh_opts->{'treetwo'}) {
+                    my $score_switch_flag = decide_best($rh_opts);
+                    if ($score_switch_flag) {
+                        my $tmp_tre = $rh_opts->{'constraint_tree'};
+                        $rh_opts->{'constraint_tree'} = $rh_opts->{'treetwo'};
+                        $rh_opts->{'treetwo'} = $tmp_tre;
+                        run_initial_trees($rh_opts,$restart_flag,$tag);
+                    }
+                }
+
                 if ($rh_opts->{'initial'}) {
                     exit;
-                }
+                }               
+
                 if ($rh_opts->{'usepb'}) {
                     get_params_w_pb($rh_opts,$alns_to_gen,$restart_flag,$tag);
                 } else {
@@ -138,9 +150,7 @@ MAIN: {
             if ($ch == ($rh_opts->{'runs'} - 1)) {
             #After a successive iteration on all runs, 
             #evaluate statistics across runs and create a graph
-
-                calculate_run_split(\@current_mean,\@mean,$ch,$tag);
-                if ($ch) {
+                if ($ch && $rh_opts->{'plot'}) {
                     plot_runs(\@mean,$rh_opts->{'runs'},$ts);
                 }
             }
@@ -148,7 +158,7 @@ MAIN: {
             if($ts > 9) {
             #After 10 iterations on all runs,
             # begin to calculate and report the statistics.
-                calc_ratio($ch,$ts,\@current_score,\@pen_score,\@ratio,\@mean);
+                calc_ratio($ch,$ts,\@current_score,\@pen_score,\@ratio,\@mean,$rh_opts->{'plot'});
                 print_report($ch,$ts,$best_ml,$best_t1,$rh_stats,$ra_diff,
                 \@delta_dist,\@ratio,$rh_opts,$fd_file,\@ratio_count,
                 \@perc_ratio,$ver);
@@ -256,6 +266,7 @@ sub process_options {
                           "partition=s" => \$rh_opts->{'part'},
                                  "pb=s" => \$rh_opts->{'pb'},
                             "pb_burn=i" => \$rh_opts->{'pb_burn'},
+                                 "plot" => \$rh_opts->{'plot'},
                               "ppred=s" => \$rh_opts->{'ppred'},
                                 "rax=s" => \$rh_opts->{'rax'},
                                "reps=i" => \$rh_opts->{'reps'},
@@ -265,6 +276,7 @@ sub process_options {
                                "runs=i" => \$rh_opts->{'runs'},
                              "seqgen=s" => \$rh_opts->{'seqgen'},
                                  "stop" => \$rh_opts->{'stop'},
+                            "treetwo=s" => \$rh_opts->{'treetwo'},
                                 "usepb" => \$rh_opts->{'usepb'},
                              "usegarli" => \$rh_opts->{'usegarli'},
                          "usegentree=s" => \$rh_opts->{'gentree'},
@@ -471,12 +483,16 @@ sub run_initial_trees {
     my $part = $rh_opts->{'part'};
     my $mod = $rh_opts->{'mod'};
     my $tre = $rh_opts->{'constraint_tree'};
+    my $treetwo = '';
+    if ($rh_opts->{'treetwo'}) {
+        $treetwo = $rh_opts->{'treetwo'};
+    }
 
     if ($USEGARLI)  {
-        _run_best_tree_w_garli('ml',$conf,$aln,0,$restart,$tag);
+        _run_best_tree_w_garli('ml',$conf,$aln,0,$restart,$tag,$treetwo);
         _run_best_tree_w_garli('t1',$conf,$aln,0,$restart,$tag,$tre);
     } else {
-        _run_best_tree_w_raxml('ml',$aln,$part,$mod,$restart,$tag);
+        _run_best_tree_w_raxml('ml',$aln,$part,$mod,$restart,$tag,$treetwo);
         _run_best_tree_w_raxml('t1',$aln,$part,$mod,$restart,$tag,$tre);
     }
 }
@@ -570,6 +586,28 @@ sub _run_best_tree_w_raxml {
     safe_system($cmd) unless($restart);
 }
 
+sub decide_best {
+    my $rh_opts = shift;
+    my $const = $rh_opts->{'constraint_tree'};
+    my $treetwo = $rh_opts->{'treetwo'};
+    my $score_switch_flag = 0;
+    my $best_ml_score = '';
+    my $best_t1_score = '';
+    if ($USEGARLI)  {
+        $best_ml_score = _get_best_garli_score("$SCRATCH" . "ml.0.0.screen.log");
+        $best_t1_score = _get_best_garli_score("$SCRATCH" . "t1.0.0.screen.log");
+    } else {
+        $best_ml_score = _get_best_score("$SCRATCH" . "RAxML_info.ml.0.0");
+        $best_t1_score = _get_best_score("$SCRATCH" . "RAxML_info.t1.0.0");
+    }
+    if ($best_ml_score < $best_t1_score) {
+        $score_switch_flag = 1;
+        unlink glob "$SCRATCH/*ml.0.0*";
+        unlink glob "$SCRATCH/*t1.0.0*";
+    }
+    return($score_switch_flag);
+}
+
 # IN:  command-line options hash
 #      replicates (number of trees to generate in phylobayes)
 #      restart flag
@@ -597,7 +635,7 @@ sub generate_zero_const {
     my $tag = shift;
     my $ml_tre = '';
     my $const_tre = $rh_opts->{'constraint_tree'};
-    my $zero_const = "$DIR" . "zero_const.$tag.tre";
+    my $zero_const = "$SCRATCH" . "zero_const.$tag.tre";
     if ($rh_opts->{'rerun'} && $USEGARLI) {
         $ml_tre = "$SCRATCH" . "ml.$tag.best.phy";
     } elsif ($rh_opts->{'rerun'}) {
@@ -636,8 +674,8 @@ return q~library(ape)
 #' @examples
 #' zc <- zero_constrained( ml, constraint )
 zero_constrained <- function ( phy_resolved, phy_constraint, epsilon=0.000001 ){
-	phy_resolved$edge.length[ incompatible_edges(  phy_resolved, phy_constraint ) ] <- epsilon
-	return( phy_resolved )
+    phy_resolved$edge.length[ incompatible_edges(  phy_resolved, phy_constraint ) ] <- epsilon
+    return( phy_resolved )
 }
 
 #' Identify the edges in one phylo object that are incompatible with the edges in another 
@@ -648,18 +686,18 @@ zero_constrained <- function ( phy_resolved, phy_constraint, epsilon=0.000001 ){
 #' @return A boolean vector corresponding to the edges in phy1. Each element is FALSE if 
 #' the edge is compatible with phy2, or TRUE if incompatible.
 incompatible_edges <- function( phy1, phy2 ){
-	
-	# First check to see that the two trees have the same tips
-	if( setequal(phy1$tip.label, phy2$tip.label) == FALSE ) {
-		stop("Trees do not have the same tip names.")
-	}
+    
+    # First check to see that the two trees have the same tips
+    if( setequal(phy1$tip.label, phy2$tip.label) == FALSE ) {
+        stop("Trees do not have the same tip names.")
+    }
 
-	bi1 = get_bipartitions( phy1 )
-	bi2 = get_bipartitions( phy2 )
-	
-	incompat = lapply( bi1, is_incompatible_with_set, bi_list=bi2, phy=phy1 )
-	
-	return ( unlist( incompat ) )
+    bi1 = get_bipartitions( phy1 )
+    bi2 = get_bipartitions( phy2 )
+    
+    incompat = lapply( bi1, is_incompatible_with_set, bi_list=bi2, phy=phy1 )
+    
+    return ( unlist( incompat ) )
 }
 
 #' Check if bipartition bi is incompatible with the bipartitions in bi_list. 
@@ -673,8 +711,8 @@ incompatible_edges <- function( phy1, phy2 ){
 #' @return TRUE if bi is incompatible with any bipartition in bi_list, otherwise FALSE.
 is_incompatible_with_set <- function( bi, bi_list, phy ) {
 
-	incompatible <- lapply( bi_list, are_bipartitions_incompatible, bi2=bi, phy=phy )
-	return ( any( unlist( incompatible ) ) )
+    incompatible <- lapply( bi_list, are_bipartitions_incompatible, bi2=bi, phy=phy )
+    return ( any( unlist( incompatible ) ) )
 }
 
 #' Check if two bipartitions drawn from trees with the same tips are incompatible with eachother. 
@@ -687,28 +725,28 @@ is_incompatible_with_set <- function( bi, bi_list, phy ) {
 #' This is used to infer the other half of each bipartition.
 #' @return TRUE if bi1 is incompatible with bi2, otherwise FALSE.
 are_bipartitions_incompatible <- function( bi1, bi2, phy ) {
-	
-	labels = phy$tip.label
-	
-	# Take the left side of the bipartition, as given
-	left1  = bi1
-	
-	# Take the right side of the bipartition as all taxa not in the left side
-	right1 = labels[ ! labels %in% left1 ]
-	
-	# Do the same for the second bipartition
-	left2  = bi2
-	right2 = labels[ ! labels %in% left2 ]
-	
-	# Bipartition 1 is compatible with Bipartition 2 if either side of Bipartition 1 
-	# is a subset of either side of Bipartition 2
-	
-	left1_compat  = all( left1 %in% left2 ) | all( left1 %in% right2 )
-	right1_compat = all( right1 %in% left2 ) | all( right1 %in% right2 )
-	
-	compatible = left1_compat | right1_compat
-	
-	return( ! compatible )
+    
+    labels = phy$tip.label
+    
+    # Take the left side of the bipartition, as given
+    left1  = bi1
+    
+    # Take the right side of the bipartition as all taxa not in the left side
+    right1 = labels[ ! labels %in% left1 ]
+    
+    # Do the same for the second bipartition
+    left2  = bi2
+    right2 = labels[ ! labels %in% left2 ]
+    
+    # Bipartition 1 is compatible with Bipartition 2 if either side of Bipartition 1 
+    # is a subset of either side of Bipartition 2
+    
+    left1_compat  = all( left1 %in% left2 ) | all( left1 %in% right2 )
+    right1_compat = all( right1 %in% left2 ) | all( right1 %in% right2 )
+    
+    compatible = left1_compat | right1_compat
+    
+    return( ! compatible )
 }
 
 #' Get tips and labels of a phylo object.
@@ -717,12 +755,12 @@ are_bipartitions_incompatible <- function( bi1, bi2, phy ) {
 #' @return A vector of all the tips, annotated with their names
 tips <- function(phy) {
 
-	t <- phy$edge[ ! phy$edge[,2] %in% phy$edge[,1] ,2]
-	t <- t[order(t)]
-	
-	names(t) <- phy$tip.label
-	
-	return(t)
+    t <- phy$edge[ ! phy$edge[,2] %in% phy$edge[,1] ,2]
+    t <- t[order(t)]
+    
+    names(t) <- phy$tip.label
+    
+    return(t)
 }
 
 #' Get all the descendants of a given node in a tree.
@@ -733,27 +771,27 @@ tips <- function(phy) {
 #' @return A vector of nodes (specified by number) that are descendants of a. Includes
 #' internal and tip nodes.
 descendants <- function(phy, a, keep_node=FALSE) {
-	# returns a vector of all the descendants of node a, including tips and internal nodes
-	# Based on a breadth-first search
-	q <- c(a)
-	d <- c()
-	while (length(q)>0){
-		# dequeue first item
-		n <- q[1]
-		q <- q[q != n]
-		
-		# add it to the descendants vector
-		d <- append(d, n)
-		
-		# add it's descendants to the queue
-		q <- append(q, phy$edge[phy$edge[,1] == n,2])
-	}
-	
-	# Remove the original source node from the list
-	if ( ! keep_node ){
-		d <- d[d != a ]
-	}
-	return(d)
+    # returns a vector of all the descendants of node a, including tips and internal nodes
+    # Based on a breadth-first search
+    q <- c(a)
+    d <- c()
+    while (length(q)>0){
+        # dequeue first item
+        n <- q[1]
+        q <- q[q != n]
+        
+        # add it to the descendants vector
+        d <- append(d, n)
+        
+        # add it's descendants to the queue
+        q <- append(q, phy$edge[phy$edge[,1] == n,2])
+    }
+    
+    # Remove the original source node from the list
+    if ( ! keep_node ){
+        d <- d[d != a ]
+    }
+    return(d)
 }
 
 #' Get all the tips that are descendants of a given node in a tree.
@@ -763,9 +801,9 @@ descendants <- function(phy, a, keep_node=FALSE) {
 #' @return A vector of tip nodes (specified by number) that are descendants of a. If a is 
 #' a tip, it is the sole element of this vector.
 tip_descendants <- function(phy, a) {
-	# returns a vector of all the tips that are descendants of a
-	t <- tips(phy)
-	return( t[ t %in% descendants( phy, a, keep_node=TRUE ) ] )
+    # returns a vector of all the tips that are descendants of a
+    t <- tips(phy)
+    return( t[ t %in% descendants( phy, a, keep_node=TRUE ) ] )
 }
 
 #' Get a bipartition, described as a vector of tip numbers, from a specified tree and 
@@ -777,22 +815,22 @@ tip_descendants <- function(phy, a) {
 #' bipartition (the other half is the set of tip nodes that are not in this vector).
 bipartition_for_edge <- function( phy, edge ){
 
-	# Not certain which of the two nodes that make up the edge is ancestor and which is 
-	# descendant. Descendant will have fewer descendant tips, so pick the node with the 
-	# fewest descendants.
-	
-	left_node  <- phy$edge[edge,1]
-	right_node <- phy$edge[edge,2]
-	
-	left_tips <- tip_descendants( phy, left_node )
-	right_tips <- tip_descendants( phy, right_node )
-	
-	if ( length( left_tips ) < length( right_tips ) ){
-		return( left_tips )
-	}
-	else {
-		return( right_tips )
-	}
+    # Not certain which of the two nodes that make up the edge is ancestor and which is 
+    # descendant. Descendant will have fewer descendant tips, so pick the node with the 
+    # fewest descendants.
+    
+    left_node  <- phy$edge[edge,1]
+    right_node <- phy$edge[edge,2]
+    
+    left_tips <- tip_descendants( phy, left_node )
+    right_tips <- tip_descendants( phy, right_node )
+    
+    if ( length( left_tips ) < length( right_tips ) ){
+        return( left_tips )
+    }
+    else {
+        return( right_tips )
+    }
 
 }
 
@@ -804,8 +842,8 @@ bipartition_for_edge <- function( phy, edge ){
 #' @return A vector of tip nodes (specified by labels) that define one half of the 
 #' bipartition (the other half is the set of tip nodes that are not in this vector).
 bipartition_for_edge_by_label <- function( edge, phy ){
-	
-	return( phy$tip.label[ bipartition_for_edge( phy, edge ) ]	 )
+    
+    return( phy$tip.label[ bipartition_for_edge( phy, edge ) ]   )
 
 }
 
@@ -816,11 +854,11 @@ bipartition_for_edge_by_label <- function( edge, phy ){
 #' edges in phy$edge. Bipartitions are specified as a vector of the tip labels that make 
 #' up one half of the bipartition.
 get_bipartitions <- function( phy ){
-	# Takes a tree, returns a list of 
-	edge_nums = as.list( 1:nrow( phy$edge ) )
-	
-	return( lapply( edge_nums, bipartition_for_edge_by_label, phy=phy ) )
-	
+    # Takes a tree, returns a list of 
+    edge_nums = as.list( 1:nrow( phy$edge ) )
+    
+    return( lapply( edge_nums, bipartition_for_edge_by_label, phy=phy ) )
+    
 }~;
 }
 
@@ -903,6 +941,9 @@ sub get_params {
     } else {
         die("model not recognized by sowhat. Full list of models: ...");
     }
+    print Dumper $ra_params;
+    print Dumper $ra_rates;
+    exit;
 
     return ($ra_aln_len,$ra_params,$ra_rates);
 }
@@ -1888,11 +1929,18 @@ sub run_gen_trees {
     my $part = $rh_opts->{'part'};
     my $mod = $rh_opts->{'mod'};
     my $tre = $rh_opts->{'constraint_tree'};
+
+    my $treetwo = '';
+    if ($rh_opts->{'treetwo'}) {
+        $treetwo = $rh_opts->{'treetwo'};
+    }
+
     if ($USEGARLI)  {
-        _run_garli_on_genset($rh_opts,$ra_alns,$restart,$tag,$i);
-        _run_garli_on_genset($rh_opts,$ra_alns,$restart,$tag,$i,$tre);
+        _run_garli_on_genset($rh_opts,$ra_alns,$restart,'ml.'.$tag,$i,$treetwo);
+        _run_garli_on_genset($rh_opts,$ra_alns,$restart,'t1.'.$tag,$i,$tre);
     } else {
-        _run_rax_on_genset($ra_alns,$mod,$part,$tre,$i,$restart,$tag);
+        _run_rax_on_genset($ra_alns,$mod,$part,$i,$restart,'ml.'.$tag,$treetwo);
+        _run_rax_on_genset($ra_alns,$mod,$part,$i,$restart,'t1.'.$tag,$tre);
     }
 }
 
@@ -1911,9 +1959,9 @@ sub _run_garli_on_genset {
     open IN, $conf or die "cannot open $conf:$!";
     print $fh "datafname = $ra_alns->[$i]\n";
     if ($const) {
-        print $fh "ofprefix = $SCRATCH/t1.$tag.$i\n";
+        print $fh "ofprefix = $SCRATCH/$tag.$i\n";
     } else {
-        print $fh "ofprefix = $SCRATCH/ml.$tag.$i\n";
+        print $fh "ofprefix = $SCRATCH/$tag.$i\n";
     }
     print $fh "searchreps = 1\n";
     print $fh "outputphyliptree = 1\n";
@@ -1955,22 +2003,17 @@ sub _run_rax_on_genset {
     my $mod     = shift;
     my $part    = shift;
     my $cmd     = '';
-    my $tre     = shift;
     my $i       = shift;
     my $restart = shift;
     my $tag     = shift;
+    my $tre     = shift;
+    
     $cmd  = "$RAX -p 1234 --no-bfgs -w $SCRATCH -m $mod -s $ra_alns->[$i] ";
-    $cmd .= "-n ml.$tag.$i";
-    if ($part) {
-        $cmd .= " -q $SCRATCH" . "$SIM_PARTITION_FILE ";
+    if ($tre) {
+        $cmd .= "-n $tag.$i -g $tre";
+    } else {
+        $cmd .= "-n $tag.$i";
     }
-    if ($QUIET) {
-        $cmd .= " >> ${DIR}sowh_stdout_$NAME.txt ";
-        $cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
-    }
-    safe_system($cmd) unless($restart);
-    $cmd  = "$RAX -p 1234 --no-bfgs -w $SCRATCH -m $mod -s $ra_alns->[$i] ";
-    $cmd .= "-n t1.$tag.$i -g $tre";
     if ($part) {
         $cmd .= " -q $SCRATCH" . "$SIM_PARTITION_FILE ";
     }
@@ -2201,8 +2244,14 @@ if (n > 9) {
     q100 <- quantile(dtb,1,names=FALSE)
     rk <- length(dtb[dtb > teststat])
     p <- (rk / n)
-    pu <- (p + (1.96)*sqrt((1/n)*(p*(1-p))))
-    pl <- (p - (1.96)*sqrt((1/n)*(p*(1-p)))) 
+    if (p < (1/n)) {
+        newp = round((1 / n),digits=6)
+        less = "<"
+        p = noquote(paste(less,newp,sep=""))
+    }
+    ci <- binom.test(rk,n,p=0.5)
+    pu <- ci\$conf.int[2]
+    pl <- ci\$conf.int[1]
 } else {
     q0 <- NULL
     q25 <- NULL
@@ -2325,35 +2374,6 @@ EOF
     }
 }
 
-# IN: array of current mean of null
-#     array of all means of null
-#     run
-#     rep
-# OUT: none
-# JOB: calculate difference between runs
-sub calculate_run_split {
-    my $ra_current_mean = shift;
-    my $ra_mean = shift;
-    my $ch = shift;
-    my $tag = shift;
-    my $file = $DIR . "sowhat.runs.info";
-    open OUT, ">$file" or _my_die("cannot open >$file:$!");
-    foreach my $ra_m (@{$ra_mean}) {
-        print OUT "\nMean of null distribution of run as sample increases: \n";
-        foreach my $val (@{$ra_m}) {
-            print OUT "$val\n";
-        }
-    }
-    foreach my $val (@{$ra_current_mean}) { 
-        print OUT "\nFinal Mean of Run = $val";
-    }
-    for (my $i = 1; $i <= $ch; $i++) {
-        my $diff = $ra_current_mean->[$i] - $ra_current_mean ->[($i - 1)];
-        print OUT "\nDifference between runs " . ($i - 1) .  " and $i: $diff\n";
-    }
-    close OUT;
-}
-
 # IN: run
 #     rep
 #     current stopping score
@@ -2371,6 +2391,7 @@ sub calc_ratio {
     my $ra_pen_score = shift;
     my $ra_ratio = shift;
     my $ra_mean = shift;
+    my $plot_flag = shift;
     my $calc_ratio = 0;
     my $current_score = $ra_current_score->[$ch];
     my $pen_score = $ra_pen_score->[$ch];
@@ -2389,7 +2410,7 @@ sub calc_ratio {
     $ra_ratio = $ra_ratio->[$ch]; 
     $ra_mean = $ra_mean->[$ch]; 
 
-    if(scalar(@{$ra_ratio}) > 1) {
+    if(scalar(@{$ra_ratio}) > 1 && $plot_flag) {
         my $ratio_str = join ', ', @{$ra_ratio};
         my $mean_str = join ', ', @{$ra_mean};
         my $cmds = <<EOF;
@@ -2494,11 +2515,9 @@ sub print_report {
     print OUT "        75%  = $rh_s->{'thridquart'}\n";
     print OUT "        100% = $rh_s->{'highest'}\n";
     print OUT "\nSOWH test results:\n";
-    print OUT "    The p-value represents the probability that the test statistic\n";
-    print OUT "    would be observed under the null hypothesis.\n";
-    print OUT "\n    Rank of test statistic: $rh_s->{'rank'}\n";
-    print OUT "    Lower confidence interval of p-value: $rh_s->{'pl'}\n";
-    print OUT "    Upper confidence interval of p-value: $rh_s->{'pu'}\n"; 
+    print OUT "    Rank of test statistic: $rh_s->{'rank'}\n";
+    print OUT "    Lower 95% confidence interval of p-value: $rh_s->{'pl'}\n";
+    print OUT "    Upper 95% confidence interval of p-value: $rh_s->{'pu'}\n"; 
     print OUT "\n    p-value: $rh_s->{'pval'}\n\n";
 
 
