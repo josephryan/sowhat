@@ -5,7 +5,7 @@
 
 `sowhat` automates the SOWH phylogenetic topology test (described by the manuscripts listed in FURTHER READING below). It works on amino acid, nucleotide, and binary character state datasets. Partitions (including codon position partitioning) can be specified. 
  
-A manuscript describing the `sowhat` and the SOWH is available at bioRxiv: http://biorxiv.org/content/early/2014/05/19/005264
+A manuscript describing the `sowhat` and the SOWH is available at bioRxiv: http://biorxiv.org/content/early/2015/06/15/005264
 
 `sowhat` includes several features that provide flexibility and aid in the interpretation and assessment of SOWH test results, including: 
 
@@ -57,8 +57,8 @@ with the indicated dependency versions. Other versions may be incompatible, and 
 used with caution. These external tools are the result of a considerable amount of work by other investigators, please also cite them when you cite `sowhat`.
 
 Phylogenetic programs: 
-- [GARLI](https://code.google.com/p/garli/), v2.01.1067
 - [RAxML](https://github.com/stamatak/standard-RAxML), 8.1.20 
+- [GARLI](https://code.google.com/p/garli/), v2.01.1067
 - [Seq-Gen](http://tree.bio.ed.ac.uk/software/seqgen/), v1.3.3
 - [ape](http://cran.r-project.org/web/packages/ape/index.html), v3.2
 
@@ -127,21 +127,7 @@ The constraint tree represents a hypothesis that you would like to compare to th
 
 Note that B, D, E, and F are unresolved.
 
-#### 3. Garli conf file
-
-Example Garli configuration files are available (examples.garli.conf and examples/aa.garli.conf). For an in-depth explanation of all of the options, see the Garli manual available from: http://www.bio.utexas.edu/faculty/antisense/garli/garli.html
-
-The nucleotide model specified in _examples/garli.conf_ is GTR+GAMMA. The amino acid model specified in _examples/aa.garli.conf_ is WAG+GAMMA. To adjust either of these the following parameters should be adjusted in garli.conf:
-
-    _ratematrix_, _statefrequencies_, _ratehetmode_, _numratecats_, _invariantsites_
-
-We highly recommend not adjusting other parameters in the garli conf files as this could cause sowhat to fail.
-
-#### 4. For using RAxML in place of GARLI
-
-RAxML is much faster than Garli and can use multiple processors, but as we report in our paper, Garli appears to be more suitable for the SOWH test. To use RAxML, you need to provide the option:
-
-  _--useraxml_
+#### 3. RAxML model
 
 The only other required parameter when using RAxML is
 
@@ -157,6 +143,24 @@ for example:
 
   _--rax='/usr/local/bin/raxmlHPC-PTHREADS -T 20'
 
+#### 4. For using GARLI instead of RAxML
+
+RAxML is much faster than Garli and can use multiple processors, but GARLI has more available models. To use GARLI, you need to provide the option:
+
+  _--usegarli
+
+  and
+
+  _--garli_conf_
+
+Example Garli configuration files are available (examples.garli.conf and examples/aa.garli.conf). For an in-depth explanation of all of the options, see the Garli manual available from: http://www.bio.utexas.edu/faculty/antisense/garli/garli.html
+
+The nucleotide model specified in _examples/garli.conf_ is GTR+GAMMA. The amino acid model specified in _examples/aa.garli.conf_ is WAG+GAMMA. To adjust either of these the following parameters should be adjusted in garli.conf:
+
+    _ratematrix_, _statefrequencies_, _ratehetmode_, _numratecats_, _invariantsites_
+
+We highly recommend not adjusting other parameters in the garli conf files as this could cause sowhat to fail.
+
 ### Running sowhat
 
 See examples.sh for examples of sowhat command lines
@@ -168,29 +172,36 @@ The results of the SOWH test are included in a file called _sowhat.results_, whi
 ## RUN
 
     sowhat \
-    --constraint=NEWICK_CONSTRAINT_TREE \
-    --aln=PHYLIP_ALIGNMENT \
-    --name=NAME_FOR_REPORT \
-    --model=MODEL \
-    --dir=DIR \
-    [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] \
-    [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] \
-    [--usepb] \
-    [--stop] \
-    [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS] \
-    [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] \
-    [--reps=NUMBER_OF_REPLICATES] \
-    [--runs=NUMBER_OF_RUNS] \
-    [--partition=PARTITION_FILE] \
-    [--rerun] \
-    [--restart] \
-    [--gaps] \
-    [--debug] \
-    [--help] \
-    [--version] \
+    --constraint=NEWICK_CONSTRAINT_TREE
+    --aln=PHYLIP_ALIGNMENT
+    --name=NAME_FOR_REPORT
+    --dir=DIR
+    [--max]
+    [--raxml_model=MODEL_FOR_RAXML]
+    [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS]
+    [--nogaps]
+    [--partition=PARTITION_FILE]
+    [--usegentree=NEWICK_TREE_FOR_SIMULATING_DATA]
+    [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] 
+    [--usegarli]
+    [--garli=GARLI_BINARY_OR_PATH_PLUS_OPTIONS]
+    [--garli_conf=PATH_TO_GARLI_CONF_FILE]
+    [--usepb]
+    [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS]
+    [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS]
+    [--ppred=PPRED_BINARY_OR_PATH_PLUS_OPTIONS]
+    [--reps=NUMBER_OF_REPLICATES]
+    [--runs=NUMBER_OF_TESTS_TO_RUN]
+    [--resolved]
+    [--initial]
+    [--rerun]
+    [--restart]
+    [--stop]
+    [--debug]
+    [--help]
+    [--version]
 
 ## DOCUMENTATION
-
 
 Extensive documentation is embedded inside of `sowhat` in POD format and
 can be viewed by running any of the following:
@@ -204,7 +215,7 @@ can be viewed by running any of the following:
 
 A manuscript describing `sowhat` and the performance of the SOWH test has been posted to the bioRxiv:
 
-Automation and Evaluation of the SOWH Test of Phylogenetic Topologies with SOWHAT
+Automation and Evaluation of the SOWH Test with SOWHAT
 Samuel H. Church, Joseph F. Ryan, Casey W. Dunn
 bioRxivdoi: http://dx.doi.org/10.1101/005264
 

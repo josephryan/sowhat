@@ -411,10 +411,10 @@ sub get_version {
     if ($version eq '') {
         die "Error from RAxML (check --rax option):\n$possible_error";
     }
-    if ($version < 7.7) {
+    if ($version < 8.1) {
         warn "sowhat ERROR:\n";
         warn "You are running version $version of RAxML\n";
-        die  "sowhat requires version 7.7 or higher\n";
+        die  "sowhat requires version 8.1 or higher\n";
     }
     return $long_version;
 }
