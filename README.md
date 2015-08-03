@@ -3,15 +3,16 @@
 
 ## DESCRIPTION
 
-`sowhat` automates the SOWH phylogenetic topology test (described by the manuscripts listed in FURTHER READING below). It works on amino acid, nucleotide, and binary character state datasets. Partitions (including codon position partitioning) can be specified. 
+`sowhat` automates the SOWH phylogenetic topology test, which uses parametric bootstrapping and is described by the manuscripts listed in FURTHER READING. It works on amino acid, nucleotide, and binary character state datasets.
  
-A manuscript describing the `sowhat` and the SOWH is available at bioRxiv: http://biorxiv.org/content/early/2015/06/15/005264
+A manuscript describing the `sowhat` and the SOWH is available at bioRxiv: http://biorxiv.org/content/early/2014/05/19/005264
 
 `sowhat` includes several features that provide flexibility and aid in the interpretation and assessment of SOWH test results, including: 
 
-- The test can be run with the adjustment suggested by Susko 2014 (http://dx.doi.org/10.1093/molbev/msu039), which is the default behavior, or as originally described.
+- The test can be performed with the adjustment suggested by Susko 2014 (http://dx.doi.org/10.1093/molbev/msu039), which is the default behavior, or as originally described.
+- Partitions, including partitions by codon position, can be used.
 - Gaps are propagated from the original dataset to the simulated dataset.
-- Likelihood searches can be performed with RAxML or GARLI
+- Likelihood searches can be performed with RAxML or GARLI.
 - Boostrap replicate datasets can be simulated with Seq-Gen or PhyloBayes.
 - Different models can be used for simulation and inference.
 - Confidence intervals are estimated for the p-value, which helps the investigator assess if a sufficient number of bootstrap replicates have been sampled. 
@@ -105,7 +106,7 @@ on these datasets, execute:
 See `examples.sh` and the resulting `test.output/` directory for more on the specifics of 
 `sowhat` use.
 
-__Warning__: Many of the examples take a very long time (especially those that use Garli).  For a quick example run _make test_ and see the output in the _test.output_ directory.
+__Warning__: Some of the examples take time (especially those that use Garli).  For a quick example run _make test_ and see the output in the _test.output_ directory.
 
 ## GETTING STARTED WITH YOUR OWN ANALYSES
 
@@ -115,13 +116,13 @@ __Warning__: Many of the examples take a very long time (especially those that u
 
 __Format:__ non-interleaved PHYLIP format
 
-Description: This can be DNA, amino acid, or binary characters. Usually, you would have performed phylogenetic analyses on this alignment and recovered a result that was in conflict with an _a priori_ hypothesis.  You will specify the _a priori_ hypothesis in a constraint tree (next section).
+Description: This can be DNA, amino acid, or binary characters. Often, you would have performed phylogenetic analyses on this alignment and recovered a result that was in conflict with an _a priori_ hypothesis.  You will specify the _a priori_ hypothesis in a constraint tree (next section).
 
 #### 2. Constraint tree
 
 __Format:__ Newick format
 
-The constraint tree represents a hypothesis that you would like to compare to the ML tree. In most cases you will want a tree that is mostly unresolved but includes the clade being tested.  For example if your ML tree showed a sister relationship between two taxa 'A' and 'B' and you want to compare this result to topology with a sister relationship between 'A' and 'C,' you would create the following constraint tree:
+The constraint tree represents a hypothesis that you would like to compare to the ML tree or some alternative hypothesis. In most cases you will want a tree that is mostly unresolved but includes the clade being tested.  For example if your ML tree showed a sister relationship between two taxa 'A' and 'B' and you want to compare this result to topology with a sister relationship between 'A' and 'C,' you would create the following constraint tree:
 
   ((A,C),B,D,E,F);
 
@@ -133,7 +134,7 @@ The only other required parameter when using RAxML is
 
   _--raxml_model_
 
-This option can specify any of the models that are available to RAxML. Running _raxmlHPC -h_ from the command line will give you a list of models available to RAxML.
+This option can specify any of the models that are available to RAxML. Running sowhat with the option --raxml_model=available will provide a list of all possible models.
 
 Other RAxML parameters (including number of threads) can be specified with the option:
 
@@ -141,19 +142,19 @@ Other RAxML parameters (including number of threads) can be specified with the o
 
 for example:
 
-  _--rax='/usr/local/bin/raxmlHPC-PTHREADS -T 20'
+  _--rax='/usr/local/bin/raxmlHPC-PTHREADS -T 20'_
 
 #### 4. For using GARLI instead of RAxML
 
 RAxML is much faster than Garli and can use multiple processors, but GARLI has more available models. To use GARLI, you need to provide the option:
 
-  _--usegarli
+  _--usegarli_
 
   and
 
   _--garli_conf_
 
-Example Garli configuration files are available (examples.garli.conf and examples/aa.garli.conf). For an in-depth explanation of all of the options, see the Garli manual available from: http://www.bio.utexas.edu/faculty/antisense/garli/garli.html
+Example Garli configuration files are available (examples/garli.conf and examples/aa.garli.conf). For an in-depth explanation of all of the options, see the Garli manual available from: http://www.bio.utexas.edu/faculty/antisense/garli/garli.html
 
 The nucleotide model specified in _examples/garli.conf_ is GTR+GAMMA. The amino acid model specified in _examples/aa.garli.conf_ is WAG+GAMMA. To adjust either of these the following parameters should be adjusted in garli.conf:
 
@@ -163,45 +164,98 @@ We highly recommend not adjusting other parameters in the garli conf files as th
 
 ### Running sowhat
 
-See examples.sh for examples of sowhat command lines
+See examples.sh for examples of sowhat command lines.
 
 ### Examining the results
 
 The results of the SOWH test are included in a file called _sowhat.results_, which can be found in the directory specified with the _--dir_ option in the _sowhat_ command line.  The bottom of _sowhat.results_ includes a p-value representing the probability that the test statistic would be observed under the null hypothesis.
 
+Additional outputs include detailed information on the model used for simulating new alignments in the file _sowhat.sim.model_, information on the null distribution in _sowhat.distribution_, and all program files printed to a directory _sowhat_scratch_. Within this directory, the files ending in _i.0.0_ represent the initial search of the empirical alignment file.
+
+## MORE COMPLEX SOWHAT OPTIONS
+
+### MODEL OPTIONS
+
+Parametric bootstrap tests rely heavily on the model used for data simulation. sowhat provides a number of options for exploring models and examining the results.
+
+#### Using PhyloBayes CAT-GTR model
+
+When using sowhat with RAxML, the user can specify that data be simulated using parameters estimated with the CAT-GTR model in a posterior probability framework in PhyloBayes. This model allows for more parameters free to vary. The likelihood scoring will still be performed using the RAxML model specified. The option is
+
+  _--usepb_
+
+#### Using the maximum parameters
+
+Using both RAxML and GARLI, the user can specify that parameter estimation and data simulation be performed using the maximum number of free parameters. For example, in RAxML with nucleotide data, the model GTRGAMMAIX would be used for data simulation, which allows rates, frequencies, alpha value, and invariant sites to all be estimated using likelihood. This option is
+
+ _--max_
+
+#### Using a specified model
+
+The user can additionally specify a model for data simulation. The format for this model is demonstrated in the files _examples/simulation..._. For nucleotide data, rates and frequencies must be specified. For aminoacid data, a matrix may be provided, or if the GTR model is speicified, a rate file can be provided which includes a symmetrical 20 by 20 matrix of aminoacid rates. Alpha and invariant site parameters may also be included. This option is
+
+ _--usegenmodel_
+
+### SOME RECIPES
+
+#### The classic Goldman+Susko SOWH test
+
+This test evaluates whether a null hypothesis can be rejected, given the data. Data is simulated using parameters estimated under the null hypothesis. The generating topology uses a polytomy for the conflicting clades of interest, as recommended by Susko et al 2014. No additional options need be specified.
+
+#### Testing two trees
+
+This test evaluates whether the data, assuming a specific topology, provides significant support to reject a second topology. Use the options _--constraint=... --treetwo=... --resolved_
+
+#### Testing the SOWH test
+
+There are a number of options for verifying the results of the SOWH test. Multiple simultaneous SOWH tests can be performed and the mean and the ratio of the means can be plotted and examined (files ending in .eps in the specified directory). Use the options _--runs=(number of tests) --plot_
+
+#### Specifying an evolutionary hypothesis
+
+The user can simulated data under very specific models, including specifying abnormal rate matrices and a specific generating topology. This test evaluates whether, assuming evolution under these conditions, can the null hypothesis be rejected. Use the options _--usegenmodel=... --usegentree=..._
+
+#### Evaluating sensitivities
+
+The most thorough approach to parametric bootstrapping is one in which the user changes the model options, evaluates the effects on the resulting p-value, and reports any indication that the null hypothesis cannot be rejected. To accomplish this, the user can perform a series of SOWH tests changing the model, using each of the following options:
+
+ _--usepb_ 
+
+ which uses a model with a high number of free parameters to simulated the data
+
+ _--rerun_
+
+ which recalculates the test statistic and parameters each iteration, to marginalize over any effects resulting from the likelihood software failing to find the optimal topology
+
+ _nogaps_
+
+ which simulates data without any gaps; more information will be present in simulated data than in empirical data, which can affect the null distribution
+
 ## RUN
 
     sowhat \
-    --constraint=NEWICK_CONSTRAINT_TREE
-    --aln=PHYLIP_ALIGNMENT
-    --name=NAME_FOR_REPORT
-    --dir=DIR
-    [--max]
-    [--raxml_model=MODEL_FOR_RAXML]
-    [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS]
-    [--nogaps]
-    [--partition=PARTITION_FILE]
-    [--usegentree=NEWICK_TREE_FOR_SIMULATING_DATA]
-    [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] 
-    [--usegarli]
-    [--garli=GARLI_BINARY_OR_PATH_PLUS_OPTIONS]
-    [--garli_conf=PATH_TO_GARLI_CONF_FILE]
-    [--usepb]
-    [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS]
-    [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS]
-    [--ppred=PPRED_BINARY_OR_PATH_PLUS_OPTIONS]
-    [--reps=NUMBER_OF_REPLICATES]
-    [--runs=NUMBER_OF_TESTS_TO_RUN]
-    [--resolved]
-    [--initial]
-    [--rerun]
-    [--restart]
-    [--stop]
-    [--debug]
-    [--help]
-    [--version]
+    --constraint=NEWICK_CONSTRAINT_TREE \
+    --aln=PHYLIP_ALIGNMENT \
+    --name=NAME_FOR_REPORT \
+    --model=MODEL \
+    --dir=DIR \
+    [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] \
+    [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] \
+    [--usepb] \
+    [--stop] \
+    [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS] \
+    [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] \
+    [--reps=NUMBER_OF_REPLICATES] \
+    [--runs=NUMBER_OF_RUNS] \
+    [--partition=PARTITION_FILE] \
+    [--rerun] \
+    [--restart] \
+    [--gaps] \
+    [--debug] \
+    [--help] \
+    [--version] \
 
 ## DOCUMENTATION
+
 
 Extensive documentation is embedded inside of `sowhat` in POD format and
 can be viewed by running any of the following:
@@ -215,7 +269,7 @@ can be viewed by running any of the following:
 
 A manuscript describing `sowhat` and the performance of the SOWH test has been posted to the bioRxiv:
 
-Automation and Evaluation of the SOWH Test with SOWHAT
+Automation and Evaluation of the SOWH Test of Phylogenetic Topologies with SOWHAT
 Samuel H. Church, Joseph F. Ryan, Casey W. Dunn
 bioRxivdoi: http://dx.doi.org/10.1101/005264
 
@@ -230,9 +284,6 @@ topologies in phylogenetics." Systematic Biology 49.4 (2000): 652-670.
 
 Swofford, David L., Gary J. Olsen, Peter J. Waddell, and David M. Hillis. Phylogenetic 
 inference. (1996): 407-514. http://www.sinauer.com/molecular-systematics.html
-
-
-
 
 ## COPYRIGHT AND LICENSE
 

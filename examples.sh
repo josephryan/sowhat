@@ -10,8 +10,7 @@ sowhat --constraint=examples/H0.tre --aln=examples/nt.phy --raxml_model=GTRGAMMA
 sowhat --constraint=examples/H0.tre --aln=examples/aa.phy --raxml_model=PROTGAMMAWAG --dir=test.output/test2 --name=test
 
 # TEST3: Datatype = CHAR, Model = GTRGAMMA, ML Software = RAxML
-# ISSUE WITH CHAR DATA
-# sowhat --constraint=examples/H0.tre --aln=examples/char.phy --raxml_model=GTRGAMMA --dir=test.output/test3 --name=test
+sowhat --constraint=examples/H0.tre --aln=examples/char.phy --raxml_model=MULTIGAMMA --dir=test.output/test3 --name=test
 
 # TEST4: Datatype = DNA, Model = GTRGAMMA, ML Software = RAxML, partitioned
 sowhat --constraint=examples/H0.tre --aln=examples/nt.phy --raxml_model=GTRGAMMA --dir=test.output/test4 --name=test --partition=examples/nt.partitions
@@ -37,5 +36,13 @@ sowhat --constraint=examples/H0.tre --aln=examples/nt.phy --useraxml --raxml_mod
 # TEST11: Datatype = DNA, Model (likelihood) = JC69, Model (simulate) = GTRGAMMAI, ML Software = GARLI, max
 sowhat --constraint=examples/H0.garli.tre --aln=examples/nt.phy --usegarli --garli_conf=examples/jc69.garli.conf --dir=test.output/test11 --name=test --max
 
-# TEST12: Datatype = DNA, Model = GTRGAMMA, ML Software = RAxML, number of tests = 100
-sowhat --constraint=examples/H0.tre --aln=examples/nt.phy --raxml_model=GTRGAMMA --dir=test.output/test12 --name=test --runs=100
+# TEST12: Datatype = DNA, Model = GTRGAMMA, ML Software = RAxML, number of tests = 10
+sowhat --constraint=examples/H0.tre --aln=examples/nt.phy --raxml_model=GTRGAMMA --dir=test.output/test12 --name=test --runs=10
+
+# TEST13: Datatype = DNA, Model = GTRGAMMA, ML Software = RAxML, user model
+sowhat --constraint=examples/H0.tre --aln=examples/nt.phy --raxml_model=GTRGAMMA --dir=test.output/test12 --name=test --runs=10 --usegenmodel=examples/sowhat.nucleotide.model
+
+# TEST14: Datatype = DNA, Model = GTRGAMMA, ML Software = RAxML, two trees
+sowhat --constraint=examples/H0.tre --aln=examples/nt.phy --raxml_model=GTRGAMMA --dir=test.output/test12 --name=test --runs=10 --usegenmodel=examples/sowhat.nucleotide.model --treetwo=examples/H1.tre
+
+

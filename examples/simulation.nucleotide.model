@@ -1,0 +1,46 @@
+partition = 0
+datatype = nucleotide
+model = GTR
+rate[ac] = 0.289224 
+rate[ag] = 0.109033
+rate[at] = 0.820561
+rate[ct] = 0.730526
+rate[cg] = 0.363477
+rate[gt] = 1.000000
+frequencies = 0.327 0.233 0.175 0.265
+alpha = 0.7527
+pinv = 0.013
+
+### multiple partitions can be specified (partition = ...)
+### each partition must include datatype, model, and frequencies
+### example additional partitions are shown below
+### datatypes can be 'aminoacid','nucleotide','character'
+### GTR is the only nucleotide model available
+### frequencies are in the order [acgt]
+### rates are required for nucleotide data
+### alpha and pinv values are optional
+
+### ### partition = 1
+### ### datatype = nucleotide
+### ### model = GTR
+### ### rate[ac] = 0.289224
+### ### rate[ag] = 0.109033
+### ### rate[at] = 0.820561
+### ### rate[ct] = 0.730526
+### ### rate[cg] = 0.363477
+### ### rate[gt] = 1.000000
+### ### frequencies = 0.327 0.233 0.175 0.265
+### ### alpha = 0.7527
+### ### 
+### ### partition = 2
+### ### datatype = nucleotide
+### ### model = GTR
+### ### rate[ac] = 0.289224
+### ### rate[ag] = 0.363477
+### ### rate[at] = 0.820561
+### ### rate[ct] = 0.730526
+### ### rate[cg] = 0.109033
+### ### rate[gt] = 1.000000
+### ### frequencies = 0.233 0.327 0.175 0.265
+### ### alpha = 0.7527
+
