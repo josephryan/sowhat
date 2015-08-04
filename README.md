@@ -71,6 +71,8 @@ General system tools:
 
 To use more complex models for simulation, you will need to install the following optional dependency:
 - [PhyloBayes](http://www.phylobayes.org)
+To print results to a json file, you will need to install the following optional dependency:
+- The [JSON](http://search.cpan.org/~makamaka/JSON-2.90/) Perl module.
 
 You can install SOWHAT and all the required dependencies listed above on a clean Ubuntu 15.04 
 machine with the following commands (executables will be placed in `/usr/local/bin`):
@@ -168,9 +170,11 @@ See examples.sh for examples of sowhat command lines.
 
 ### Examining the results
 
-The results of the SOWH test are included in a file called _sowhat.results_, which can be found in the directory specified with the _--dir_ option in the _sowhat_ command line.  The bottom of _sowhat.results_ includes a p-value representing the probability that the test statistic would be observed under the null hypothesis.
+The results of the SOWH test are included in a file called _sowhat.results.txt_, which can be found in the directory specified with the _--dir_ option in the _sowhat_ command line.  The bottom of _sowhat.results.txt_ includes a p-value representing the probability that the test statistic would be observed under the null hypothesis.
 
-Additional outputs include detailed information on the model used for simulating new alignments in the file _sowhat.sim.model_, information on the null distribution in _sowhat.distribution_, and all program files printed to a directory _sowhat_scratch_. Within this directory, the files ending in _i.0.0_ represent the initial search of the empirical alignment file.
+Additional outputs include detailed information on the model used for simulating new alignments in the file _sowhat.model.txt_, information on the null distribution in _sowhat.distribution.txt_, and all program files printed to a directory _sowhat_scratch_. Within this directory, the files ending in _i.0.0_ represent the initial search of the empirical alignment file. Results can be printed to a file _sowhat.results.json_ using the option 
+
+    _--json_.
 
 ## MORE COMPLEX SOWHAT OPTIONS
 
@@ -232,27 +236,38 @@ The most thorough approach to parametric bootstrapping is one in which the user 
 
 ## RUN
 
-    sowhat \
-    --constraint=NEWICK_CONSTRAINT_TREE \
-    --aln=PHYLIP_ALIGNMENT \
-    --name=NAME_FOR_REPORT \
-    --model=MODEL \
-    --dir=DIR \
-    [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] \
-    [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] \
-    [--usepb] \
-    [--stop] \
-    [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS] \
-    [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] \
-    [--reps=NUMBER_OF_REPLICATES] \
-    [--runs=NUMBER_OF_RUNS] \
-    [--partition=PARTITION_FILE] \
-    [--rerun] \
-    [--restart] \
-    [--gaps] \
-    [--debug] \
-    [--help] \
-    [--version] \
+
+   sowhat \ 
+   --constraint=NEWICK_CONSTRAINT_TREE \ 
+   --aln=PHYLIP_ALIGNMENT \ 
+   --name=NAME_FOR_REPORT \ 
+   --dir=DIR \ 
+   [--debug] \ 
+   [--garli=GARLI_BINARY_OR_PATH_PLUS_OPTIONS] \ 
+   [--garli_conf=PATH_TO_GARLI_CONF_FILE] \ 
+   [--help] \ 
+   [--initial] \ 
+   [--json] \ 
+   [--max] \ 
+   [--raxml_model=MODEL_FOR_RAXML] \ 
+   [--nogaps] \ 
+   [--partition=PARTITION_FILE] \ 
+   [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS]
+   [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] \ 
+   [--plot] \ 
+   [--ppred=PPRED_BINARY_OR_PATH_PLUS_OPTIONS] \ 
+   [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] \ 
+   [--reps=NUMBER_OF_REPLICATES] \ 
+   [--resolved] \ 
+   [--rerun] \ 
+   [--restart] \
+   [--runs=NUMBER_OF_TESTS_TO_RUN] \ 
+   [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] \ 
+   [--treetwo=NEWICK_ALTERNATIVE_TO_CONST_TREE] \ 
+   [--usepb] \ 
+   [--usegarli] \ 
+   [--usegentree=NEWICK_TREE_FOR_SIMULATING_DATA] \ 
+   [--version] \ 
 
 ## DOCUMENTATION
 
@@ -264,8 +279,8 @@ can be viewed by running any of the following:
         perldoc sowhat
         man sowhat  # available after installation
 
-
 ## CITING
+
 
 A manuscript describing `sowhat` and the performance of the SOWH test has been posted to the bioRxiv:
 

@@ -20,7 +20,7 @@
 #    with this program; if not, write to the Free Software Foundation, Inc.,
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-our $VERSION = 0.34;
+our $VERSION = 0.35;
 
 use strict;
 use warnings;
@@ -34,8 +34,9 @@ use Cwd;
 #use local::lib;
 use Statistics::R;
 
+
 our $RAX = 'raxmlHPC';
-our $GARLI = 'garli';
+our $GARLI = 'Garli';
 our $USEGARLI = '0';
 our $SEQGEN = 'seq-gen';
 our $PB = 'pb -f';
@@ -70,6 +71,8 @@ MAIN: {
     my $ra_rates = [];
     my $alns = '';
     #These are the model arrays
+
+    my (@output);
 
     my $restart_num = restart($rh_opts);
 
@@ -115,15 +118,16 @@ MAIN: {
                 $alns = generate_alignments_w_pb($rh_opts,$restart_flag,$tag);
             } else {
                 $alns = generate_alignments($ra_aln_len,$ra_params,$ra_rates,
-                    $rh_opts,$model,$restart_flag,$tag);
+                    $rh_opts,$model,$restart_flag,$tag,$ch,$ts);
             }
 
             
             run_gen_trees($alns,$rh_opts,$ra_aln_len,
                 $restart_flag,$tag);
             my ($best_ml,$best_t1,$rh_stats,$ra_diff) = 
-                evaluate_distribution($rh_opts,\@delta_dist,\@deltaprime_dist,
+                evaluate_distribution($rh_opts,\@output,\@delta_dist,\@deltaprime_dist,
                 \@mean,\@current_mean,\@pen_mean,$ts,$ch,$tag);
+
 
             if ($ch == ($rh_opts->{'runs'} - 1)) {
             #After a successive iteration on all runs, 
@@ -138,8 +142,10 @@ MAIN: {
             # begin to calculate and report the statistics.
                 calc_ratio($ch,$ts,\@current_mean,\@pen_mean,\@ratio,
                     \@mean,$rh_opts->{'plot'});
-                print_report($ch,$ts,$best_ml,$best_t1,$rh_stats,$ra_diff,
-                    \@delta_dist,\@ratio,$rh_opts,$ver);
+                print_report(\@output,$ra_diff,
+                    $delta_dist[$ch],$ratio[$ch][$ts],$rh_opts,$ver,$ch);
+                if ($rh_opts->{'json'}) {
+                }
             } else {
                 print "-";
             }
@@ -167,6 +173,7 @@ sub process_options {
                          "garli_conf=s" => \$rh_opts->{'garli_conf'},
                                  "help" => \$rh_opts->{'help'},
                               "initial" => \$rh_opts->{'initial'},
+                                 "json" => \$rh_opts->{'json'},
                                   "max" => \$rh_opts->{'max'},
                         "raxml_model=s" => \$rh_opts->{'mod'},
                                "name=s" => \$rh_opts->{'name'},
@@ -199,6 +206,7 @@ sub process_options {
     $GARLI = $rh_opts->{'garli'} if ($rh_opts->{'garli'});
     $QUIET = 0 if ($rh_opts->{'debug'});
     $NAME = $rh_opts->{'name'};
+    require JSON if ($rh_opts->{'json'});
 
     die "$VERSION\n" if ($rh_opts->{'version'});
     pod2usage({-exitval => 0, -verbose => 2}) if($rh_opts->{'help'});
@@ -572,9 +580,9 @@ sub restart {
 sub print_initial_messages {
     my $rh_opts = shift;
     print "SOWHAT:\n";
-    print "Results are being printed to $DIR" . "sowhat.results\n" unless($rh_opts->{'runs'} > 1);
+    print "Results are being printed to $DIR" . "sowhat.results.txt\n" unless($rh_opts->{'runs'} > 1);
     print "Number of runs = $rh_opts->{'runs'}. Details printed to $DIR" . "sowhat.runs.info\n" if($rh_opts->{'runs'} > 1);
-    print "Results of each run printed to separate file: $DIR" . "sowhat.results.'run'\n" if($rh_opts->{'runs'} > 1);
+    print "Results of each run printed to separate file: $DIR" . "sowhat.results.'run'.txt\n" if($rh_opts->{'runs'} > 1);
     if (_interleaved($rh_opts->{'aln'})) {
         die "your alignment $rh_opts->{'aln'} appears to be in phylip interleaved format or sequences are not on a single line. Sorry but sowhat cannot currently deal with this. Please convert to sequential or have one line per taxa.\n";
     }
@@ -755,10 +763,10 @@ sub make_two_tree_decisison {
     my $tag = shift;
     my $score_switch_flag = decide_best($rh_opts);
     if ($score_switch_flag) {
-        warn "  $rh_opts->{'constraint_tree'} is more likely\n";
-        warn "  than $rh_opts->{'treetwo'}\n";
-        warn "  \n$rh_opts->{'treetwo'} will be used as \n";
-        warn "  the constraint tree instead\n";
+        warn "$rh_opts->{'constraint_tree'} is more likely\n";
+        warn "     than $rh_opts->{'treetwo'}\n";
+        warn "     $rh_opts->{'treetwo'} will be used as \n";
+        warn "     the constraint tree instead\n";
         unlink glob "$SCRATCH/*ml.i.0.0*";
         unlink glob "$SCRATCH/*t1.i.0.0*";
         my $tmp_tre = $rh_opts->{'constraint_tree'};
@@ -1075,7 +1083,7 @@ sub get_params {
         if ($datatype eq 'DNA') {
             ($ra_params) = _model_garli_nt($rh_opts,$model,$datatype,$restart,$tag);
         } elsif ($datatype eq 'AA') {
-            ($ra_aln_len,$ra_params,$ra_rates) = _model_garli_aa($rh_opts,$model,$datatype,$restart,$tag);
+            ($ra_params,$ra_rates) = _model_garli_aa($rh_opts,$model,$datatype,$restart,$tag);
         } else {
             warn "   sowhat using GARLI only accepts 'nucleotide' or 'aminoacid' as datatype.";
             die  "    In your conf file ($rh_opts->{'garli_conf'}) you provided $datatype\n";
@@ -1111,6 +1119,7 @@ sub _model_user {
     open IN, $file or die "$file:$!";
     while (my $line = <IN>) {
         chomp $line;
+        next if ($line =~ m/^\#/);
         if ($line =~ m/partition = (\d+)/) {
             $part_num = $1;
             next;
@@ -1815,6 +1824,7 @@ sub generate_alignments_w_pb {
 #     model type
 #     restart flag
 #     string consisting of run and rep
+#     run number
 # OUT: none
 # JOB: run seqgen
 #      parse the simulated datasets
@@ -1827,6 +1837,8 @@ sub generate_alignments {
     my $model = shift;
     my $restart = shift;
     my $tag = shift;
+    my $ch = shift;
+    my $ts = shift;
     my $gapflag = $rh_opts->{'nogaps'};
     my $aln = $rh_opts->{'aln'};
     my $part = $rh_opts->{'part'};
@@ -1835,7 +1847,7 @@ sub generate_alignments {
     if ($part) {
         _make_sim_part($ra_params,$ra_aln_len,$part);
     }
-    _print_sim_model($rh_opts,$model,$ra_aln_len,$ra_params,$ra_rates,$tag);
+    _print_sim_model($rh_opts,$model,$ra_aln_len,$ra_params,$ra_rates,$tag,$ch,$ts);
 
     my $ds = _build_datasets(scalar(@{$ra_params}),$aln,$gapflag,$tag);
     my $alns = _make_alns($ds,$aln,$tag);
@@ -1865,6 +1877,7 @@ sub _run_seqgen {
     my $count     = 0;
     my $tre       = 0;
     my $trans_model = '';
+
     my $recalc    = $rh_opts->{'rerun'};
     for (my $i = 0; $i < @{$ra_params}; $i++) {
         my $rh_part = $ra_params->[$i];
@@ -1906,7 +1919,6 @@ sub _run_seqgen {
         } else {
             $tre = "$SCRATCH" . "$TRE_PREFIX.t1.i.0.0";
         }
-
         $cmd .= " < $tre > $SCRATCH" . "seqgen.out.$tag.$count";
         $cmd .= " 2>> ${DIR}sowh_stderr_$NAME.txt" if ($QUIET);
         $count++;
@@ -2069,22 +2081,31 @@ sub _print_sim_model {
     my $ra_params = shift;
     my $ra_rates = shift;
     my $tag = shift;
-    my $file = "$DIR" . "sowhat.sim.model";
-
+    my $ch = shift;
+    my $ts = shift;
     my $model_cmd = '';
     my $trans_model = '';
-
+    my $file = '';
     my $print_flag = 0;
-    if ($tag eq '0.0') {
+    if ($ts == 0) {
         $print_flag = 1;
     }
     if ($rh_opts->{'rerun'}) {
         $print_flag = 1;
-        $file = "$DIR" . "sowhat.sim.model.$tag";
+    } 
+    if ($rh_opts->{'runs'} > 1) {
+        $file = "$DIR" . "sowhat.model.$ch.txt";
+    } else {
+        $file = "$DIR" . 'sowhat.model.txt';
     }
 
     if ($print_flag) {
-        open OUT, ">$file" or die("cannot open $file:$!");
+        if ($rh_opts->{'rerun'}) {
+            open OUT, ">>$file" or die("cannot open $file:$!");  
+            print OUT "\n    model estimate number $tag \n";
+        } else {
+            open OUT, ">$file" or die("cannot open $file:$!");
+        }
         for (my $i = 0; $i < @{$ra_params}; $i++) {
             my $rh_part = $ra_params->[$i];
             print OUT "partition $i:\n";
@@ -2443,6 +2464,7 @@ sub _run_rax_on_genset {
 #      print distribution of differences
 sub evaluate_distribution {
     my $rh_opts = shift;
+    my $ra_output = shift;
     my $ra_delta_dist = shift;
     my $ra_deltaprime_dist = shift;
     my $ra_mean = shift;
@@ -2487,9 +2509,12 @@ sub evaluate_distribution {
     }
     
     $ra_deltaprime_dist->[$ch][$ts] = $dist - $const_dist;
-    my $rh_stats = _get_stats($ra_delta_dist->[$ch],$ra_deltaprime_dist->[$ch]);
+    my ($rh_stats,$r_out) = _get_stats($ra_delta_dist->[$ch],$ra_deltaprime_dist->[$ch]);
+    _structure_output($r_out,$ra_output,$best_ml_score,$best_t1_score);
+
     $ra_mean->[$ch][$ts] = $rh_stats->{'mean'};
     $ra_current_mean->[$ch] = $rh_stats->{'mean'};
+
 
     return ($best_ml_score,$best_t1_score,$rh_stats,$ra_deltaprime_dist->[$ch]);
 }
@@ -2634,21 +2659,21 @@ if (n > 9) {
     pl <- NULL
 }
 mn
+q0
+q25
+md
+q75
+q100
 n
 teststat
 rk
-p
 pu
 pl
-md
-q0
-q25
-q75
-q100
+p
 EOF
     my $r_out = $R->run($cmds);
     my $rh_stats = _parse_stats($r_out);
-    return $rh_stats;
+    return ($rh_stats,$r_out);
 }
 
 # IN: output of R
@@ -2660,18 +2685,81 @@ sub _parse_stats {
     $str =~ s/^\[\d+\] // or warn "unexpected output from R";
     my @data = split /\n\[\d+\] /, $str;
     $stats{'mean'} = $data[0];
-    $stats{'sample_size'} = $data[1];
-    $stats{'teststat'} = $data[2];
-    $stats{'rank'} = $data[3];
-    $stats{'pval'} = $data[4];
-    $stats{'pu'} = $data[5];
-    $stats{'pl'} = $data[6];
-    $stats{'median'} = $data[7];
-    $stats{'lowest'} = $data[8];
-    $stats{'firstquart'} = $data[9];
-    $stats{'thridquart'} = $data[10];
-    $stats{'highest'} = $data[11];
+    $stats{'lowest'} = $data[1];
+    $stats{'firstquart'} = $data[2];
+    $stats{'median'} = $data[3];
+    $stats{'thridquart'} = $data[4];
+    $stats{'highest'} = $data[5];
+    $stats{'sample_size'} = $data[6];
+    $stats{'teststat'} = $data[7];
+    $stats{'rank'} = $data[8];
+    $stats{'pu'} = $data[9];
+    $stats{'pl'} = $data[10];
+    $stats{'pval'} = $data[11];
     return \%stats;
+}
+
+sub _structure_output {
+    my $str = shift;
+    my $ra_output = shift;
+    my $best_ml_score = shift;
+    my $best_t1_score = shift;
+    $str =~ s/^\[\d+\] // or warn "unexpected output from R";
+    my @data = split /\n\[\d+\] /, $str;
+
+    $ra_output->[0]->{'name'} = 'Null_Distribution';
+    $ra_output->[0]->{'description'} = 'statistics describing the null distribution';
+
+    $ra_output->[0]->{'value'}->[0]->{'name'} = 'null_mean';
+    $ra_output->[0]->{'value'}->[0]->{'value'} = $data[0];
+    $ra_output->[0]->{'value'}->[0]->{'description'} = 'mean';
+    $ra_output->[0]->{'value'}->[1]->{'name'} = 'null_0_perc';
+    $ra_output->[0]->{'value'}->[1]->{'value'} = $data[1];
+    $ra_output->[0]->{'value'}->[1]->{'description'} = 'lowest value';
+    $ra_output->[0]->{'value'}->[2]->{'name'} = 'null_25_perc';
+    $ra_output->[0]->{'value'}->[2]->{'value'} = $data[2];
+    $ra_output->[0]->{'value'}->[2]->{'description'} = '25% quartile';
+    $ra_output->[0]->{'value'}->[3]->{'name'} = 'null_50_perc';
+    $ra_output->[0]->{'value'}->[3]->{'value'} = $data[3];
+    $ra_output->[0]->{'value'}->[3]->{'description'} = 'median';
+    $ra_output->[0]->{'value'}->[4]->{'name'} = 'null_75_perc';
+    $ra_output->[0]->{'value'}->[4]->{'value'} = $data[4];
+    $ra_output->[0]->{'value'}->[4]->{'description'} = '75% quartile';
+    $ra_output->[0]->{'value'}->[5]->{'name'} = 'null_100_perc';
+    $ra_output->[0]->{'value'}->[5]->{'value'} = $data[5];
+    $ra_output->[0]->{'value'}->[5]->{'description'} = 'highest value';
+    $ra_output->[0]->{'value'}->[6]->{'name'} = 'sample_size';
+    $ra_output->[0]->{'value'}->[6]->{'value'} = $data[6];
+    $ra_output->[0]->{'value'}->[6]->{'description'} = 'sample size';
+ 
+    $ra_output->[1]->{'name'} = 'Test_Statistic';
+    $ra_output->[1]->{'description'} = 'values describing the test statistic'; 
+    
+    $ra_output->[1]->{'value'}->[0]->{'name'} = 'Best_ml_score';
+    $ra_output->[1]->{'value'}->[0]->{'description'} = 'empirical lnL, constrained';
+    $ra_output->[1]->{'value'}->[0]->{'value'} = $best_ml_score;
+    $ra_output->[1]->{'value'}->[1]->{'name'} = 'best_t1_score';
+    $ra_output->[1]->{'value'}->[1]->{'description'} = 'empirical lnL, unconstrained';
+    $ra_output->[1]->{'value'}->[1]->{'value'} = $best_t1_score;
+    $ra_output->[1]->{'value'}->[2]->{'name'} = 'test_statistic';
+    $ra_output->[1]->{'value'}->[2]->{'value'} = $data[7];
+    $ra_output->[1]->{'value'}->[2]->{'description'} = 'difference in lnL, test statistic';
+    $ra_output->[1]->{'value'}->[3]->{'name'} = 'rank';
+    $ra_output->[1]->{'value'}->[3]->{'value'} = $data[8];
+    $ra_output->[1]->{'value'}->[3]->{'description'} = 'rank of test statistic';
+
+    $ra_output->[2]->{'name'} = 'SOWH_Results';
+    $ra_output->[2]->{'description'} = 'outcome of the parametric test';
+    
+    $ra_output->[2]->{'value'}->[0]->{'name'} = 'upper_confidence_interval';
+    $ra_output->[2]->{'value'}->[0]->{'value'} = $data[9];
+    $ra_output->[2]->{'value'}->[0]->{'description'} = 'upper 95% conf. int. of p-value';
+    $ra_output->[2]->{'value'}->[1]->{'name'} = 'lower_confidence_interval';
+    $ra_output->[2]->{'value'}->[1]->{'value'} = $data[10];
+    $ra_output->[2]->{'value'}->[1]->{'description'} = 'lower 95% conf. int. of p-value';
+    $ra_output->[2]->{'value'}->[2]->{'name'} = 'p_value';
+    $ra_output->[2]->{'value'}->[2]->{'value'} = $data[11];
+    $ra_output->[2]->{'value'}->[2]->{'description'} = 'p-value of the null hypothesis ';
 }
 
 # IN: array of cumulative mean of null dist
@@ -2763,92 +2851,83 @@ EOF
     }
 }
 
-# IN: run
-#    rep
-#    real max likelihood score
-#    real constrained score
-#    hash of statistics
+# IN: array with output values
 #    array of test statistics
 #    array of null distribution
-#    array of mean ratios
+#    current ration value
 #    hash of command-line options
-#    frequency filename
 #    version
+#    tag
 # OUT: none
 # JOB: print report
 sub print_report {
-    my $ch = shift;
-    my $ts = shift;
-    my $best_ml = shift;
-    my $const_ml = shift;
-    my $rh_s = shift;
+    my $ra_output = shift;
     my $ra_d = shift;
     my $ra_delta_dist = shift;
-    $ra_delta_dist = $ra_delta_dist->[$ch];
-    my $ra_ratio = shift;
+    my $ratio = shift;
     my $rh_opts = shift;
     my $version = shift;
-    my $ratio = $ra_ratio->[$ch][$ts];
-    my $file = '';
+    my $ch = shift;
+    
+    my $json_file = '';
+    my $txt_file = '';
     my $fd_file = '';
 
     if ($rh_opts->{'runs'} > 1) {
-        $file = $DIR . "sowhat.results.$ch"; 
-        $fd_file = $DIR . "sowhat.distribution.$ch"; 
+        $txt_file = $DIR . "sowhat.results.$ch.txt"; 
+        $fd_file = $DIR . "sowhat.distribution.$ch.txt"; 
+        $json_file = $DIR . "sowhat.results.$ch.json"; 
     } else {
-        $file = $DIR . "sowhat.results";
-        $fd_file = $DIR . "sowhat.distribution"; 
+        $txt_file = $DIR . "sowhat.results.txt";
+        $fd_file = $DIR . "sowhat.distribution.txt"; 
+        $json_file = $DIR . "sowhat.results.json";
     }
+    if ($rh_opts->{'json'}) {
+        my $json_string = JSON::encode_json($ra_output);
+        open JOUT, ">$json_file" or die("cannot open >$json_file:$!");
+        print JOUT "$json_string";
+        close JOUT;
+    }
+
+    open TOUT, ">$txt_file" or die("cannot open >$txt_file:$!");
+    print TOUT "\n";
+    print TOUT "=============================================================\n";
+    print TOUT "                   sowhat results\n";
+    print TOUT "=============================================================\n\n";
+    print TOUT "Program was called as follows:\n$0 \\\n";
+    foreach my $arg (@{$rh_opts->{'orig_options'}}) {
+        print TOUT "  $arg \\\n";
+    }
+    print TOUT "\n  \$SEQGEN variable set to $SEQGEN\n";
+    if ($USEGARLI)  {
+        print TOUT "  \$GARLI variable set to $GARLI\n";
+        print TOUT "  garli was version $version\n";
+    } else {
+        print TOUT "  \$RAX variable set to $RAX\n";
+        print TOUT "  RAxML was version $version\n";
+    }
+    if ($rh_opts->{'rerun'}) {
+        print TOUT "   Multiple test statistics calculated\n";
+        print TOUT "   Distribution of test statistics printed to $DIR/sowhat.distribution\n";
+        print TOUT "   Mean value used for calculating p-value\n";
+    }
+    print TOUT "\nDistributions and frequencies printed to:\n $fd_file\n";            
+    for(my $i=0; $i < (@{$ra_output}); $i++) {
+        my $ra_out = $ra_output->[$i];
+        print TOUT "\n$ra_out->{'name'}\n";
+        my $ra_val = $ra_output->[$i]->{'value'};
+        for(my $j=0; $j < (@{$ra_val}); $j++) {
+            my $ra_o = $ra_val->[$j];
+            print TOUT "    $ra_o->{'description'}  =  $ra_o->{'value'}\n";
+        }
+    }
+    close TOUT;
 
     if($ratio <= 0.01) {
         print "o";
     } else {
         print ".";
     }
-
-    open OUT, ">$file" or die("cannot open >$file:$!");
-    print OUT "\n\n";
-    print OUT "=============================================================\n";
-    print OUT "                   sowhat OUTPUT\n";
-    print OUT "=============================================================\n\n";
-    print OUT "\n\nProgram was called as follows:\n$0 \\\n";
-    foreach my $arg (@{$rh_opts->{'orig_options'}}) {
-        print OUT "  $arg \\\n";
-    }
-    print OUT "\n  \$SEQGEN variable set to $SEQGEN\n";
-    if ($USEGARLI)  {
-        print OUT "  \$GARLI variable set to $GARLI\n";
-        print OUT "  garli was version $version\n";
-    } else {
-        print OUT "  \$RAX variable set to $RAX\n";
-        print OUT "  RAxML was version $version\n";
-    }
-    print OUT "\nDistributions and frequencies printed to:\n $fd_file\n";
-    print OUT "\nTest Statistic:\n";
-    if ($rh_opts->{'rerun'}) {
-        print OUT "    Multiple test statistics calculated\n";
-        print OUT "    Distribution of test statistics printed to $DIR/sowhat.distribution\n";
-        print OUT "    Mean value used for calculating p-value: $rh_s->{'teststat'}\n";
-    } else {
-        print OUT "    ML value of best tree: $best_ml\n";
-        print OUT "    ML value of best tree w/constraint: $const_ml\n";
-        print OUT "    Difference between $best_ml and $const_ml: $rh_s->{'teststat'}\n";
-    }
-    print OUT "\nStatistics of the null distribution:\n";
-    print OUT "    Size of null distribution: $rh_s->{'sample_size'}\n";
-    print OUT "    Mean of null distribution: $rh_s->{'mean'}\n";
-    print OUT "    Quartiles:\n";
-    print OUT "        0%   = $rh_s->{'lowest'}\n";
-    print OUT "        25%  = $rh_s->{'firstquart'}\n";
-    print OUT "        50%  = $rh_s->{'median'}\n";
-    print OUT "        75%  = $rh_s->{'thridquart'}\n";
-    print OUT "        100% = $rh_s->{'highest'}\n";
-    print OUT "\nSOWH test results:\n";
-    print OUT "    Rank of test statistic: $rh_s->{'rank'}\n";
-    print OUT "    Lower 95% confidence interval of p-value: $rh_s->{'pl'}\n";
-    print OUT "    Upper 95% confidence interval of p-value: $rh_s->{'pu'}\n"; 
-    print OUT "\n    p-value: $rh_s->{'pval'}\n\n";
-    close OUT;
 
     open OUT, ">$fd_file" or die("cannot open >$fd_file:$!");
     print OUT "Null Distribution:\n";
@@ -2895,8 +2974,8 @@ Samuel H. Church <church@g.harvard.edu>, Joseph F. Ryan <joseph.ryan@whitney.ufl
 
 =head1 SYNOPSIS 
  sowhat --constraint=NEWICK_CONSTRAINT_TREE --aln=PHYLIP_ALIGNMENT --name=NAME_FOR_REPORT --dir=DIR [--debug] 
- [--garli=GARLI_BINARY_OR_PATH_PLUS_OPTIONS] [--garli_conf=PATH_TO_GARLI_CONF_FILE] [--help] [--initial] [--max] 
- [--raxml_model=MODEL_FOR_RAXML] [--nogaps] [--partition=PARTITION_FILE] [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS]
+ [--garli=GARLI_BINARY_OR_PATH_PLUS_OPTIONS] [--garli_conf=PATH_TO_GARLI_CONF_FILE] [--help] [--initial] [--json] 
+ [--max] [--raxml_model=MODEL_FOR_RAXML] [--nogaps] [--partition=PARTITION_FILE] [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS]
  [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] [--plot] [--ppred=PPRED_BINARY_OR_PATH_PLUS_OPTIONS] 
  [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] [--reps=NUMBER_OF_REPLICATES] [--resolved] [--rerun] [--restart]
  [--runs=NUMBER_OF_TESTS_TO_RUN] [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] [--treetwo=NEWICK_ALTERNATIVE_TO_CONST_TREE]
@@ -3016,6 +3095,10 @@ By default sowhat will propogate the undetermined sites in the original dataset 
 
 This will only run the first two trees, which are a constrained and unconstrained search of the provided dataset.
 
+=item B<--json>
+
+The results will be printed to sohwat.results.json file as well as to the sowhat.results.txt file. The JSON perl module is required for this option to run.
+
 =item B<--usegentree>
 
 By default SOWHAT will use the zero-costrained tree as the generating topology for simulated data. This option allows the user to provide some other topology.
@@ -3065,7 +3148,7 @@ http://tree.bio.ed.ac.uk/software/seqgen/
 
 The program then calculates the likelihood scores of each of these alignments both with and without the topology constrained according to the hypothesis. The differences between these scores become the distributions against which the test value will be evaluated.
 
-+The p-value of the test statistic is calculated using R, using the pnorm function. Information about the test is printed to the file sowhat.results in the directory specified by the user.
++The p-value of the test statistic is calculated using R, using the pnorm function. Information about the test is printed to the file sowhat.results.txt in the directory specified by the user.
 
 R is freely available under the GPL-2 license.
 

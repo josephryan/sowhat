@@ -31,7 +31,7 @@ sowhat --constraint=examples/H0.tre --aln=examples/nt.phy --raxml_model=GTRGAMMA
 sowhat --constraint=examples/H0.tre --aln=examples/nt.phy --raxml_model=GTRGAMMA --dir=test.output/test9 --name=test --resolved
 
 # TEST10: Datatype = DNA, Model (likelihood) = GTRGAMMA, Model (simulate) = CAT_GTR (PhyloBayes), ML Software = RAxML, usepb
-sowhat --constraint=examples/H0.tre --aln=examples/nt.phy --useraxml --raxml_model=GTRGAMMA --dir=test.output/test10 --name=test --usepb
+sowhat --constraint=examples/H0.tre --aln=examples/nt.phy --raxml_model=GTRGAMMA --dir=test.output/test10 --name=test --usepb
 
 # TEST11: Datatype = DNA, Model (likelihood) = JC69, Model (simulate) = GTRGAMMAI, ML Software = GARLI, max
 sowhat --constraint=examples/H0.garli.tre --aln=examples/nt.phy --usegarli --garli_conf=examples/jc69.garli.conf --dir=test.output/test11 --name=test --max
@@ -40,9 +40,9 @@ sowhat --constraint=examples/H0.garli.tre --aln=examples/nt.phy --usegarli --gar
 sowhat --constraint=examples/H0.tre --aln=examples/nt.phy --raxml_model=GTRGAMMA --dir=test.output/test12 --name=test --runs=10
 
 # TEST13: Datatype = DNA, Model = GTRGAMMA, ML Software = RAxML, user model
-sowhat --constraint=examples/H0.tre --aln=examples/nt.phy --raxml_model=GTRGAMMA --dir=test.output/test12 --name=test --runs=10 --usegenmodel=examples/sowhat.nucleotide.model
+sowhat --constraint=examples/H0.tre --aln=examples/nt.phy --raxml_model=GTRGAMMA --dir=test.output/test13 --name=test --usegenmodel=examples/simulation.nucleotide.model
 
 # TEST14: Datatype = DNA, Model = GTRGAMMA, ML Software = RAxML, two trees
-sowhat --constraint=examples/H0.tre --aln=examples/nt.phy --raxml_model=GTRGAMMA --dir=test.output/test12 --name=test --runs=10 --usegenmodel=examples/sowhat.nucleotide.model --treetwo=examples/H1.tre
+sowhat --constraint=examples/H0.tre --aln=examples/nt.phy --raxml_model=GTRGAMMA --dir=test.output/test14 --name=test --treetwo=examples/H1.tre --json
 
 
