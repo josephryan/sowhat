@@ -88,6 +88,7 @@ MAIN: {
             my $tag = "$ch.$ts";
             
             my $restart_flag = 0;
+            my $gen_tree = '';
             if (($rh_opts->{'restart'}) && ($ts <= $restart_num)) {
                 $restart_flag = 1;
             }
@@ -109,8 +110,10 @@ MAIN: {
                     ($ra_aln_len,$ra_params,$ra_rates) = get_params($rh_opts,
                         $model,$datatype,$restart_flag,$tag);
                 }
-                unless ($rh_opts->{'resolved'} || $rh_opts->{'gentree'}) {
-                    $rh_opts->{'gentree'} = generate_zero_const($rh_opts,$tag);
+                if ($rh_opts->{'gentree'}) {
+                    $gen_tree = $rh_opts->{'gentree'};
+                } else {
+                    $gen_tree = generate_zero_const($rh_opts,$tag) unless ($rh_opts->{'resolved'});
                 }
             }
 
@@ -118,7 +121,7 @@ MAIN: {
                 $alns = generate_alignments_w_pb($rh_opts,$restart_flag,$tag);
             } else {
                 $alns = generate_alignments($ra_aln_len,$ra_params,$ra_rates,
-                    $rh_opts,$model,$restart_flag,$tag,$ch,$ts);
+                    $rh_opts,$model,$gen_tree,$restart_flag,$tag,$ch,$ts);
             }
 
             
@@ -819,7 +822,7 @@ sub generate_zero_const {
         $ml_tre  = "$SCRATCH" . "$TRE_PREFIX.ml.i.0.0";
     }
         my $R = Statistics::R->new() ;
-my $utility_r_functions = get_utility_R_functions();
+    my $utility_r_functions = get_utility_R_functions();
 my $cmds = <<EOF;
 $utility_r_functions
 phy1 <- read.tree("$ml_tre")
@@ -1835,6 +1838,7 @@ sub generate_alignments {
     my $ra_rates = shift;
     my $rh_opts = shift;
     my $model = shift;
+    my $gen_tree = shift;
     my $restart = shift;
     my $tag = shift;
     my $ch = shift;
@@ -1843,11 +1847,11 @@ sub generate_alignments {
     my $aln = $rh_opts->{'aln'};
     my $part = $rh_opts->{'part'};
 
-    _run_seqgen($rh_opts,$model,$ra_aln_len,$ra_params,$ra_rates,$restart,$tag);
+    _run_seqgen($rh_opts,$model,$ra_aln_len,$ra_params,$ra_rates,$gen_tree,$restart,$tag);
     if ($part) {
         _make_sim_part($ra_params,$ra_aln_len,$part);
     }
-    _print_sim_model($rh_opts,$model,$ra_aln_len,$ra_params,$ra_rates,$tag,$ch,$ts);
+    _print_sim_model($rh_opts,$model,$ra_aln_len,$ra_params,$ra_rates,$gen_tree,$tag,$ch,$ts);
 
     my $ds = _build_datasets(scalar(@{$ra_params}),$aln,$gapflag,$tag);
     my $alns = _make_alns($ds,$aln,$tag);
@@ -1872,6 +1876,7 @@ sub _run_seqgen {
     my $ra_part_lens = shift;
     my $ra_params = shift;
     my $ra_rates  = shift;
+    my $gen_tree  = shift;
     my $restart   = shift;
     my $tag       = shift;
     my $count     = 0;
@@ -1908,12 +1913,12 @@ sub _run_seqgen {
             die(qq~do not know how to handle type: "$rh_part->{'type'}"\n~);
         }
         
-        if ($rh_opts->{'gentree'}) {
-            $tre = $rh_opts->{'gentree'};
+        if ($gen_tree) {
+            $tre = $gen_tree;
         } elsif ($recalc && $USEGARLI) {
-            $tre = "$SCRATCH" . "t1.$tag.best.phy";
+            $tre = "$SCRATCH" . "t1.i.$tag.best.phy";
         } elsif ($recalc) {
-            $tre = "$SCRATCH" . "$TRE_PREFIX.t1.$tag";
+            $tre = "$SCRATCH" . "$TRE_PREFIX.t1.i.$tag";
         } elsif ($USEGARLI)  {
             $tre = "$SCRATCH" . "t1.i.0.0.best.phy";
         } else {
@@ -2080,6 +2085,7 @@ sub _print_sim_model {
     my $ra_part_lens = shift;
     my $ra_params = shift;
     my $ra_rates = shift;
+    my $gen_tree = shift;
     my $tag = shift;
     my $ch = shift;
     my $ts = shift;
@@ -2112,9 +2118,13 @@ sub _print_sim_model {
             
             if ($rh_part->{'type'} eq 'DNA') {
                 print OUT "    seq-gen model = GTR\n";
-                foreach my $r (sort keys $rh_part->{'rates'}) {
-                    print OUT "    rate [$r] = $rh_part->{'rates'}{$r}\n";
-                }
+                my $rh_r = $rh_part->{'rates'};
+                print OUT "    rate [ac] = $rh_r->{'ac'}\n";
+                print OUT "    rate [ag] = $rh_r->{'ag'}\n";
+                print OUT "    rate [at] = $rh_r->{'at'}\n";
+                print OUT "    rate [cg] = $rh_r->{'cg'}\n";
+                print OUT "    rate [ct] = $rh_r->{'ct'}\n";
+                print OUT "    rate [gt] = $rh_r->{'gt'}\n";
                 print OUT "    freq [a c g t] = $rh_part->{'freqs'}\n";
             } elsif ($rh_part->{'type'} eq 'AA') {
                 if (scalar(@{$ra_rates})) {
@@ -2149,15 +2159,15 @@ sub _print_sim_model {
             print OUT "    alpha = $rh_part->{'alpha'}\n" if($rh_part->{'alpha'});
             print OUT "    pinv  = $rh_part->{'pinv'}\n" if($rh_part->{'pinv'});
     
-            if ($rh_opts->{'gentree'}) {
+            if ($gen_tree) {
                 print OUT "    tree used for simulation: \n";
-                print OUT "        $rh_opts->{'gentree'}\n";
+                print OUT "        $gen_tree\n";
             } elsif ($rh_opts->{'rerun'} && $USEGARLI) {
                 print OUT "    tree used for simulation: \n";
-                print OUT "        $SCRATCH" . "t1.$tag.best.phy\n";
+                print OUT "        $SCRATCH" . "t1.i.$tag.best.phy\n";
             } elsif ($rh_opts->{'rerun'}) {
                 print OUT "    tree used for simulation: \n";
-                print OUT "        $SCRATCH" . "$TRE_PREFIX.t1.$tag\n";
+                print OUT "        $SCRATCH" . "$TRE_PREFIX.t1.i.$tag\n";
             } elsif ($USEGARLI)  {
                 print OUT "    tree used for simulation: \n";
                 print OUT "        $SCRATCH" . "t1.i.0.0.best.phy\n";
