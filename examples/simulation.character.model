@@ -1,0 +1,13 @@
+partition = 0
+datatype = character
+model = GTR
+frequencies = 0.327 0.233
+alpha = 0.7527
+pinv = 0.013
+
+### multiple partitions can be specified (partition = ...)
+### each partition must include datatype, model, and frequencies
+### datatypes can be 'aminoacid','nucleotide','character'
+### GTR is the only model available for character data
+### frequencies are [0 1]
+### alpha and pinv values are optional
