@@ -20,7 +20,7 @@
 #    with this program; if not, write to the Free Software Foundation, Inc.,
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-our $VERSION = 0.35;
+our $VERSION = 0.36;
 
 use strict;
 use warnings;
@@ -550,25 +550,30 @@ sub restart {
     my $num = 0;
     my $fileml = '';
     my $reps = $rh_opts->{'reps'};
-    for (my $i = 0; $i < $reps; $i++) { 
+    my $high_flag = 1;
+    my $i = 0;
+    while ($high_flag) {
         if($USEGARLI)  {
             $fileml = "$SCRATCH" . "ml.0.$i.screen.log";
         } else {
             $fileml = "$SCRATCH" . "RAxML_info.ml.0.$i";
         }
         if (-e $fileml) {
+            $i++;
+        } else {
             $high_file_num = $i;
+            $high_flag = 0;
         }
     }
     if($rh_opts->{'restart'} && $USEGARLI) {
-        unlink glob "$SCRATCH/*0.$high_file_num.0*";
+        unlink glob "$SCRATCH/*0.$high_file_num*";
         $num = ($high_file_num - 1);
-        unlink glob "$SCRATCH/*0.$num.0*";
+        unlink glob "$SCRATCH/*0.$num*";
         $num = ($high_file_num - 2);        
     } elsif($rh_opts->{'restart'}) {
-        unlink glob "$SCRATCH/*0.$high_file_num.0*";
+        unlink glob "$SCRATCH/*0.$high_file_num*";
         $num = ($high_file_num - 1);
-        unlink glob "$SCRATCH/*0.$num.0*";
+        unlink glob "$SCRATCH/*0.$num*";
         $num = ($high_file_num - 2);
     } elsif($high_file_num) {
         warn "    sowhat output files with that name already exist\n";
