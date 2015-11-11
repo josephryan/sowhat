@@ -5,7 +5,7 @@
 
 `sowhat` automates the SOWH phylogenetic topology test, which uses parametric bootstrapping and is described by the manuscripts listed in FURTHER READING. It works on amino acid, nucleotide, and binary character state datasets.
  
-A manuscript describing the `sowhat` and the SOWH is available at bioRxiv: http://biorxiv.org/content/early/2014/05/19/005264
+A peer-reviewed manuscript describing `sowhat` is available at Systematic Biology: http://sysbio.oxfordjournals.org/content/early/2015/07/30/sysbio.syv055.abstract
 
 `sowhat` includes several features that provide flexibility and aid in the interpretation and assessment of SOWH test results, including: 
 
@@ -283,11 +283,11 @@ can be viewed by running any of the following:
 ## CITING
 
 
-A manuscript describing `sowhat` and the performance of the SOWH test has been posted to the bioRxiv:
+A peer-reviewed manuscript describing `sowhat` is available at Systematic Biology:
 
-Automation and Evaluation of the SOWH Test of Phylogenetic Topologies with SOWHAT
+Automation and Evaluation of the SOWH Test with SOWHAT
 Samuel H. Church, Joseph F. Ryan, Casey W. Dunn
-bioRxivdoi: http://dx.doi.org/10.1101/005264
+doi: 10.1093/sysbio/syv055
 
 Also see the file sowhat.bibtex
 
