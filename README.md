@@ -285,8 +285,8 @@ can be viewed by running any of the following:
 
 A peer-reviewed manuscript describing `sowhat` is available at Systematic Biology:
 
-Automation and Evaluation of the SOWH Test with SOWHAT
-Samuel H. Church, Joseph F. Ryan, Casey W. Dunn
+Church, Samuel H., Joseph F. Ryan, and Casey W. Dunn. "Automation and Evaluation of the SOWH Test with SOWHAT"
+Systematic Biology 2015 Nov;64(6):1048-58.
 doi: 10.1093/sysbio/syv055
 
 Also see the file sowhat.bibtex
