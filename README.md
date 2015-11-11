@@ -67,10 +67,11 @@ General system tools:
 - [Perl](http://www.cpan.org/), which comes with most operating systems
 - [R](http://www.r-project.org/)
 - The [Statistics::R](http://search.cpan.org/dist/Statistics-R/) Perl module. `Statistics::R` has additional requirements, as described at http://search.cpan.org/dist/Statistics-R/README. Use the `local::lib` option to install `Statistics::R` without `sudo`. Use the boostrap method found at http://search.cpan.org/~haarg/local-lib-2.000004/lib/local/lib.pm for installation information. Once local::lib has been installed, and with R installed,  install the Statistics::R package as you would normally. The use local::lib option must be activated in the program as well.
-- The [IPC::Run](http://search.cpan.org/dist/IPC-Run/) Perl module is currently needed for `make test` to work correctly.
+- The [IPC::Run](http://search.cpan.org/dist/IPC-Run/) Perl module is currently needed for `make test` to work correctly (optional).
 
 To use more complex models for simulation, you will need to install the following optional dependency:
 - [PhyloBayes](http://www.phylobayes.org)
+
 To print results to a json file, you will need to install the following optional dependency:
 - The [JSON](http://search.cpan.org/~makamaka/JSON-2.90/) Perl module.
 
