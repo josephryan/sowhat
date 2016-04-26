@@ -3,7 +3,7 @@ language: perl
 
 before_install:
   - sudo apt-get -qq update
-  - sudo apt-get install -y r-base-core cpanminus unzip # gcc git
+  - sudo apt-get install -y r-base cpanminus unzip # gcc git
   - cpanm -n Statistics::R
   - cpanm -n JSON
   - sudo Rscript -e "install.packages('ape', dependencies = T, repos='http://cran.rstudio.com/')"
