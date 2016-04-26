@@ -7,3 +7,4 @@ before_install:
   - sudo cpanm Statistics::R
   - sudo cpanm JSON
   - sudo Rscript -e "install.packages('ape', dependencies = T, repos='http://cran.rstudio.com/')"
+
