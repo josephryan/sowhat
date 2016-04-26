@@ -5,7 +5,7 @@ dist: trusty
 
 before_install:
   - sudo apt-get -qq update
-  - sudo apt-get install -y raxml seq-gen r-base cpanminus unzip # gcc git
+  - sudo apt-get install -y raxml=8.2.0-1 seq-gen r-base cpanminus unzip # gcc git
   - cpanm -n Statistics::R
   - cpanm -n JSON
   - sudo Rscript -e "install.packages('ape', dependencies = T, repos='http://cran.rstudio.com/')"
