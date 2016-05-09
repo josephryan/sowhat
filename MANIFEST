@@ -126,3 +126,4 @@ README.md
 sowhat
 sowhat.bibtex
 t/sowhat.t
+t/test_subs.pl
