@@ -3,6 +3,6 @@ Makefile.old
 MYMETA.json
 MYMETA.yml
 blib
-test.output
+t.output
 pm_to_blib
 ERROR.log
