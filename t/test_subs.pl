@@ -1,11 +1,21 @@
 #!/usr/bin/perl
 
+# this script is mainly used by the sowhat developers to make sure
+# that new features and fixes do not break other parts of the program,
+# but it may be useful to users trying to diagnose problems
+#
+# the script requires the Test::Subroutines module which is available
+# here: http://search.cpan.org/~oliver/Test-Subroutines-1.113350/lib/Test/Subroutines.pm
+
 $|++;
 
 use strict;
 use warnings;
 use Test::Subroutines;
+use Digest::MD5;
 use Data::Dumper;
+
+our $VERSION = 0.01;
 
 our $SOWHAT = $ARGV[0] or die "usage: $0 SOWHAT EXAMPLES_DIR\n";
 our $EXAMPLES = $ARGV[1] or die "usage: $0 SOWHAT EXAMPLES_DIR\n";
@@ -146,10 +156,6 @@ MAIN: {
         my $flag = restart({'reps' => 1, 'restart' => 1});
         my $high_file = $SCRATCH . 'RAxML_info.ml.0.4';
         die "'restart' did not unlink high file" if (-e $high_file);
-        foreach my $i (0..3) {
-            my $fileml = "$SCRATCH" . "RAxML_info.ml.0.$i";
-            unlink $fileml or die "could not unlink $fileml:$!";
-        }
         die "unexpected return from 'restart': $flag" unless ($flag == 3);
     } else {
         die "'restart' test expects $SCRATCH to exist";
@@ -207,14 +213,37 @@ MAIN: {
                                'treetwo' => $H0_TRE});
     die "'decide_best' does not pick the best" unless ($db_flag == 1);
 
-    delete_files();
 
     # generate_zero_const
     print "$LINE\nTESTING generate_zero_const\n";
+    my $zc_tre = generate_zero_const({'constraint_tree' => $H0_TRE},'99.99');
+    open IN, $zc_tre or die "$zc_tre not created by 'generate_zero_const':$!";
+    my $zc_tre_str = <IN>;
+    die "unexpected zc_tre_str from 'generate_zero_const'\n\n$zc_tre_str\n" unless ($zc_tre_str =~ m/\(Taxon3:1.218239737e-06,\(Taxon4:0.08634773991,\(Taxon5:0.03570754325,Taxon2:13.15228651\):0.04415664468\):1.218239737e-06,Taxon1:13.77030449\):0;/);
+
 
     # get_utility_R_functions
+    print "$LINE\nTESTING get_utility_R_functions\n";
+    my $urf = get_utility_R_functions();
+    my $urf_md5 = Digest::MD5::md5_hex($urf);
+    die "'get_utility_R_functions' have changed. If this is intentional, $\urf_md5 test must be updated" unless ($urf_md5 eq 'b3554b02ff669f8b207c45b6073b400b');
+    # skipping 
     # get_params_w_pb
+
     # get_params
+    print "$LINE\nTESTING get_params\n";
+    my ($al,$apv,$ar) = get_params({'aln' => $AA_PHY, 'part' => 0,'tre' => $H0_TRE, 'mod' => 'PROTGAMMAWAG'},'WAG','AA',0,'0.0');
+    die "unexpected alignment length in 'get_params'" unless ($al->[0] == 30);
+    unless ( ($apv->[0]->{'alpha'} == 0.727985) && 
+             ($apv->[0]->{'type'} eq 'AA') &&
+             ($apv->[0]->{'freqs'} eq '0.087 0.044 0.039 0.057 0.019 0.037 0.058 0.083 0.024 0.048 0.086 0.062 0.020 0.038 0.046 0.070 0.061 0.014 0.035 0.071 ' ) &&
+            ($apv->[0]->{'submat'} eq 'WAG') ) {
+        die "unexpected parameter vals from 'get_params' ";
+    }
+    
+    unlink $zc_tre;
+    delete_files();
+
     # _model_user
     # _rate_file
     # _check_user_model
@@ -279,6 +308,10 @@ sub delete_files {
     foreach my $f (@files) {
         my $u_f = $SCRATCH . $f;
         unlink $u_f;
+    }
+    foreach my $i (0..3) {
+        my $fileml = "$SCRATCH" . "RAxML_info.ml.0.$i";
+        unlink $fileml or die "could not unlink $fileml:$!";
     }
     unlink "$OUT_DIR/sowh_stderr_.txt";
     unlink "$OUT_DIR/sowh_stdout_.txt";
