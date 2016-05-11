@@ -613,6 +613,7 @@ sub _interleaved {
         $count++;
     }
     return 1 if ($count != $seq_num);
+    return 0;
 }
 
 # IN:  command-line options hash
@@ -1110,7 +1111,6 @@ sub get_params {
 }
 
 #IN: hash w/ options
-#    restart flag
 #OUT: array w/ parameter values
 #     array w/ rates
 #JOB: parse params from model specified file
@@ -1124,7 +1124,7 @@ sub _model_user {
     my $file = $rh_opts->{'genmodel'};
     my $flag = 0;
     my $rate_flag = 0;
-    open IN, $file or die "$file:$!";
+    open IN, $file or die "cannot open $file:$!";
     while (my $line = <IN>) {
         chomp $line;
         next if ($line =~ m/^\#/);
@@ -1145,6 +1145,8 @@ sub _model_user {
             $data[$part_num]->{'submat'} = 'GTR';
             $flag = 3;
             next;
+        } elsif ($line =~ m/datatype = (.*)/) {
+            die "unexpected datatype: $1";
         }
         if ($flag == 1) {
             next if ($line =~ m/model/);
