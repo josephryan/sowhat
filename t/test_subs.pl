@@ -21,6 +21,7 @@ our $SOWHAT = $ARGV[0] or die "usage: $0 SOWHAT EXAMPLES_DIR\n";
 our $EXAMPLES = $ARGV[1] or die "usage: $0 SOWHAT EXAMPLES_DIR\n";
 our $OUT_DIR = 'test_subs.out';
 
+our $TEST_PB = 0;
 our $GARLI_TRE  = "$EXAMPLES/H0.garli.tre";
 our $GARLI_CONF = "$EXAMPLES/garli.conf";
 our $GARLI_SCREEN = "$OUT_DIR/sowhat_scratch/t1.i.1.1.screen.log";
@@ -325,15 +326,65 @@ MAIN: {
     # _model_gtrgamma
     make_rax_info_file("$OUT_DIR/RAxML_info.t1.i.0.0");
     my $ra_mod_gtrg = _model_gtrgamma({'rax' => 'raxmlHPC', 'name' => 'test', 
-          'reps' => 1000, 'constraint_tree' => 'examples/H0.tre', 
+          'reps' => 1000, 'constraint_tree' => $H0_TRE,
           'dir' => '$OUT_DIR', 'seqgen' => 'seq-gen', 'runs' => 1, 
-          'aln' => 'examples/nt.phy', 'mod' => 'GTRGAMMA'},0,'0.0');
+          'aln' => $NT_PHY, 'mod' => 'GTRGAMMA'},0,'0.0');
     die "unexpected" unless ($ra_mod_gtrg->[0]->{'alpha'} == 0.727985);
     die "unexpected" unless ($ra_mod_gtrg->[0]->{'type'} eq 'AA');
     die "unexpected" unless ($ra_mod_gtrg->[0]->{'submat'} eq 'WAG');
     die "unexpected" unless ($ra_mod_gtrg->[0]->{'freqs'} eq '0.087 0.044 0.039 0.057 0.019 0.037 0.058 0.083 0.024 0.048 0.086 0.062 0.020 0.038 0.046 0.070 0.061 0.014 0.035 0.071 ');
 
+    print "$LINE\nTESTING _model_prot\n";
     # _model_prot
+    my ($ra_mp_params,$ra_mp_rates) = _model_prot( { 'rax' => 'raxmlHPC', 
+          'name' => 'test', 'reps' => 1000,
+          'orig_options' => ["--constraint=$H0_TRE",
+          "--aln=$AA_PHY", '--raxml_model=PROTGAMMAWAG',
+          '--dir=test.output/test2', '--name=test' ],
+          'constraint_tree' => $H0_TRE,
+          'dir' => 'test.output/test2', 'seqgen' => 'seq-gen',
+          'runs' => 1, 'aln' => $AA_PHY, 'mod' => 'PROTGAMMAWAG' },
+          0, '0.0');
+    die "unexpected" unless ($ra_mp_params->[0]->{'type'} eq 'AA');
+    die "unexpected" unless ($ra_mp_params->[0]->{'submat'} eq 'WAG');
+
+    if ($TEST_PB) {
+        print "$LINE\nTESTING get_params_w_pb\n";
+        #get_params_w_pb
+        get_params_w_pb( { 'name' => 'test',
+              'reps' => 12, 'orig_options' => ['--constraint=examples/H0.tre',
+              '--aln=../examples/aa.phy', '--raxml_model=PROTGAMMAWAG',
+              '--dir=test.output/test2', '--name=test' ],
+              'constraint_tree' => '../examples/H0.tre',
+              'dir' => 'test.output/test2', 'seqgen' => 'seq-gen',
+              'runs' => 1, 'aln' => '../examples/aa.phy', 
+              'mod' => 'PROTGAMMAWAG' }, 0, '0.0');
+
+        print "$LINE\nTESTING generate_alignments_w_pb\n";
+        # generate_alignments_w_pb
+        my $gawp_aln = generate_alignments_w_pb ( { 'name' => 'test',
+          'reps' => 12, 'orig_options' => ['--constraint=../examples/H0.tre',
+          '--aln=../examples/aa.phy', '--raxml_model=PROTGAMMAWAG',
+          '--dir=test.output/test2', '--name=test' ],
+          'constraint_tree' => '../examples/H0.tre',
+          'dir' => 'test.output/test2', 'seqgen' => 'seq-gen',
+          'runs' => 1, 'aln' => '../examples/aa.phy', 'mod' => 'PROTGAMMAWAG' },
+          0, '0.0');
+        open GAWPIN, $gawp_aln or die "cannot open $gawp_aln:$!";
+        my @gawp = <GAWPIN>;
+        close GAWPIN;
+        die "unexpected" unless ($gawp[0] =~ m/^5\t30$/);
+        die "unexpected" unless ($gawp[3] =~ m/^Taxon3\s+/);
+    }
+ 
+    # generate_alignments
+    # run_gen_trees
+    # evaluate_distribution
+    # plot_runs
+    # calc_ratio
+    # print_report
+    # safe_system
+    
     # _model_character_data
     # _get_partition_lengths
     # _get_params_from_const_rax
@@ -341,8 +392,6 @@ MAIN: {
     # _get_part_info
     # _print_unlinked_part
     # _parse_rates
-    # generate_alignments_w_pb
-    # generate_alignments
     # _run_seqgen
     # _get_dna_params
     # _get_aa_params
@@ -359,10 +408,8 @@ MAIN: {
     # _gap_stencil
     # _get_len_from_id_lens
     # _make_alns
-    # run_gen_trees
     # _run_garli_on_genset
     # _run_rax_on_genset
-    # evaluate_distribution
     # _get_distribution_from_garli
     # _get_distribution_from_rax
     # _get_best_garli_score
@@ -370,10 +417,6 @@ MAIN: {
     # _get_stats
     # _parse_stats
     # _structure_output
-    # plot_runs
-    # calc_ratio
-    # print_report
-    # safe_system
     # usage   
 
     delete_files($zc_tre);
