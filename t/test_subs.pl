@@ -39,7 +39,7 @@ our $NEW_SIM_AA_MODEL = "$OUT_DIR/simulation.amino.model";
 our $RAX = 'raxmlHPC';
 our $GARLI = 'Garli';
 our $USEGARLI = '0';
-our $SEQGEN = 'seq-gen';
+our $SEQGEN = 'seq-gen -z 1234';
 our $PB = 'pb -f';
 our $PPRED = 'ppred';
 our $PB_SAMPLING_FREQ = 5;
@@ -377,12 +377,84 @@ MAIN: {
         die "unexpected" unless ($gawp[3] =~ m/^Taxon3\s+/);
     }
  
+    print "$LINE\nTESTING generate_alignments\n";
     # generate_alignments
+    my $ga_alns = generate_alignments([90],
+        [{'alpha' => '1.544576', 'rates' => { 'cg' => '0.730526',
+          'gt' => '1.000000', 'at' => '0.820561', 'ac' => '0.289224',
+          'ct' => '0.363477', 'ag' => '0.109033' }, 'type' => 'DNA',
+          'freqs' => '0.327 0.233 0.175 0.265 ', 'submat' => 'GTR' }],
+        '',
+        { 'rax' => 'raxmlHPC', 'name' => 'test', 'reps' => 1000,
+          'orig_options' => [ "--constraint=$H0_TRE",
+                              "--aln=$NT_PHY",
+                              '--raxml_model=GTRGAMMA',
+                              "--dir=$OUT_DIR",
+                              '--name=test'
+                            ],
+          'constraint_tree' => $H0_TRE, 'dir' => $OUT_DIR, 'runs' => 1, 
+          'aln' => $NT_PHY, 'mod' => 'GTRGAMMA' }, 'GTR', '', 0, 0.17, 0, 17);
+    open IN, $ga_alns or die "cannot open $ga_alns:$!";
+    my @ga_lines = <IN>;
+    chomp @ga_lines;
+    die "unexpected" unless ($ga_lines[0] eq ' 5 90');
+    die "unexpected" unless ($ga_lines[1] eq 'Taxon5 AGAAAGGATGACATATTAAAAAGAACTGTGCTAGCCGTAACTATTCGCAAAGTATATATCGCGCAGCTTCTCTAGACGCATCTAGCCCAG');
+    die "unexpected" unless ($ga_lines[2] eq 'Taxon2 TCTCGGGACTTCGTCCCGCTACGATCTGGCAACTACATGGAAGACATCGTTGAAAAGATTTTGCCTGATTGCATATTCCTGCCGAAAACA');
+    die "unexpected" unless ($ga_lines[3] eq 'Taxon3 AGACAGGATGACATATTAAAAAGAACTGTGCGAGCCGTAACTATTCGCAAAGTATCTATCGCGCAGGTTCTCTATACGCATCT----CAG');
+    die "unexpected" unless ($ga_lines[4] eq 'Taxon4 AGACAGGAAGACATCATTAAATGAACTGTGCGAGCGGTAAGTATTCGCCAAGTATCGATGGCTCAGCTTCACTATACGCATCTAGCCCAG');
+    die "unexpected" unless ($ga_lines[5] eq 'Taxon1 ACTAAGCAAGGCCAGATATCAGGAGTAGTTCACGACCACGTGATGAGCATCTATATTCAGTGCACCAGACCAGCAATAAATGCCTGATAA');
+    die "unexpected" if ($ga_lines[6]);
+    
+    print "$LINE\nTESTING run_gen_trees\n";
     # run_gen_trees
+    # using $ga_alns from previous test
+    run_gen_trees($ga_alns,{'rax' => 'raxmlHPC', 'name' => 'test',
+          'reps' => 1000,
+          'orig_options' => [ "--constraint=$H0_TRE",
+                              "--aln=$NT_PHY",
+                              '--raxml_model=GTRGAMMA',
+                              "--dir=$OUT_DIR",
+                              '--name=test'],
+          'constraint_tree' => $H0_TRE, 'dir' => $OUT_DIR, 'runs' => 1, 
+          'runs' => 1, 'aln' => "$NT_PHY", 'mod' => 'GTRGAMMA' },
+          [90],0,'rgt');
+    my $rgt_file = "$OUT_DIR/sowhat_scratch/RAxML_info.ml.rgt";
+    open IN, $rgt_file or die "cannot open $rgt_file:$!";
+    my @rgt = <IN>;
+    die "unexpected" unless ($rgt[-2] =~ m/^Overall execution time:/);
+
+    print "$LINE\nTESTING evaluate_distribution\n";
     # evaluate_distribution
+    my ($evd_best_ml,$evd_best_t1,$rh_evd_stats,$ra_evd_diff) =
+    evaluate_distribution({'rax' => 'raxmlHPC', 'name' => 'test',
+          'reps' => 1000,
+          'orig_options' => [ "--constraint=$H0_TRE",
+                              "--aln=$NT_PHY",
+                              '--raxml_model=GTRGAMMA',
+                              "--dir=$OUT_DIR",
+                              '--name=test'],
+          'constraint_tree' => $H0_TRE, 'dir' => $OUT_DIR, 'runs' => 1,
+          'runs' => 1, 'aln' => "$NT_PHY", 'mod' => 'GTRGAMMA' },
+          [], [], [], [], [], [], 0, 0, 'rgt');
+#print "\$evd_best_ml = $evd_best_ml\n";
+#print "\$evd_best_t1 = $evd_best_t1\n";
+#print Dumper ($rh_evd_stats, $ra_evd_diff);
+    die "unexpected" unless ($evd_best_ml == -291.064820);
+    die "unexpected" unless ($evd_best_t1 == -291.029542);
+    die "unexpected" unless ($rh_evd_stats->{'firstquart'} == 1);
+    die "unexpected" unless ($ra_evd_diff->[0] eq '0.256213000000002');
+
+
+    print "$LINE\nTESTING plot_runs\n";
     # plot_runs
+
+    print "$LINE\nTESTING calc_ratio\n";
     # calc_ratio
+
+    print "$LINE\nTESTING print_report\n";
     # print_report
+
+    print "$LINE\nTESTING safe_system\n";
     # safe_system
     
     # _model_character_data
