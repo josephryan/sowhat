@@ -436,25 +436,21 @@ MAIN: {
           'constraint_tree' => $H0_TRE, 'dir' => $OUT_DIR, 'runs' => 1,
           'runs' => 1, 'aln' => "$NT_PHY", 'mod' => 'GTRGAMMA' },
           [], [], [], [], [], [], 0, 0, 'rgt');
-#print "\$evd_best_ml = $evd_best_ml\n";
-#print "\$evd_best_t1 = $evd_best_t1\n";
-#print Dumper ($rh_evd_stats, $ra_evd_diff);
     die "unexpected" unless ($evd_best_ml == -291.064820);
     die "unexpected" unless ($evd_best_t1 == -291.029542);
     die "unexpected" unless ($rh_evd_stats->{'firstquart'} == 1);
     die "unexpected" unless ($ra_evd_diff->[0] eq '0.256213000000002');
 
-
-    print "$LINE\nTESTING plot_runs\n";
+    #print "$LINE\nTESTING plot_runs\n";
     # plot_runs
 
-    print "$LINE\nTESTING calc_ratio\n";
+    #print "$LINE\nTESTING calc_ratio\n";
     # calc_ratio
 
-    print "$LINE\nTESTING print_report\n";
+    #print "$LINE\nTESTING print_report\n";
     # print_report
 
-    print "$LINE\nTESTING safe_system\n";
+    #print "$LINE\nTESTING safe_system\n";
     # safe_system
     
     # _model_character_data
