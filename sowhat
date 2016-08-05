@@ -2753,10 +2753,10 @@ sub _structure_output {
     $ra_output->[1]->{'description'} = 'values describing the test statistic'; 
     
     $ra_output->[1]->{'value'}->[0]->{'name'} = 'Best_ml_score';
-    $ra_output->[1]->{'value'}->[0]->{'description'} = 'empirical lnL, constrained';
+    $ra_output->[1]->{'value'}->[0]->{'description'} = 'empirical lnL, unconstrained';
     $ra_output->[1]->{'value'}->[0]->{'value'} = $best_ml_score;
     $ra_output->[1]->{'value'}->[1]->{'name'} = 'best_t1_score';
-    $ra_output->[1]->{'value'}->[1]->{'description'} = 'empirical lnL, unconstrained';
+    $ra_output->[1]->{'value'}->[1]->{'description'} = 'empirical lnL, constrained';
     $ra_output->[1]->{'value'}->[1]->{'value'} = $best_t1_score;
     $ra_output->[1]->{'value'}->[2]->{'name'} = 'test_statistic';
     $ra_output->[1]->{'value'}->[2]->{'value'} = $data[7];
