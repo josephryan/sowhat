@@ -60,7 +60,7 @@ used with caution. These external tools are the result of a considerable amount 
 
 Phylogenetic programs: 
 - [RAxML](https://github.com/stamatak/standard-RAxML), 8.1.20 
-- [GARLI](https://code.google.com/p/garli/), v2.01.1067
+- [GARLI](https://code.google.com/p/garli/), v2.01.1067  (optional)
 - [Seq-Gen](http://tree.bio.ed.ac.uk/software/seqgen/), v1.3.3
 - [ape](http://cran.r-project.org/web/packages/ape/index.html), v3.2
 
