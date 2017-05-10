@@ -5,8 +5,9 @@ sudo: false
 
 addons:
   apt:
+    sources:
+      - r-packages-precise
     packages:
-      - r-base
       - cpanminus
       
 before_install:
