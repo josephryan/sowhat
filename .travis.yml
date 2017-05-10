@@ -1,7 +1,7 @@
 language: perl
 
-sudo: false
 dist: trusty
+sudo: false
 
 before_install:
   - apt-get -qq update
