@@ -11,7 +11,7 @@ addons:
       - cpanminus
       
 before_install:
-  - cpanm -n Statistics::R
+  - cpanm -nf Statistics::R
   - cpanm -n JSON
   - mkdir -p ~/local/R_libs
   - Rscript -e "install.packages('ape', dependencies = T, repos='http://cran.rstudio.com/', lib='~/local/R_libs/')"
