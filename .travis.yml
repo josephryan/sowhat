@@ -1,11 +1,12 @@
 language: perl
 
-sudo: required
+sudo: false
+dist: trusty
 
 before_install:
-  - sudo apt-get -qq update
-  - sudo apt-get install -y r-base cpanminus unzip # gcc git
+  - apt-get -qq update
+  -  apt-get install -y r-base cpanminus unzip # gcc git
   - cpanm -n Statistics::R
   - cpanm -n JSON
-  - sudo Rscript -e "install.packages('ape', dependencies = T, repos='http://cran.rstudio.com/')"
-  - sudo ./build_3rd_party.sh
+  - Rscript -e "install.packages('ape', dependencies = T, repos='http://cran.rstudio.com/')"
+  - ./build_3rd_party.sh
