@@ -6,7 +6,7 @@ sudo: false
 addons:
   apt:
     sources:
-      - r-packages-precise
+      - r-packages-trusty
     packages:
       - cpanminus
       
