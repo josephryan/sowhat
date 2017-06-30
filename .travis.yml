@@ -13,10 +13,15 @@ addons:
       - r-recommended
       - pandoc
 
+cache:
+  directories:
+    - ~/Rlib
       
 before_install:
   - cpanm -nf Statistics::R || cat /home/travis/.cpanm/work/*/build.log
   - cpanm -n JSON
+  - mkdir -p ~/Rlib
+  - echo 'R_LIBS=~/Rlib' > .Renviron
   - echo 'options(repos = "http://cran.rstudio.com")' > .Rprofile
   - echo '.travis.yml' > .Rbuildignore
   - Rscript -e '{ install.packages("ape", dependencies = TRUE) }'
