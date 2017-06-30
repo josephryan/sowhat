@@ -19,7 +19,6 @@ cache:
     - ~/R_lib
       
 before_install:
-  - mkdir ~/R_lib
   - echo 'R_LIBS=~/R_lib' > .Renviron
   - echo 'options(repos = "http://cran.rstudio.com")' > .Rprofile
   - echo '.travis.yml' > .Rbuildignore
