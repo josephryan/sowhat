@@ -16,7 +16,7 @@ addons:
 
 cache:
   directories:
-    - /usr/lib/R/Library
+    - /usr/local/lib/R/site-library
       
 before_install:
   - cpanm -nf Statistics::R || cat /home/travis/.cpanm/work/*/build.log
@@ -24,5 +24,5 @@ before_install:
   - echo 'R_LIBS=/usr/lib/R/Library' > .Renviron
   - echo 'options(repos = "http://cran.rstudio.com")' > .Rprofile
   - echo '.travis.yml' > .Rbuildignore
-  - Rscript -e '{ install.packages("ape", dependencies = TRUE) }'
+  - Rscript -e '{ install.packages("ape", dependencies = TRUE, lib = "/usr/local/lib/R/site-library")}'
   - ./build_3rd_party.sh ~
