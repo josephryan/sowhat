@@ -827,9 +827,13 @@ sub generate_zero_const {
         $ml_tre  = "$SCRATCH" . "$TRE_PREFIX.ml.i.0.0";
     }
         my $R = Statistics::R->new() ;
-    my $cmds = <<EOF;
-pt <- .libPaths()
-write(file="tmp.txt",pt)
+    my $utility_r_functions = get_utility_R_functions();
+my $cmds = <<EOF;
+$utility_r_functions
+phy1 <- read.tree("$ml_tre")
+phy2 <- read.tree("$const_tre")
+zc <- zero_constrained(phy1,phy2)
+write.tree(zc,file="$zero_const")
 EOF
     $R->run($cmds);
     return($zero_const);
