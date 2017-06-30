@@ -16,13 +16,16 @@ addons:
 
 cache:
   directories:
-    - /usr/lib/R/library
+    - ~/R_lib
       
 before_install:
-  - echo 'R_LIBS=/usr/lib/R/library' > .Renviron
+  - mkdir ~/R_lib
+  - echo 'R_LIBS=~/R_lib' > .Renviron
   - echo 'options(repos = "http://cran.rstudio.com")' > .Rprofile
   - echo '.travis.yml' > .Rbuildignore
-  - Rscript -e '{ install.packages("ape", dependencies = TRUE, lib = "/usr/lib/R/library")}'
+  - Rscript -e '{ install.packages("ape", dependencies = TRUE, lib = "~/R_lib")}'
   - cpanm -nf Statistics::R || cat /home/travis/.cpanm/work/*/build.log
   - cpanm -n JSON
   - ./build_3rd_party.sh ~
+  - perl tmp.pl
+  - cat tmp.txt
