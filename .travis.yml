@@ -10,8 +10,6 @@ addons:
     packages:
       - cpanminus
       - r-base-dev  
-      - r-recommended
-      - pandoc
 
 cache:
   directories:
@@ -23,5 +21,5 @@ before_install:
   - mkdir -p ~/Rlib
   - "mkdir -p ~/local/R_libs",
   - "Rscript -e \"install.packages('ape', dependencies = T, repos='http://cran.rstudio.com/', lib='~/local/R_libs/')\"",
-    "export R_LIBS=~/local/R_libs/",
+  - "export R_LIBS=~/local/R_libs/",
   - ./build_3rd_party.sh ~
