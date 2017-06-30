@@ -9,11 +9,19 @@ addons:
       - r-packages-trusty
     packages:
       - cpanminus
-      - r-base
+      - r-base-dev  
+      - r-recommended
+      - pandoc
 
+cache:
+  directories:
+    - ~/Rlib
       
 before_install:
   - cpanm -nf Statistics::R || cat /home/travis/.cpanm/work/*/build.log
   - cpanm -n JSON
-  - Rscript -e "install.packages('ape', dependencies = T, repos='http://cran.rstudio.com/')"
+  - mkdir -p ~/Rlib
+  - "mkdir -p ~/local/R_libs",
+  - "Rscript -e \"install.packages('ape', dependencies = T, repos='http://cran.rstudio.com/', lib='~/local/R_libs/')\"",
+    "export R_LIBS=~/local/R_libs/",
   - ./build_3rd_party.sh ~
