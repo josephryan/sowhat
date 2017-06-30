@@ -1,3 +1,4 @@
+
 language: perl
 
 dist: trusty
@@ -10,15 +11,18 @@ addons:
     packages:
       - cpanminus
       - r-base-dev  
+      - r-recommended
+      - pandoc
 
 cache:
   directories:
-    - ~/Rlib
+    - /usr/lib/R/Library
       
 before_install:
   - cpanm -nf Statistics::R || cat /home/travis/.cpanm/work/*/build.log
   - cpanm -n JSON
-  - mkdir -p ~/local/R_libs
-  - echo 'R_LIBS=~/local/R_libs/' > .Renviron
-  - Rscript -e '{ install.packages('ape', dependencies = T, repos='http://cran.rstudio.com/', lib='~/local/R_libs/') }'
+  - echo 'R_LIBS=/usr/lib/R/Library' > .Renviron
+  - echo 'options(repos = "http://cran.rstudio.com")' > .Rprofile
+  - echo '.travis.yml' > .Rbuildignore
+  - Rscript -e '{ install.packages("ape", dependencies = TRUE) }'
   - ./build_3rd_party.sh ~
