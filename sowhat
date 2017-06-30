@@ -31,7 +31,7 @@ use File::Temp;
 use Data::Dumper;
 use Cwd;
 #use local lib if installing Statistics::R without sudo cpan
-use local::lib;
+#use local::lib;
 use Statistics::R;
 
 
