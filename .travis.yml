@@ -13,13 +13,13 @@ addons:
       - r-base-dev  
 cache:
   directories:
-    - ~/R_lib
+    - ~/travis_R_lib
       
 before_install:
-  - echo 'R_LIBS=~/R_lib' > .Renviron
+  - echo 'R_LIBS=~/travis_R_lib' > .Renviron
   - echo 'options(repos = "http://cran.rstudio.com")' > .Rprofile
   - echo '.travis.yml' > .Rbuildignore
-  - Rscript -e '{ install.packages("ape", dependencies = TRUE, lib = "~/R_lib")}'
+  - Rscript -e '{ install.packages("ape", dependencies = TRUE, lib = "~/travis_R_lib")}'
   - cpanm -nf Statistics::R || cat /home/travis/.cpanm/work/*/build.log
   - cpanm -n JSON
   - ./build_3rd_party.sh ~
