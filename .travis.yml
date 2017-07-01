@@ -11,9 +11,6 @@ addons:
     packages:
       - cpanminus
       - r-base-dev  
-      - r-recommended
-      - pandoc
-
 cache:
   directories:
     - ~/R_lib
@@ -26,5 +23,3 @@ before_install:
   - cpanm -nf Statistics::R || cat /home/travis/.cpanm/work/*/build.log
   - cpanm -n JSON
   - ./build_3rd_party.sh ~
-  - perl tmp.pl
-  - cat tmp.txt
