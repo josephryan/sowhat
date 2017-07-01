@@ -829,7 +829,7 @@ sub generate_zero_const {
         my $R = Statistics::R->new() ;
     my $utility_r_functions = get_utility_R_functions();
 my $cmds = <<EOF;
-.libPaths( c( .libPaths(), "~/R_lib") )
+.libPaths( c( .libPaths(), "/root/R_lib") )
 $utility_r_functions
 phy1 <- read.tree("$ml_tre")
 phy2 <- read.tree("$const_tre")
