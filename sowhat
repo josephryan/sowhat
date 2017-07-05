@@ -1268,7 +1268,7 @@ sub _model_garli_nt {
         $ra_params = _get_params_from_garli_nt("$SCRATCH" . "t1.i.$tag.screen.log",$datatype);
     } elsif ($rh_opts->{'max'}) {
         my $max_model = 'MAXDNAGARLI';
-        _run_best_tree_w_garli('par',$conf,$aln,$max_model,$restart,$rerun,$tag,$tre);
+        _run_best_tree_w_garli('par.i',$conf,$aln,$max_model,$restart,$rerun,$tag,$tre);
         $ra_params = _get_params_from_garli_nt("$SCRATCH" . "par.i.$tag.screen.log",$datatype);
     } else {
         $ra_params = _get_params_from_garli_nt("$SCRATCH" . "t1.i.$tag.screen.log",$datatype);
@@ -1301,7 +1301,7 @@ sub _model_garli_aa {
         ($ra_params,$ra_rates) = _get_params_from_garli_aa("$SCRATCH" . "t1.i.$tag.screen.log",$datatype);
     } elsif ($rh_opts->{'max'}) {
         my $max_model = 'MAXAAGARLI';
-        _run_best_tree_w_garli('par',$conf,$aln,$max_model,$restart,$rerun,$tag,$tre);
+        _run_best_tree_w_garli('par.i',$conf,$aln,$max_model,$restart,$rerun,$tag,$tre);
         ($ra_params,$ra_rates) = _get_params_from_garli_aa("$SCRATCH" . "par.i.$tag.screen.log",$datatype);
     } else {
         ($ra_params,$ra_rates) = _get_params_from_garli_aa("$SCRATCH" . "t1.i.$tag.screen.log",$datatype);
@@ -1501,9 +1501,9 @@ sub _model_gtrgamma {
     } elsif ($rh_opts->{'max'}) {
         if ($part) {
             my $ra_part_names = _make_unlinked_partition_file($part,'DNAX',$new_part);
-            _run_best_tree_w_raxml('par',$aln,$new_part,'GTRGAMMAIX',$restart,$rh_opts->{'rerun'},$tag,$tre);
+            _run_best_tree_w_raxml('par.i',$aln,$new_part,'GTRGAMMAIX',$restart,$rh_opts->{'rerun'},$tag,$tre);
         } else {
-            _run_best_tree_w_raxml('par',$aln,$part,'GTRGAMMAIX',$restart,$rh_opts->{'rerun'},$tag,$tre);
+            _run_best_tree_w_raxml('par.i',$aln,$part,'GTRGAMMAIX',$restart,$rh_opts->{'rerun'},$tag,$tre);
         }
         $ra_params = _get_params_from_const_rax("$SCRATCH" ."RAxML_info.par.i.$tag");
     } else {
@@ -1543,11 +1543,11 @@ sub _model_prot {
     } elsif ($rh_opts->{'max'}) {
         if ($part) {
             my $ra_part_names = _make_unlinked_partition_file($part,'GTR_UNLINKED',$new_part);
-            _run_best_tree_w_raxml('par',$aln,$new_part,'PROTGAMMAGTR_UNLINKED',$restart,$rh_opts->{'rerun'},$tag,$tre);
-            $ra_rates = _parse_rates($tag,'par',$ra_part_names);
+            _run_best_tree_w_raxml('par.i',$aln,$new_part,'PROTGAMMAGTR_UNLINKED',$restart,$rh_opts->{'rerun'},$tag,$tre);
+            $ra_rates = _parse_rates($tag,'par.i',$ra_part_names);
         } else {
-            _run_best_tree_w_raxml('par',$aln,$part,'PROTGAMMAGTR_UNLINKED',$restart,$rh_opts->{'rerun'},$tag,$tre);
-            $ra_rates = _parse_rates($tag,'par');
+            _run_best_tree_w_raxml('par.i',$aln,$part,'PROTGAMMAGTR_UNLINKED',$restart,$rh_opts->{'rerun'},$tag,$tre);
+            $ra_rates = _parse_rates($tag,'par.i');
         }
         $ra_params = _get_params_from_const_rax("$SCRATCH" ."RAxML_info.par.i.$tag");
     } elsif ($rh_opts->{'mod'} =~ /GTR/) {
@@ -1582,7 +1582,7 @@ sub _model_character_data {
     if ($rh_opts->{'mod'} =~ m/MULTIGAMMAIX/i) {
         $ra_params = _get_params_from_const_rax("$SCRATCH" ."RAxML_info.t1.i.$tag");
     } elsif ($rh_opts->{'max'}) {
-        _run_best_tree_w_raxml('par',$aln,$part,'MULTIGAMMAX',$restart,$rh_opts->{'rerun'},$tag,$tre);
+        _run_best_tree_w_raxml('par.i',$aln,$part,'MULTIGAMMAIX',$restart,$rh_opts->{'rerun'},$tag,$tre);
         $ra_params = _get_params_from_const_rax("$SCRATCH" ."RAxML_info.par.i.$tag");
     } else {
         $ra_params = _get_params_from_const_rax("$SCRATCH" ."RAxML_info.t1.i.$tag");
