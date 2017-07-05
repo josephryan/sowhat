@@ -519,7 +519,7 @@ sub _model_message {
     warn "    sowhat recognizes the following models:\n";
     warn "    nucleotide data:\n";
     warn "        - RAxML models - GTRGAMMA[I|X] GTRCAT[I|X] \n";
-    warn "          (CAT model  will not be used for simulation)\n";
+    warn "          (CAT model will not be used for simulation)\n";
     warn "        - GARLI models - all options except fixed\n";
     warn "    amino acid data:\n";
     warn "        - RAxML models - PROTGAMMA[I|X]... PROTCAT[I|X]  \n";
@@ -528,9 +528,14 @@ sub _model_message {
     warn "        - GARLI models - all options except fixed\n";
     warn "          matrices: JONES WAG DAYHOFF MTREV MTMAM\n";
     warn "    character data:\n";
-    warn "        - RAxML models - MULTIGAMMA[X] MULTICAT[X]  \n";
+    warn "        - RAxML models - MULTIGAMMA[I|X] MULTICAT[I|X]  \n";
+    warn "          anywhere from 2 - 20 character states are supported\n";
+    warn "          characters must be used in this order as they are available\n";
+    warn "              0 1 2 3 4 5 6 7 8 9 A B C D E F G H I J  \n";
+    warn "          these will be resorted from most to least freq. in simulations\n";
+    warn "          many low frequency character states will return a raxml error\n";
     warn "          (CAT model will not be used for simulation)\n";
-    warn "        - GARLI + character data currently not available\n";
+    warn "        - GARLI + character data is currently not available\n";
     warn "    alternative options:\n";
     warn "        - The PhyloBayes CAT_GTR model can be used for parameter \n";
     warn "          estimation and data simulation w/ --usepb\n";
@@ -1913,7 +1918,7 @@ sub _run_seqgen {
                 $cmd .= _get_aa_params($rh_part,0);
             }
         } elsif ($rh_part->{'type'} eq 'Multi-State') {
-            $cmd .= "-mGTR ";
+            $cmd .= "-mGENERAL ";
             $cmd .= _get_char_params($rh_part);
         } else {
             die(qq~do not know how to handle type: "$rh_part->{'type'}"\n~);
@@ -1936,7 +1941,7 @@ sub _run_seqgen {
         safe_system($cmd) unless($restart);
         if ($rh_part->{'type'} eq 'Multi-State') {
             my $file = "seqgen.out.$tag." . ($count - 1);
-            _convert_AT_to_01("$SCRATCH" . $file, $ra_part_lens->[$i]);
+            _convert_aa_to_multistate("$SCRATCH" . $file, $ra_part_lens->[$i]);
         }
     }
 }
@@ -1988,15 +1993,24 @@ sub _get_aa_params {
 # JOB: build command based on binary character model
 sub _get_char_params {
     my $rh_part = shift;
+    my @seq_freqs = ();
+    for (my $i = 0; $i < 20; $i++) {
+        $seq_freqs[$i] = 0;
+    }
     my $cmd = '';
     die("unexpected freq") unless ($rh_part->{'freqs'});
     $rh_part->{'freqs'} =~ s/^\s*//;
     $rh_part->{'freqs'} =~ s/\s*$//;
     my @freqs = split /\s+/, $rh_part->{'freqs'};
-    unless (scalar(@freqs) == 2) {
-        die("expecting 2 frequencies. Multi-State only works w/binary matrix\n");
+    unless (scalar(@freqs) <= 20) {
+        die("expecting 20 or fewer states. Multi-State only works w/ 2 - 20 states\n");
     }
-    $cmd .= "-f$freqs[0],0.0,0.0,$freqs[1] ";
+    for (my $j = 0; $j < scalar(@freqs); $j++) {
+        my @sort_freqs = sort {$b <=> $a} @freqs;
+        $seq_freqs[$j] = $sort_freqs[$j];
+    }
+    my $sf = join(",",@seq_freqs);
+    $cmd .= "-f$sf ";
     return $cmd;
 }
 
@@ -2004,7 +2018,7 @@ sub _get_char_params {
 #     partition lengths
 # OUT: none
 # JOB: change simulated data from AT to 01 (nucleotide to binary)
-sub _convert_AT_to_01 {
+sub _convert_aa_to_multistate {
     my $file  = shift;
     my $num_cols = shift;
     my $updated = '';
@@ -2015,7 +2029,7 @@ sub _convert_AT_to_01 {
             my $id = $1;
             my $seq = $2;
             if (length($seq) == $num_cols) {
-                $seq =~ tr/AT/01/;
+                $seq =~ tr/ARNDCQEGHILKMFPSTWYV/0123456789ABCDEFGHIJ/;
                 $updated .= "$id$seq\n";
             } else {
                 $updated .= "$line\n";
@@ -3042,9 +3056,13 @@ This allows the user to specify the RAxML binary to be used in the analysis. It 
 
     --rax='mpirun -n 8 raxmlHPC-MPI'
 
+=back
+
 =head1 raxml_model
 
 This is the model which will be used in likelihood inference and data simulation, unless additional options are specified (ie --max --usepb). Use --raxml_model=available for full list of model options.
+
+=over 2
 
 =item B<--seqgen>
 
@@ -3167,12 +3185,6 @@ The program then calculates the likelihood scores of each of these alignments bo
 +The p-value of the test statistic is calculated using R, using the pnorm function. Information about the test is printed to the file sowhat.results.txt in the directory specified by the user.
 
 R is freely available under the GPL-2 license.
-
-Nick Goldman, Jon P. Anderson, and Allen G. Rodrigo
-Likelihood-Based Tests of Topologies in Phylogenetics
-Syst Biol (2000) 49 (4): 652-670 doi:10.1080/106351500750049752
-
-=back
 
 =head1 BUGS
 
