@@ -59,7 +59,7 @@ our $SUBZERO = 0.001;
 
 MAIN: {
     my $rh_opts = process_options();
-    my $ver = check_version();
+    my $rh_vers = check_version($rh_opts);
     my ($datatype,$model) = check_model($rh_opts);
 
     my (@delta_dist,@deltaprime_dist,@mean);
@@ -146,7 +146,7 @@ MAIN: {
                 calc_ratio($ch,$ts,\@current_mean,\@pen_mean,\@ratio,
                     \@mean,$rh_opts->{'plot'});
                 print_report(\@output,$ra_diff,
-                    $delta_dist[$ch],$ratio[$ch][$ts],$rh_opts,$ver,$ch);
+                    $delta_dist[$ch],$ratio[$ch][$ts],$rh_opts,$rh_vers,$ch);
                 if ($rh_opts->{'json'}) {
                 }
             } else {
@@ -335,13 +335,18 @@ EOF
 #OUT: version of ML software
 #JOB: check ML software version
 sub check_version {
-    my $ver = '';
+    my $rh_opts = shift;
+    my $rh_vers = {};
     if ($USEGARLI)  {
-        $ver = _check_garli_version();
+        $rh_vers->{'tree_ver'} = _check_garli_version();
     } else {
-        $ver = _check_raxml_version();
+        $rh_vers->{'tree_ver'} = _check_raxml_version();
     }
-    return $ver;
+    $rh_vers->{'seq_ver'} = _check_seqgen_version();
+    if ($rh_opts->{'usepb'}) {
+        $rh_vers->{'pb_ver'} = _check_pb_version();
+    }
+    return $rh_vers;
 }
 
 #IN: none
@@ -400,6 +405,53 @@ sub _check_raxml_version {
         warn "sowhat ERROR:\n";
         warn "You are running version $version of RAxML\n";
         die  "sowhat requires version 8.1 or higher\n";
+    }
+    return $long_version;
+}
+
+sub _check_pb_version {
+    my $version_st = `$PB -v 2>&1`;
+    my @lines = split /\n/, $version_st;
+    my $version = '';
+    my $long_version = '';
+    my $possible_error = '';
+    foreach my $l (@lines) {
+        $possible_error .= $l;
+        next unless $l =~ m/^phylobayes version ((\d+\.\d+)[A-z]+)/;
+        $long_version = $1;
+        $version = $2;
+        last;
+    }
+    if ($version eq '') {
+        die "Error from phylobayes\n";
+    }
+    if ($version < 3.3) {
+        warn "sowhat has been tested using phylobayes 3.3f\n";
+        warn "you appear to be using an older version, sowhat may fail\n";
+    }
+    return $long_version;
+}
+
+sub _check_seqgen_version {
+    my $version_st = `$SEQGEN -h 2>&1`;
+    my @lines = split /\n/, $version_st;
+    my $version = '';
+    my $long_version = '';
+    my $possible_error = '';
+    foreach my $l (@lines) {
+        $possible_error .= $l;
+        next unless $l =~ m/^Version ((\d+\.\d+)\.\d+[A-z]+)/;
+        $long_version = $1;
+        $version = $2;
+        last;
+    }
+    if ($version eq '') {
+        die "Error from seq-gen\n";
+    }
+    if ($version < 1.3) {
+        warn "sowhat ERROR:\n";
+        warn "You are running version $version of seqgen\n";
+        die  "sowhat requires version 1.3 or higher\n";
     }
     return $long_version;
 }
@@ -2931,7 +2983,7 @@ sub print_report {
     my $ra_delta_dist = shift;
     my $ratio = shift;
     my $rh_opts = shift;
-    my $version = shift;
+    my $rh_vers = shift;
     my $ch = shift;
     
     my $json_file = '';
@@ -2963,13 +3015,20 @@ sub print_report {
     foreach my $arg (@{$rh_opts->{'orig_options'}}) {
         print TOUT "  $arg \\\n";
     }
-    print TOUT "\n  \$SEQGEN variable set to $SEQGEN\n";
+    print TOUT "\n  sowhat was version $VERSION\n";
+    print TOUT "\n  \$SEQGEN variable set to '$SEQGEN'\n";
+    print TOUT "  seq-gen was version $rh_vers->{'seq_ver'}\n";
     if ($USEGARLI)  {
-        print TOUT "  \$GARLI variable set to $GARLI\n";
-        print TOUT "  garli was version $version\n";
+        print TOUT "  \$GARLI variable set to '$GARLI'\n";
+        print TOUT "  garli was version $rh_vers->{'tree_ver'}\n";
     } else {
-        print TOUT "  \$RAX variable set to $RAX\n";
-        print TOUT "  RAxML was version $version\n";
+        print TOUT "  \$RAX variable set to '$RAX'\n";
+        print TOUT "  RAxML was version $rh_vers->{'tree_ver'}\n";
+    }
+    if ($rh_opts->{'usepb'}) {
+        print TOUT "\n  phylobayes was used to estimate parameters for simulation\n";
+        print TOUT "  PB variable set to '$PB'\n";
+        print TOUT "  phylobayes was version $rh_vers->{'pb_ver'}\n";
     }
     if ($rh_opts->{'treetwo'}) {
         print TOUT "\nTwo constraining hypotheses tested with --treetwo\n";
