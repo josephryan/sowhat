@@ -228,6 +228,10 @@ sub _set_out_dir {
     if ($opt_dir) {
         $opt_dir = "$pwd/$opt_dir" if ($opt_dir !~ m/^\//);
         $opt_dir .= '/' if ($opt_dir !~ m/\/$/);
+        $opt_dir =~ s/\ /\ /;
+        if ($opt_dir =~ m/\ /) {
+            die "  spaces are not allowed in --dir\n";
+        }
         $DIR = $opt_dir if ($opt_dir);
         $SCRATCH = "$DIR" . "sowhat_scratch/";
     } else {
