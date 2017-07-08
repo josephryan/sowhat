@@ -600,11 +600,19 @@ sub restart {
         }
     }
     if($rh_opts->{'restart'} && $USEGARLI) {
+        warn "    restarting from previous run\n";
+        warn "    sowhat will use the previously simulated alignments and estimated trees\n";
+        warn "     the null distribution will be calculated iteratively from these files\n";
+        warn "     the most recent 2 tree estimations will be repeated to prevent any errors\n";
         unlink glob "$SCRATCH/*0.$high_file_num*";
         $num = ($high_file_num - 1);
         unlink glob "$SCRATCH/*0.$num*";
         $num = ($high_file_num - 2);        
     } elsif($rh_opts->{'restart'}) {
+        warn "    restarting from previous run\n";
+        warn "    sowhat will use the previously simulated alignments and estimated trees\n";
+        warn "     the null distribution will be calculated iteratively from these files\n";
+        warn "     the most recent 2 tree estimations will be repeated to prevent any errors\n";
         unlink glob "$SCRATCH/*0.$high_file_num*";
         $num = ($high_file_num - 1);
         unlink glob "$SCRATCH/*0.$num*";

@@ -175,6 +175,8 @@ See examples.sh for examples of sowhat command lines.
 
 The results of the SOWH test are included in a file called _sowhat.results.txt_, which can be found in the directory specified with the _--dir_ option in the _sowhat_ command line.  The bottom of _sowhat.results.txt_ includes a p-value representing the probability that the test statistic would be observed under the null hypothesis.
 
+A run can be restarted using the --restart option. In this case the null distribution will be recalculated iteratively using the previously simulated samples in the null distributions. Only the most recent two generations of sequence simulation and tree estimation will be reperformed to prevent any errors from an unfinished tree estimation.
+
 Additional outputs include detailed information on the model used for simulating new alignments in the file _sowhat.model.txt_, information on the null distribution in _sowhat.distribution.txt_, and all program files printed to a directory _sowhat_scratch_. Within this directory, the files ending in _i.0.0_ represent the initial search of the empirical alignment file. Results can be printed to a file _sowhat.results.json_ using the option 
 
     _--json_.
