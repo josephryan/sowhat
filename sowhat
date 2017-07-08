@@ -251,7 +251,7 @@ sub _options_compatible {
         _model_message();
     }
     if ($USEGARLI)  {
-        check_constraint_tree_for_operators($rh_opts->{'constraint_tree'});
+        _check_constraint_tree_for_operators($rh_opts->{'constraint_tree'});
         unless ($rh_opts->{'constraint_tree'} &&
                 $rh_opts->{'aln'} &&
                 $rh_opts->{'name'} &&
@@ -283,12 +283,13 @@ sub _options_compatible {
     die " cannot use --max with --usepb\n" if ($rh_opts->{'max'} && $rh_opts->{'usepb'});
     die " cannot use --max with --usegenmodel\n" if ($rh_opts->{'max'} && $rh_opts->{'usegenmodel'});
     die " cannot use --usepb with --usegenmodel\n" if ($rh_opts->{'usepb'} && $rh_opts->{'usegenmodel'});
+    _check_taxa_compatible($rh_opts->{'constraint_tree'},$rh_opts->{'aln'});
     }
 }
 
 #IN: treefile
 #JOB: check GARLI const tree for + or -
-sub check_constraint_tree_for_operators {
+sub _check_constraint_tree_for_operators {
     my $tre = shift;
     open IN, $tre or die "cannot open $tre:$!";
     while (my $line = <IN>) {
@@ -306,15 +307,38 @@ sub check_constraint_tree_for_operators {
     die "tree should look like: '+((1,3,5),2,4,6,7,8);'\n";
 }
 
+sub _check_taxa_compatible {
+    my $tre = shift;
+    my $aln = shift;
+    my $R = Statistics::R->new();
+    my $utility_r_functions = get_utility_R_functions();
+    my $cmds = <<EOF;
+.libPaths( c( .libPaths(), "~/travis_R_lib") )
+$utility_r_functions
+tre <- read.tree("$tre")
+dat <- read.delim("$aln",sep="\ ",stringsAsFactors =F)
+datx <- dat[[1]]
+tret <- tre[[2]]
+se <- setequal(datx,tret)
+se
+EOF
+    my $r_out = $R->run($cmds);
+    if($r_out !~ 'TRUE') {
+        warn "    constraint tree and alignment have some difference in taxa\n";
+        warn "    please verify that all taxa names are exactly identical and \n";
+        die "        present in both the alignment and constraint \n";
+    }
+}
+
 #IN: none
 #OUT: version of ML software
 #JOB: check ML software version
 sub check_version {
     my $ver = '';
     if ($USEGARLI)  {
-        $ver = check_garli_version();
+        $ver = _check_garli_version();
     } else {
-        $ver = check_raxml_version();
+        $ver = _check_raxml_version();
     }
     return $ver;
 }
@@ -323,7 +347,7 @@ sub check_version {
 #OUT: returns GARLI version
 #JOB: check GARLI version
 #      throws and error if not correct version
-sub check_garli_version {
+sub _check_garli_version {
     my $errorcode = system "$GARLI -v";
     if ($errorcode != 0) {
         die "$GARLI is not in your path.\n  Supply full path to garli binary with --garli option\n    e.g., --garli=/usr/local/Garli-2.0-IntelOSX-multithread/bin/Garli-2.0\n";
@@ -355,7 +379,7 @@ sub check_garli_version {
 # OUT: returns version of raxml
 # JOB: runs raxml -v and parses the output to check version,
 #      throws an error if not correct version
-sub check_raxml_version {
+sub _check_raxml_version {
     my $version_st = `$RAX -v`;
     my @lines= split /\n/, $version_st;
     my $version = '';
@@ -835,7 +859,7 @@ sub generate_zero_const {
     } else {
         $ml_tre  = "$SCRATCH" . "$TRE_PREFIX.ml.i.0.0";
     }
-        my $R = Statistics::R->new() ;
+    my $R = Statistics::R->new();
     my $utility_r_functions = get_utility_R_functions();
 my $cmds = <<EOF;
 .libPaths( c( .libPaths(), "~/travis_R_lib") )
