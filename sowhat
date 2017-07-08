@@ -805,10 +805,8 @@ sub make_two_tree_decisison {
     my $tag = shift;
     my $score_switch_flag = decide_best($rh_opts);
     if ($score_switch_flag) {
-        warn "$rh_opts->{'constraint_tree'} is more likely\n";
-        warn "     than $rh_opts->{'treetwo'}\n";
-        warn "     $rh_opts->{'treetwo'} will be used as \n";
-        warn "     the constraint tree instead\n";
+        warn "$rh_opts->{'constraint_tree'} is more likely than $rh_opts->{'treetwo'}\n";
+        warn "     $rh_opts->{'treetwo'} will be used as the constraint tree instead\n";
         unlink glob "$SCRATCH/*ml.i.0.0*";
         unlink glob "$SCRATCH/*t1.i.0.0*";
         my $tmp_tre = $rh_opts->{'constraint_tree'};
@@ -2964,6 +2962,17 @@ sub print_report {
     } else {
         print TOUT "  \$RAX variable set to $RAX\n";
         print TOUT "  RAxML was version $version\n";
+    }
+    if ($rh_opts->{'treetwo'}) {
+        print TOUT "\nTwo constraining hypotheses tested with --treetwo\n";
+        my $score_switch_flag = decide_best($rh_opts);
+            if ($score_switch_flag) {
+                print TOUT "   $rh_opts->{'constraint_tree'} is more likely than $rh_opts->{'treetwo'}\n";
+                print TOUT "   $rh_opts->{'treetwo'} was used as the constraint tree \n";
+            } else {
+                print TOUT "   $rh_opts->{'treetwo'} is more likely than $rh_opts->{'constraint_tree'}\n";
+                print TOUT "   $rh_opts->{'constraint_tree'} was used as the constraint tree \n";                
+            }
     }
     if ($rh_opts->{'rerun'}) {
         print TOUT "   Multiple test statistics calculated\n";
