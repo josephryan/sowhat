@@ -256,33 +256,34 @@ sub _options_compatible {
                 $rh_opts->{'aln'} &&
                 $rh_opts->{'name'} &&
                 $rh_opts->{'garli_conf'}) {
-            warn "missing --constraint\n" unless ($rh_opts->{'constraint_tree'});
-            warn "missing --aln\n" unless ($rh_opts->{'aln'});
-            warn "missing --name\n" unless ($rh_opts->{'name'});
-            warn "missing --garli_conf\n" unless ($rh_opts->{'garli_conf'});
+            warn "    missing --constraint\n" unless ($rh_opts->{'constraint_tree'});
+            warn "    missing --aln\n" unless ($rh_opts->{'aln'});
+            warn "    missing --name\n" unless ($rh_opts->{'name'});
+            warn "    missing --garli_conf\n" unless ($rh_opts->{'garli_conf'});
             usage();
         }
         if ($rh_opts->{'mod'}) {
-            warn "  cannot use --raxml_model with --usegarli\n";
-            die "  model should be supplied in conf file\n";
+            warn "    cannot use --raxml_model with --usegarli\n";
+            die "    model should be supplied in conf file\n";
         }
-        die " cannot use --partition with --usegarli, use raxml instead\n" if ($rh_opts->{'part'});
-        die " cannot use --usepb with --usegarli, use raxml instead\n" if ($rh_opts->{'usepb'});
+        die "    cannot use --partition with --usegarli, use raxml instead\n" if ($rh_opts->{'part'});
+        die "    cannot use --usepb with --usegarli, use raxml instead\n" if ($rh_opts->{'usepb'});
     } else {
         unless ($rh_opts->{'constraint_tree'} &&
             $rh_opts->{'aln'} &&
             $rh_opts->{'mod'} &&
             $rh_opts->{'name'}) {
-            warn "missing --constraint\n" unless ($rh_opts->{'constraint_tree'});
-            warn "missing --aln\n" unless ($rh_opts->{'aln'});
-            warn "missing --name\n" unless ($rh_opts->{'name'});
-            warn "missing --raxml_model\n" unless ($rh_opts->{'mod'});
+            warn "    missing --constraint\n" unless ($rh_opts->{'constraint_tree'});
+            warn "    missing --aln\n" unless ($rh_opts->{'aln'});
+            warn "    missing --name\n" unless ($rh_opts->{'name'});
+            warn "    missing --raxml_model\n" unless ($rh_opts->{'mod'});
             usage();
         }
-    die " cannot use --partition with --usepb\n" if ($rh_opts->{'part'} && $rh_opts->{'usepb'});
-    die " cannot use --max with --usepb\n" if ($rh_opts->{'max'} && $rh_opts->{'usepb'});
-    die " cannot use --max with --usegenmodel\n" if ($rh_opts->{'max'} && $rh_opts->{'usegenmodel'});
-    die " cannot use --usepb with --usegenmodel\n" if ($rh_opts->{'usepb'} && $rh_opts->{'usegenmodel'});
+    die "    cannot use --partition with --usepb\n" if ($rh_opts->{'part'} && $rh_opts->{'usepb'});
+    die "    cannot use --max with --usepb\n" if ($rh_opts->{'max'} && $rh_opts->{'usepb'});
+    die "    cannot use --max with --usegenmodel\n" if ($rh_opts->{'max'} && $rh_opts->{'usegenmodel'});
+    die "    cannot use --usepb with --usegenmodel\n" if ($rh_opts->{'usepb'} && $rh_opts->{'usegenmodel'});
+    die "    --reps must be larger than 10\n" if ($rh_opts->{'reps'} <= 10);
     _check_taxa_compatible($rh_opts->{'constraint_tree'},$rh_opts->{'aln'});
     }
 }
