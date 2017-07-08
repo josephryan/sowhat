@@ -2989,14 +2989,17 @@ sub print_report {
     my $json_file = '';
     my $txt_file = '';
     my $fd_file = '';
+    my $trace_file = '';
 
     if ($rh_opts->{'runs'} > 1) {
         $txt_file = $DIR . "sowhat.results.$ch.txt"; 
         $fd_file = $DIR . "sowhat.distribution.$ch.txt"; 
+        $trace_file = $DIR . "sowhat.trace.$ch.txt";
         $json_file = $DIR . "sowhat.results.$ch.json"; 
     } else {
         $txt_file = $DIR . "sowhat.results.txt";
         $fd_file = $DIR . "sowhat.distribution.txt"; 
+        $trace_file = $DIR . "sowhat.trace.txt";
         $json_file = $DIR . "sowhat.results.json";
     }
     if ($rh_opts->{'json'}) {
@@ -3044,6 +3047,7 @@ sub print_report {
     if ($rh_opts->{'rerun'}) {
         print TOUT "   Multiple test statistics calculated\n";
         print TOUT "   Distribution of test statistics printed to $DIR/sowhat.distribution\n";
+        print TOUT "   Trace file of test printed to $DIR/sowhat.trace\n";
         print TOUT "   Mean value used for calculating p-value\n";
     }
     print TOUT "\nDistributions and frequencies printed to:\n $fd_file\n";            
@@ -3064,6 +3068,7 @@ sub print_report {
         print ".";
     }
 
+
     open OUT, ">$fd_file" or die("cannot open >$fd_file:$!");
     print OUT "Null Distribution:\n";
     foreach my $val (@{$ra_d}) {
@@ -3074,6 +3079,24 @@ sub print_report {
        print OUT "$val\n";
     }
     close OUT;
+
+    if (! -e $trace_file) {
+        open ROUT, ">$trace_file" or die("cannot open >$trace_file:$!");
+        print ROUT "time(s)\tsample_size\tlow_conf_int\tp_value\thigh_conf_int\n";
+        print ROUT time - $^T . "\t";
+        print ROUT "$ra_output->[0]->{'value'}->[6]->{'value'}\t";
+        print ROUT "$ra_output->[2]->{'value'}->[1]->{'value'}\t";
+        print ROUT "$ra_output->[2]->{'value'}->[2]->{'value'}\t";
+        print ROUT "$ra_output->[2]->{'value'}->[0]->{'value'}\n";
+    } else { 
+        open ROUT, ">>$trace_file" or die("cannot open >>$trace_file:$!");
+        print ROUT time - $^T . "\t";
+        print ROUT "$ra_output->[0]->{'value'}->[6]->{'value'}\t";
+        print ROUT "$ra_output->[2]->{'value'}->[1]->{'value'}\t";
+        print ROUT "$ra_output->[2]->{'value'}->[2]->{'value'}\t";
+        print ROUT "$ra_output->[2]->{'value'}->[0]->{'value'}\n";
+    }
+    close ROUT;
 }
 
 # IN:  system command (e.g., ls -l)
