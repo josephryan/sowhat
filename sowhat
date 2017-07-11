@@ -20,7 +20,7 @@
 #    with this program; if not, write to the Free Software Foundation, Inc.,
 #    51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-our $VERSION = 0.38;
+our $VERSION = 0.39;
 
 use strict;
 use warnings;
@@ -74,10 +74,9 @@ MAIN: {
 
     my (@output);
 
-    my $restart_num = restart($rh_opts);
+    my ($restart_num,$simul_flag) = restart($rh_opts);
 
-
-    print_initial_messages($rh_opts);
+    print_initial_messages($rh_opts) unless($simul_flag == 1);
     
     for (my $ts = 0; $ts < $rh_opts->{'reps'}; $ts++) {
     #LOOP: For the number of repetitions, simulate data
@@ -124,33 +123,37 @@ MAIN: {
                     $rh_opts,$model,$gen_tree,$restart_flag,$tag,$ch,$ts);
             }
 
-            
-            run_gen_trees($alns,$rh_opts,$ra_aln_len,
-                $restart_flag,$tag);
-            my ($best_ml,$best_t1,$rh_stats,$ra_diff) = 
-                evaluate_distribution($rh_opts,\@output,\@delta_dist,\@deltaprime_dist,
-                \@mean,\@current_mean,\@pen_mean,$ts,$ch,$tag);
-
-
-            if ($ch == ($rh_opts->{'runs'} - 1)) {
-            #After a successive iteration on all runs, 
-            #evaluate statistics across runs and create a graph
-                if ($ch && $rh_opts->{'plot'}) {
-                    plot_runs(\@mean,$rh_opts->{'runs'},$ts);
-                }
-            }
-
-            if($ts > 9) {
-            #After 10 iterations on all runs,
-            # begin to calculate and report the statistics.
-                calc_ratio($ch,$ts,\@current_mean,\@pen_mean,\@ratio,
-                    \@mean,$rh_opts->{'plot'});
-                print_report(\@output,$ra_diff,
-                    $delta_dist[$ch],$ratio[$ch][$ts],$rh_opts,$rh_vers,$ch);
-                if ($rh_opts->{'json'}) {
-                }
+            if ($simul_flag == 1) {
+                print_gen_scripts($alns,$rh_opts,$ra_aln_len,
+                    $restart_flag,$tag);
             } else {
-                print "-";
+                run_gen_trees($alns,$rh_opts,$ra_aln_len,
+                    $restart_flag,$tag);
+                my ($best_ml,$best_t1,$rh_stats,$ra_diff) = 
+                    evaluate_distribution($rh_opts,\@output,\@delta_dist,\@deltaprime_dist,
+                    \@mean,\@current_mean,\@pen_mean,$ts,$ch,$tag);
+
+
+                if ($ch == ($rh_opts->{'runs'} - 1)) {
+                #After a successive iteration on all runs, 
+                #evaluate statistics across runs and create a graph
+                    if ($ch && $rh_opts->{'plot'}) {
+                        plot_runs(\@mean,$rh_opts->{'runs'},$ts);
+                    }
+                }
+
+                if($ts > 9) {
+                #After 10 iterations on all runs,
+                # begin to calculate and report the statistics.
+                    calc_ratio($ch,$ts,\@current_mean,\@pen_mean,\@ratio,
+                        \@mean,$rh_opts->{'plot'});
+                    print_report(\@output,$ra_diff,
+                        $delta_dist[$ch],$ratio[$ch][$ts],$rh_opts,$rh_vers,$ch);
+                    if ($rh_opts->{'json'}) {
+                    }
+                } else {
+                    print "-";
+                }
             }
         }
     }
@@ -193,6 +196,7 @@ sub process_options {
                               "restart" => \$rh_opts->{'restart'},
                                "runs=i" => \$rh_opts->{'runs'},
                              "seqgen=s" => \$rh_opts->{'seqgen'},
+                          "print_tree_scripts" => \$rh_opts->{'print_tree_scripts'},
                             "treetwo=s" => \$rh_opts->{'treetwo'},
                                 "usepb" => \$rh_opts->{'usepb'},
                              "usegarli" => \$rh_opts->{'usegarli'},
@@ -268,6 +272,7 @@ sub _options_compatible {
         }
         die "    cannot use --partition with --usegarli, use raxml instead\n" if ($rh_opts->{'part'});
         die "    cannot use --usepb with --usegarli, use raxml instead\n" if ($rh_opts->{'usepb'});
+        die "    cannot use --print_tree_scripts with --usegarli, use raxml instead\n" if ($rh_opts->{'print_tree_scripts'});
     } else {
         unless ($rh_opts->{'constraint_tree'} &&
             $rh_opts->{'aln'} &&
@@ -638,6 +643,29 @@ sub restart {
     my $reps = $rh_opts->{'reps'};
     my $high_flag = 1;
     my $i = 0;
+    my $simul_flag = 0;
+    if ($rh_opts->{'restart'}) {
+        if ($USEGARLI) {
+            unless (-e "$SCRATCH" . "t1.i.0.0.screen.log") {
+                warn "    you appear to have restarted a run that has not completed the initial trees\n";
+                die "    please run without the --restart option\n";
+            }
+        } else {
+            unless (-e "$SCRATCH" . "RAxml_info.t1.i.0.0") {
+                warn "    you appear to have restarted a run that has not completed the initial trees\n";
+                die "    please run without thre --restart option\n";
+            }            
+        }
+    }
+    if ($rh_opts->{'print_tree_scripts'}) {
+        warn "    --print_tree_scripts option has been selected\n";
+        warn "     the initial two tree searches will be completed first \n";
+        warn "     then alignments will be generated and tree search scripts will be \n";
+        warn "     stored in $SCRATCH/raxml_scripts/\n";
+        warn "\n    please execute all tree scripts and then rerun sowhat\n";
+        warn "     with the --print_tree_scripts and --restart commands\n";
+        $simul_flag = 1;
+    }
     while ($high_flag) {
         if($USEGARLI)  {
             $fileml = "$SCRATCH" . "ml.0.$i.screen.log";
@@ -651,7 +679,20 @@ sub restart {
             $high_flag = 0;
         }
     }
-    if($rh_opts->{'restart'} && $USEGARLI) {
+    if($rh_opts->{'restart'} && $rh_opts->{'print_tree_scripts'}) {
+        warn "    restarting the simultaneous trees run\n";
+        if($rh_opts->{'reps'} == $high_file_num) { 
+            warn "\n    checking that tree searches have been completed:\n";
+            warn "     appears that all tree searches are completed\n";
+            warn "     proceeding with calculation of statistics\n";
+            $simul_flag = 0;
+            $num = $high_file_num;
+        } else {
+            warn "\n    checking that tree searches have been completed:\n";
+            warn "     --reps is greater than the number of completed tree searches\n";
+            warn "     any remaining alignments will be generated\n";
+        }
+    } elsif($rh_opts->{'restart'} && $USEGARLI) {
         warn "    restarting from previous run\n";
         warn "    sowhat will use the previously simulated alignments and estimated trees\n";
         warn "     the null distribution will be calculated iteratively from these files\n";
@@ -673,7 +714,7 @@ sub restart {
         warn "    sowhat output files with that name already exist\n";
         die  "     use --restart if you want to pick up where you left off\n";
     } 
-    return $num;
+    return($num,$simul_flag);
 }
 
 # IN: hashref with options
@@ -2449,6 +2490,39 @@ sub _make_alns {
     return $file;
 }
 
+sub print_gen_scripts {
+    my $alns = shift;
+    my $rh_opts = shift;
+    my $ra_aln_len = shift;
+    my $restart = shift;
+    my $tag = shift;
+    my $part = $rh_opts->{'part'};
+    my $mod = $rh_opts->{'mod'};
+    my $tre = $rh_opts->{'constraint_tree'};
+    my $cmd = '';
+    my $dir = $SCRATCH . "/tree_scripts/";
+    File::Path::mkpath($dir) unless (-d $dir);
+
+    my $treetwo = '';
+    if ($rh_opts->{'treetwo'}) {
+        $treetwo = $rh_opts->{'treetwo'};
+    }
+
+    $cmd = _run_rax_on_genset($alns,$mod,$part,$restart,'ml.'.$tag,$treetwo);
+    _print_script($dir,$cmd,'raxml_script.ml.'.$tag.'.sh');
+    $cmd = _run_rax_on_genset($alns,$mod,$part,$restart,'t1.'.$tag,$tre);
+    _print_script($dir,$cmd,'raxml_script.t1.'.$tag.'.sh');
+}
+
+sub _print_script {
+    my $dir = shift;
+    my $cmd = shift;
+    my $tag = shift;
+    my $file = $dir . $tag;
+    open OUT, ">$file" or die("cannot open >$file:$!");
+    print OUT $cmd;
+}
+
 # IN: array of simulated alignments
 #     command-line hash of options
 #     length of alignments
@@ -2466,6 +2540,7 @@ sub run_gen_trees {
     my $part = $rh_opts->{'part'};
     my $mod = $rh_opts->{'mod'};
     my $tre = $rh_opts->{'constraint_tree'};
+    my $cmd = '';
 
     my $treetwo = '';
     if ($rh_opts->{'treetwo'}) {
@@ -2473,11 +2548,17 @@ sub run_gen_trees {
     }
 
     if ($USEGARLI)  {
-        _run_garli_on_genset($rh_opts,$alns,$restart,'ml.'.$tag,$treetwo);
-        _run_garli_on_genset($rh_opts,$alns,$restart,'t1.'.$tag,$tre);
+        $cmd = _run_garli_on_genset($rh_opts,$alns,$restart,'ml.'.$tag,$treetwo);
+        safe_system($cmd) unless($restart);
+        File::Temp::cleanup();
+        $cmd = _run_garli_on_genset($rh_opts,$alns,$restart,'t1.'.$tag,$tre);
+        safe_system($cmd) unless($restart);
+        File::Temp::cleanup();
     } else {
-        _run_rax_on_genset($alns,$mod,$part,$restart,'ml.'.$tag,$treetwo);
-        _run_rax_on_genset($alns,$mod,$part,$restart,'t1.'.$tag,$tre);
+        $cmd = _run_rax_on_genset($alns,$mod,$part,$restart,'ml.'.$tag,$treetwo);
+        safe_system($cmd) unless($restart);
+        $cmd = _run_rax_on_genset($alns,$mod,$part,$restart,'t1.'.$tag,$tre);
+        safe_system($cmd) unless($restart);
     }
 }
 
@@ -2518,8 +2599,7 @@ sub _run_garli_on_genset {
         $cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
     }
     close IN;
-    safe_system($cmd) unless($restart);
-    File::Temp::cleanup();
+    return($cmd);
 }
 
 # IN: array of simulated alignments
@@ -2555,7 +2635,7 @@ sub _run_rax_on_genset {
         $cmd .= ">> ${DIR}sowh_stdout_$NAME.txt ";
         $cmd .= "2>> ${DIR}sowh_stderr_$NAME.txt";
     }
-    safe_system($cmd) unless($restart);
+    return $cmd;
 }
 
 # IN: hash w/ options
@@ -3134,7 +3214,7 @@ Samuel H. Church <church@g.harvard.edu>, Joseph F. Ryan <joseph.ryan@whitney.ufl
  sowhat --constraint=NEWICK_CONSTRAINT_TREE --aln=PHYLIP_ALIGNMENT --name=NAME_FOR_REPORT --dir=DIR [--debug] 
  [--garli=GARLI_BINARY_OR_PATH_PLUS_OPTIONS] [--garli_conf=PATH_TO_GARLI_CONF_FILE] [--help] [--initial] [--json] 
  [--max] [--raxml_model=MODEL_FOR_RAXML] [--nogaps] [--partition=PARTITION_FILE] [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS]
- [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] [--plot] [--ppred=PPRED_BINARY_OR_PATH_PLUS_OPTIONS] 
+ [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] [--print_tree_scripts] [--plot] [--ppred=PPRED_BINARY_OR_PATH_PLUS_OPTIONS] 
  [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] [--reps=NUMBER_OF_REPLICATES] [--resolved] [--rerun] [--restart]
  [--runs=NUMBER_OF_TESTS_TO_RUN] [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] [--treetwo=NEWICK_ALTERNATIVE_TO_CONST_TREE]
  [--usepb] [--usegarli] [--usegentree=NEWICK_TREE_FOR_SIMULATING_DATA] [--version]\n";
@@ -3186,11 +3266,9 @@ This allows the user to specify the RAxML binary to be used in the analysis. It 
 
 =back
 
-=head1 raxml_model
+=item B<--raxml_model>
 
 This is the model which will be used in likelihood inference and data simulation, unless additional options are specified (ie --max --usepb). Use --raxml_model=available for full list of model options.
-
-=over 2
 
 =item B<--seqgen>
 
@@ -3216,6 +3294,7 @@ Use GARLI instead of RAxML for nucleotide data. Must also include --garli_conf= 
 This allows the user to specify the garli binary or path to the binary to be used in the analysis. It could be useful to pass additional parameters to garli.
 
 =item B<--garli_conf=PATH_TO_GARLI_CONF_FILE>
+
 If using garli, a garli conf file must be supplied (see examples directory of sowhat distribution for example)
 
 =item B<--ppred>
@@ -3234,6 +3313,7 @@ This allows the user to specify the burn-in value used for the phylobayes analys
 This is the maximum number of datasets which will be generated according to the estimated parameters.
 
 =item B<--runs>
+
 <default: 1>
 This is the number of runs - multiple separate SOWH tests may be simultaneously performed to assess results.
 
@@ -3256,6 +3336,10 @@ By default sowhat will propogate the undetermined sites in the original dataset 
 =item B<--initial>
 
 This will only run the first two trees, which are a constrained and unconstrained search of the provided dataset.
+
+=item B<--print_tree_scripts>
+
+This will run the first two trees, which are a constrained and uncosntrained search of the provided dataset. It will then generate the simulated alignments and print a series of scripts for executing the subsequent tree searches to the directory sowhat_scratch/tree_scripts. These must all be executed, after which the user can rerun sowhat with the --print_tree_scripts and --restart commands for calculation of the statistics.
 
 =item B<--json>
 

@@ -183,6 +183,31 @@ Additional outputs include detailed information on the model used for simulating
 
 ## MORE COMPLEX SOWHAT OPTIONS
 
+### PARALLELIZATION OPTIONS
+
+sowhat can take a long time to run, especially on datasets where a single tree search can take many hours. Threads can be incorporated into raxml as described above with the --rax options, which can speed up the tree searches considerably.
+
+In some cases, though, the user may want to further parallelize the sowhat test. The --print_tree_scripts option allows the user to execute the tree searches to generate the null distribution outside of sowhat - this could be useful, for example, if a user wanted to run many tree searches simultaneously on a server.
+
+To use this option, the user must specify the following options:
+
+  _--print_tree_scripts_
+  _--reps=[your desired sample size, default is 1000] 
+
+The initial two tree searches on the observed data will be performed. Subsequently sowhat will generate simulated alignments and print a series of scripts to execute the tree searches to the folder [--dir]/sowhat_scratch/tree_scripts/. Each of these scripts must be executed externally. After they have all been completed, the user reruns sowhat with the following options:
+
+  _--print_tree_scripts_
+  _--reps=[same number of reps]
+  _--restart_
+
+One note: if the inital sample size is too low (ie the confidence interval around the p-value indicates that the results are not definitive), the user can generate additional tree scripts by rerunning the sowhat command with the following options:
+
+  _--print_tree_scripts_
+  _--reps=[some higher number of reps]
+  _--restart_
+
+sowhat will not calculate the statistics until the number of tree scripts specified in the number of reps have been executed successfully.
+
 ### MODEL OPTIONS
 
 Parametric bootstrap tests rely heavily on the model used for data simulation. sowhat provides a number of options for exploring models and examining the results.
@@ -261,6 +286,7 @@ The most thorough approach to parametric bootstrapping is one in which the user 
    [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] \ 
    [--plot] \ 
    [--ppred=PPRED_BINARY_OR_PATH_PLUS_OPTIONS] \ 
+   [--print_tree_scripts] \
    [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] \ 
    [--reps=NUMBER_OF_REPLICATES] \ 
    [--resolved] \ 
