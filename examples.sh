@@ -21,7 +21,7 @@ sowhat --constraint=examples/H0.garli.tre --aln=examples/nt.phy --usegarli --gar
 # TEST6: Datatype = AA, Model = WAG, ML Software = GARLI
 sowhat --constraint=examples/H0.garli.tre --aln=examples/aa.phy --usegarli --garli_conf=examples/aa.garli.conf --dir=test.output/test6 --name=test
 
-# TEST7: Datatype = AA, Model = WAG, ML Software = RAxML, nogaps
+# TEST7: Datatype = DNA, Model = GTRGAMMA, ML Software = RAxML, nogaps
 sowhat --constraint=examples/H0.tre --aln=examples/nt.phy --raxml_model=GTRGAMMA --dir=test.output/test7 --name=test --nogaps
 
 # TEST8: Datatype = DNA, Model = GTRGAMMA, ML Software = RAxML, rerun

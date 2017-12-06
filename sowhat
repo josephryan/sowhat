@@ -196,7 +196,7 @@ sub process_options {
                               "restart" => \$rh_opts->{'restart'},
                                "runs=i" => \$rh_opts->{'runs'},
                              "seqgen=s" => \$rh_opts->{'seqgen'},
-                          "print_tree_scripts" => \$rh_opts->{'print_tree_scripts'},
+                   "print_tree_scripts" => \$rh_opts->{'print_tree_scripts'},
                             "treetwo=s" => \$rh_opts->{'treetwo'},
                                 "usepb" => \$rh_opts->{'usepb'},
                              "usegarli" => \$rh_opts->{'usegarli'},
@@ -322,7 +322,7 @@ sub _check_taxa_compatible {
 .libPaths( c( .libPaths(), "~/travis_R_lib") )
 $utility_r_functions
 tre <- read.tree("$tre")
-dat <- read.delim("$aln",sep="\ ",stringsAsFactors =F)
+dat <- read.delim("$aln",sep="",stringsAsFactors =F)
 datx <- dat[[1]]
 tret <- tre[[2]]
 se <- setequal(datx,tret)
@@ -651,9 +651,9 @@ sub restart {
                 die "    please run without the --restart option\n";
             }
         } else {
-            unless (-e "$SCRATCH" . "RAxml_info.t1.i.0.0") {
+            unless (-e "$SCRATCH" . "RAxML_info.t1.i.0.0") {
                 warn "    you appear to have restarted a run that has not completed the initial trees\n";
-                die "    please run without thre --restart option\n";
+                die "    please run without the --restart option\n";
             }            
         }
     }
@@ -661,7 +661,7 @@ sub restart {
         warn "    --print_tree_scripts option has been selected\n";
         warn "     the initial two tree searches will be completed first \n";
         warn "     then alignments will be generated and tree search scripts will be \n";
-        warn "     stored in $SCRATCH/raxml_scripts/\n";
+        warn "     stored in $SCRATCH" . "tree_scripts/\n";
         warn "\n    please execute all tree scripts and then rerun sowhat\n";
         warn "     with the --print_tree_scripts and --restart commands\n";
         $simul_flag = 1;
@@ -2520,7 +2520,7 @@ sub _print_script {
     my $tag = shift;
     my $file = $dir . $tag;
     open OUT, ">$file" or die("cannot open >$file:$!");
-    print OUT $cmd;
+    print OUT "$cmd\n";
 }
 
 # IN: array of simulated alignments
