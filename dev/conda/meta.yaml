@@ -30,11 +30,6 @@ requirements:
     - perl-statistics-r
     - r-ape
 
-test:
-  imports:
-    - raxml -v
-    - seq-gen -h
-
 about:
   home: https://github.com/josephryan/sowhat
   license: GPLv3.0
