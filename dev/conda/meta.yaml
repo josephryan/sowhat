@@ -3,17 +3,32 @@ package:
   version: 0.9.0
 
 source:
-  git_rev: 0.9.0
+  git_branch: Development
   git_url: https://github.com/josephryan/sowhat.git
+
+
+build:
+  rpaths:
+    - lib/
+    - lib/R/lib/
 
 requirements:
   build:
+    - perl-threaded
     - perl-ipc-run
-
-  run:
+    - r-base
     - seq-gen
     - raxml
     - perl-statistics-r
+    - r-ape
+
+  run:
+    - perl-threaded
+    - seq-gen
+    - r-base
+    - raxml
+    - perl-statistics-r
+    - r-ape
 
 test:
   imports:
