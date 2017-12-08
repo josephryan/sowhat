@@ -14,18 +14,19 @@ build:
 
 requirements:
   build:
-    - perl
+    - perl # [not osx]
     - perl-app-cpanminus
-    - perl-ipc-run
     - seq-gen
     - raxml
+    - r-base
     - r-ape
 
   run:
-    - perl
+    - perl # [not osx]
     - perl-app-cpanminus
     - seq-gen
     - raxml
+    - r-base
     - r-ape
 
 about:
