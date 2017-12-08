@@ -324,7 +324,7 @@ $utility_r_functions
 tre <- read.tree("$tre")
 dat <- read.delim("$aln",sep="",stringsAsFactors =F)
 datx <- dat[[1]]
-tret <- tre[[2]]
+tret <- tre\$tip.label
 se <- setequal(datx,tret)
 se
 EOF
