@@ -445,7 +445,7 @@ sub _check_seqgen_version {
     my $possible_error = '';
     foreach my $l (@lines) {
         $possible_error .= $l;
-        next unless $l =~ m/^Version ((\d+\.\d+)\.\d+[A-z]+)/;
+        next unless $l =~ m/^Version ((\d+\.\d+)\.\d+[A-z]*)/;
         $long_version = $1;
         $version = $2;
         last;
