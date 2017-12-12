@@ -7,6 +7,7 @@ source:
   git_url: https://github.com/josephryan/sowhat.git
 
 build:
+  skip: True # [osx]
   number: 0
   rpaths:
     - lib/
@@ -14,7 +15,7 @@ build:
 
 requirements:
   build:
-    - perl # [not osx]
+    - perl-threaded
     - perl-app-cpanminus
     - seq-gen
     - raxml
@@ -22,7 +23,7 @@ requirements:
     - r-ape
 
   run:
-    - perl # [not osx]
+    - perl-threaded
     - perl-app-cpanminus
     - seq-gen
     - raxml
