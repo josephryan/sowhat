@@ -582,6 +582,8 @@ sub _translate_model {
             return 'WAG';
         } elsif ($core_mod =~ m/DAYHOFF/) {
             return 'PAM';
+        } elsif ($core_mod =~ m/LG/) {
+            return 'LG';
         } elsif ($core_mod =~ m/BLOSUM62/) {
             return 'BLOSUM';
         } elsif ($core_mod =~ m/MTREV/) {
