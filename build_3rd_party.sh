@@ -95,7 +95,7 @@ if need_programs raxmlHPC
 then
 	echo "Intalling RAxML..." >&2
 	# download $URL $SHA1 $FILE
-	unzip $FILE -o
+	unzip $FILE
 	cd standard-RAxML-master
 	make -f Makefile.gcc CC="$CC"
 	cp raxmlHPC $BINDIR/
