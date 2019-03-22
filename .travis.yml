@@ -27,12 +27,18 @@ before_install:
   - cpanm -n JSON
   - ./build_3rd_party.sh ~
 
+script:
+  - docker build -t shchurch/sowhat:$TRAVIS_BRANCH . 
+
+after_script:
+  - docker images
+
+before_deploy:
+  - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+
 deploy:
   provider: script
-  script:
-     - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-     - docker build -t shchurch/sowhat:$TRAVIS_BRANCH . 
-     - docker push shchurch/sowhat:$TRAVIS_BRANCH
+  script: docker push shchurch/sowhat:$TRAVIS_BRANCH
   on:
      all_branches: true
      condition: $TRAVIS_BRANCH =~ ^master|Development$
