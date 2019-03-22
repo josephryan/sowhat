@@ -27,7 +27,7 @@ before_install:
   - cpanm -n JSON
   - ./build_3rd_party.sh ~
 
-deploy:
+docker:
   provider: script
   script:
      - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
