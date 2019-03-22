@@ -139,8 +139,3 @@ else
 fi
 
 
-# Take care of the other dependencies...
-# apt-get install r-base-core
-# apt-get install cpanminus
-# cpanm Statistics::R
-
