@@ -28,9 +28,11 @@ before_install:
   - ./build_3rd_party.sh ~
 
 deploy:
+  provider: script
   script:
      - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
      - docker build -t shchurch/sowhat:$TRAVIS_BRANCH . 
      - docker push shchurch/sowhat:$TRAVIS_BRANCH
-
+  on:
+     all branches: true
 
