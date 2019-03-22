@@ -19,6 +19,7 @@ services:
   - docker
       
 before_install:
+  - docker build -t shchurch/sowhat:$TRAVIS_BRANCH .
   - echo 'R_LIBS=~/travis_R_lib' > .Renviron
   - echo 'options(repos = "http://cran.rstudio.com")' > .Rprofile
   - echo '.travis.yml' > .Rbuildignore
@@ -27,13 +28,10 @@ before_install:
   - cpanm -n JSON
   - ./build_3rd_party.sh ~
 
-script:
-  - docker build -t shchurch/sowhat:$TRAVIS_BRANCH . 
-
-after_script:
+after_install:
   - docker images
 
-before_deploy:
+before_deploy: 
   - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 
 deploy:
