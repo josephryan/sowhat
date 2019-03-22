@@ -14,6 +14,9 @@ addons:
 cache:
   directories:
     - ~/travis_R_lib
+
+services:
+  - docker
       
 before_install:
   - echo 'R_LIBS=~/travis_R_lib' > .Renviron
@@ -23,3 +26,11 @@ before_install:
   - cpanm -nf Statistics::R || cat /home/travis/.cpanm/work/*/build.log
   - cpanm -n JSON
   - ./build_3rd_party.sh ~
+
+deploy:
+  script:
+     - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+     - docker build -t shchurch/sowhat:$TRAVIS_BRANCH . 
+     - docker push shchurch/sowhat:$TRAVIS_BRANCH
+
+

@@ -4,31 +4,30 @@
 
 ## DESCRIPTION
 
-`sowhat` automates the SOWH phylogenetic topology test, which uses parametric bootstrapping and is described by the manuscripts listed in FURTHER READING. It works on amino acid, nucleotide, and binary character state datasets.
+`sowhat` automates the SOWH test, a statistical test of  phylogenetic topologies using a parametric bootstrap. It works on amino acid, nucleotide, and binary character state datasets.
  
 A peer-reviewed manuscript describing `sowhat` is available at Systematic Biology: http://sysbio.oxfordjournals.org/content/early/2015/07/30/sysbio.syv055.abstract
 
 `sowhat` includes several features that provide flexibility and aid in the interpretation and assessment of SOWH test results, including: 
 
-- The test can be performed with the adjustment suggested by Susko 2014 (http://dx.doi.org/10.1093/molbev/msu039), which is the default behavior, or as originally described.
+- The test is performed with the adjustment suggested by Susko 2014 (http://dx.doi.org/10.1093/molbev/msu039).
 - Partitions, including partitions by codon position, can be used.
-- Gaps are propagated from the original dataset to the simulated dataset.
-- Likelihood searches can be performed with RAxML or GARLI.
-- Boostrap replicate datasets can be simulated with Seq-Gen or PhyloBayes.
-- Different models can be used for simulation and inference.
-- Confidence intervals are estimated for the p-value, which helps the investigator assess if a sufficient number of bootstrap replicates have been sampled. 
-- The option to account for variability in the maximum likelihood searches by estimating the test statistic and parameters for each new alignment.
+- Missing data (gaps in alignment) are propagated from the original dataset to the simulated dataset.
+- Confidence intervals are estimated for the p-value, which helps the investigator assess if a sufficient number of bootstrap replicates have been sampled.
 
 `sowhat` is in active development. Please use with caution. We appreciate hearing about your experience with the program via the issue tracker.
 
-
 ## AVAILABILITY
-
 
 https://github.com/josephryan/sowhat (click the "Download ZIP" button at the bottom of the right column).
 
-
 ## INSTALLATION
+
+### DOCKER
+
+`sowhat` is available in a docker conatiner, at `XXX`. To load a container for `sowhat`, use the following:
+
+    XXX
 
 ### QUICK
 
@@ -46,9 +45,187 @@ To install without root privelages try:
     make test
     sudo make install
 
+Additional installation, system requirements, and dependencies are listed below.
+
+
+## EXAMPLE ANALYSES
+
+Several test datasets are provided in the `examples/` directory. To run example analyses 
+on these datasets, execute:
+
+    ./examples.sh
+    
+
+See `examples.sh` and the resulting `test.output/` directory for more on the specifics of 
+`sowhat` use.
+
+__Warning__: Some of the examples take time (especially those that use Garli).  For a quick example run `make test` and see the output in the `test.output` directory.
+
+## GETTING STARTED WITH YOUR OWN ANALYSES
+
+### Preparation
+
+#### 1. Alignment (DNA, AA, or binary characters)
+
+__Format:__ non-interleaved PHYLIP format
+
+Description: This can be DNA, amino acid, or binary characters. Often, you would have performed phylogenetic analyses on this alignment and recovered a result that was in conflict with an _a priori_ hypothesis.
+
+#### 2. Constraint tree
+
+__Format:__ Newick format
+
+The constraint tree represents a hypothesis that you would like to compare to the ML tree or some alternative hypothesis. In most cases you will want a tree that is mostly unresolved but includes the clade being tested. 
+
+For example if your ML tree showed a sister relationship between two taxa 'A' and 'B' and you want to compare this result to topology with a sister relationship between 'A' and 'C,' you would create the following constraint tree:
+
+  `((A,C),B,D,E,F);`
+
+Note that the relationship `B`, `D`, `E`, and `F` is unresolved.
+
+#### 3. RAxML model
+
+The only other required parameter when using RAxML is
+
+  `--raxml_model`
+
+This option can specify any of the models that are available to RAxML. Running `sowhat` with the option `--raxml_model=available` will provide a list of all possible models.
+
+Other RAxML parameters (including number of threads) can be specified with the option:
+
+  `--rax`
+
+for example:
+
+  `--rax='/usr/local/bin/raxmlHPC-PTHREADS -T 20'`
+
+### Running `sowhat`
+
+See `examples.sh` for examples of `sowhat` commands.
+
+By default `sowhat` samples 1000 bootstrap replicates. This can be adjusted with `--reps=[sample size]`. A sufficient sample size can be assessed by checking the reported confidence interval around the p-value.
+
+### Examining the results
+
+The results of the SOWH test are included in a file called `sowhat.results.txt`, which can be found in the directory specified with the `--dir` option.
+
+At the bottom of `sowhat.results.txt` is a p-value representing the probability that the test statistic would be observed under the null hypothesis.
+
+A run that has been cut short can be restarted using the `--restart` option. In this case the null distribution will be recalculated iteratively using the previously simulated samples in the null distributions. Only the most recent two generations of sequence simulation and tree estimation will be reperformed to prevent any errors from an unfinished tree estimation.
+
+Additional outputs include 
+- detailed information on the model used for simulating new alignments in the file `sowhat.model.txt`
+- information on the null distribution in `sowhat.distribution.txt`
+- the trace file for the run is printed to `sowhat.trace.txt`
+- program files printed to a directory _sowhat_scratch_. Within this directory, the files ending in `...i.0.0` represent the initial search of the empirical alignment file. 
+
+Results can be printed to a file `sowhat.results.json` using the option 
+
+    `--json`.
+
+### Running large analyses
+
+The SOWH test can take a lot of time, especially on datasets where a single tree search can take many hours. Threads can be incorporated into raxml as described above with the `--rax options`, which can speed up the tree searches considerably.
+
+In some cases, though, the user may want to further parallelize the `sowhat` test. The following option allows a user to run many tree searches simultaneously, for example on a cluster.
+
+To use this option, the user must specify the following options:
+
+  `--print_tree_scripts`
+  `--reps=[sample size, default=1000]`
+
+
+The initial two tree searches on the observed data will be performed. Subsequently `sowhat` will generate simulated alignments and print a series of scripts to execute the tree searches to the folder `[--dir]/sowhat_scratch/tree_scripts/`.
+
+Each of these scripts must be executed externally. After they have all been completed, the user reruns `sowhat` with the following options:
+
+  `--print_tree_scripts_`
+  `--reps=[same number of reps]`
+  `--restart`
+
+One note: if the inital sample size is too low (the confidence interval around the p-value indicates that the results are not definitive), the user can generate additional tree scripts by rerunning the `sowhat` command with the following options:
+
+  `--print_tree_scripts`
+  `--reps=[some higher number of reps]`
+  `--restart`
+
+sowhat will not calculate the statistics until the number of tree scripts specified in the number of reps have been executed successfully.
+
+### Additional options
+
+Options for more complex models or analyses are described here [xxx].
+
+## RUN
+
+
+   `sowhat` \ 
+   --constraint=NEWICK_CONSTRAINT_TREE \ 
+   --aln=PHYLIP_ALIGNMENT \ 
+   --name=NAME_FOR_REPORT \ 
+   --dir=DIR \ 
+   [--debug] \ 
+   [--garli=GARLI_BINARY_OR_PATH_PLUS_OPTIONS] \ 
+   [--garli_conf=PATH_TO_GARLI_CONF_FILE] \ 
+   [--help] \ 
+   [--initial] \ 
+   [--json] \ 
+   [--max] \ 
+   [--raxml_model=MODEL_FOR_RAXML] \ 
+   [--nogaps] \ 
+   [--partition=PARTITION_FILE] \ 
+   [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS]
+   [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] \ 
+   [--plot] \ 
+   [--ppred=PPRED_BINARY_OR_PATH_PLUS_OPTIONS] \ 
+   [--print_tree_scripts] \
+   [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] \ 
+   [--reps=NUMBER_OF_REPLICATES] \ 
+   [--resolved] \ 
+   [--rerun] \ 
+   [--restart] \
+   [--runs=NUMBER_OF_TESTS_TO_RUN] \ 
+   [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] \ 
+   [--treetwo=NEWICK_ALTERNATIVE_TO_CONST_TREE] \ 
+   [--usepb] \ 
+   [--usegarli] \ 
+   [--usegentree=NEWICK_TREE_FOR_SIMULATING_DATA] \ 
+   [--version] \ 
+
+## DOCUMENTATION
+
+Extensive documentation is embedded inside of `sowhat` in POD format and
+can be viewed by running any of the following:
+
+        `sowhat` --help
+        perldoc `sowhat`
+        man `sowhat`  # available after installation
+
+## CITING
+
+
+A peer-reviewed manuscript describing `sowhat` is available at Systematic Biology:
+
+Church, Samuel H., Joseph F. Ryan, and Casey W. Dunn. "Automation and Evaluation of the SOWH Test with SOWHAT"
+Systematic Biology 2015 Nov;64(6):1048-58.
+doi: 10.1093/sysbio/syv055
+
+Also see the file `sowhat`.bibtex
+
+## FURTHER READING
+
+
+Goldman, Nick, Jon P. Anderson, and Allen G. Rodrigo. "Likelihood-based tests of 
+topologies in phylogenetics." Systematic Biology 49.4 (2000): 652-670. 
+[doi:10.1080/106351500750049752](http://dx.doi.org/10.1080/106351500750049752)
+
+Swofford, David L., Gary J. Olsen, Peter J. Waddell, and David M. Hillis. Phylogenetic 
+inference. (1996): 407-514. http://www.sinauer.com/molecular-systematics.html
+
+
 ### SYSTEM REQUIREMENTS
 
 We have tested `sowhat` on OS X 10.9, OS X 10.10, Ubuntu Server 10.04 (Amazon ami-d05e75b8), and Ubuntu Desktop 15.04. It will likely work on a variety of other Unix-like operating systems.
+
 
 ### DEPENDENCIES
 
@@ -86,7 +263,7 @@ machine with the following commands (executables will be placed in `/usr/local/b
     sudo Rscript -e "install.packages('ape', dependencies = T, repos='http://cran.rstudio.com/')"
     cd ~
     git clone https://github.com/josephryan/sowhat.git
-    cd sowhat/
+    cd `sowhat`/
     # To work on the development branch (not recommended) execute: git checkout -b Development origin/Development
     sudo ./build_3rd_party.sh
     perl Makefile.PL
@@ -97,239 +274,6 @@ machine with the following commands (executables will be placed in `/usr/local/b
 
 Note that `build_3rd_party.sh` installs some dependencies from versions that are cached in 
 this repository. They may be out of date.
-
-
-
-## EXAMPLE ANALYSES
-
-Several test datasets are provided in the `examples/` directory. To run example analyses 
-on these datasets, execute:
-
-    ./examples.sh
-    
-
-See `examples.sh` and the resulting `test.output/` directory for more on the specifics of 
-`sowhat` use.
-
-__Warning__: Some of the examples take time (especially those that use Garli).  For a quick example run _make test_ and see the output in the _test.output_ directory.
-
-## GETTING STARTED WITH YOUR OWN ANALYSES
-
-### Preparation
-
-#### 1. Alignment (DNA, AA, or binary characters)
-
-__Format:__ non-interleaved PHYLIP format
-
-Description: This can be DNA, amino acid, or binary characters. Often, you would have performed phylogenetic analyses on this alignment and recovered a result that was in conflict with an _a priori_ hypothesis.  You will specify the _a priori_ hypothesis in a constraint tree (next section).
-
-#### 2. Constraint tree
-
-__Format:__ Newick format
-
-The constraint tree represents a hypothesis that you would like to compare to the ML tree or some alternative hypothesis. In most cases you will want a tree that is mostly unresolved but includes the clade being tested.  For example if your ML tree showed a sister relationship between two taxa 'A' and 'B' and you want to compare this result to topology with a sister relationship between 'A' and 'C,' you would create the following constraint tree:
-
-  ((A,C),B,D,E,F);
-
-Note that B, D, E, and F are unresolved.
-
-#### 3. RAxML model
-
-The only other required parameter when using RAxML is
-
-  _--raxml_model_
-
-This option can specify any of the models that are available to RAxML. Running sowhat with the option --raxml_model=available will provide a list of all possible models.
-
-Other RAxML parameters (including number of threads) can be specified with the option:
-
-  _--rax_
-
-for example:
-
-  _--rax='/usr/local/bin/raxmlHPC-PTHREADS -T 20'_
-
-#### 4. For using GARLI instead of RAxML
-
-RAxML is much faster than Garli and can use multiple processors, but GARLI has more available models. To use GARLI, you need to provide the option:
-
-  _--usegarli_
-
-  and
-
-  _--garli_conf_
-
-Example Garli configuration files are available (examples/garli.conf and examples/aa.garli.conf). For an in-depth explanation of all of the options, see the Garli manual available from: http://www.bio.utexas.edu/faculty/antisense/garli/garli.html
-
-The nucleotide model specified in _examples/garli.conf_ is GTR+GAMMA. The amino acid model specified in _examples/aa.garli.conf_ is WAG+GAMMA. To adjust either of these the following parameters should be adjusted in garli.conf:
-
-    _ratematrix_, _statefrequencies_, _ratehetmode_, _numratecats_, _invariantsites_
-
-We highly recommend not adjusting other parameters in the garli conf files as this could cause sowhat to fail.
-
-### Running sowhat
-
-See examples.sh for examples of sowhat command lines.
-
-### Examining the results
-
-The results of the SOWH test are included in a file called _sowhat.results.txt_, which can be found in the directory specified with the _--dir_ option in the _sowhat_ command line.  The bottom of _sowhat.results.txt_ includes a p-value representing the probability that the test statistic would be observed under the null hypothesis.
-
-A run that has been cut short can be restarted using the --restart option. In this case the null distribution will be recalculated iteratively using the previously simulated samples in the null distributions. Only the most recent two generations of sequence simulation and tree estimation will be reperformed to prevent any errors from an unfinished tree estimation.
-
-Additional outputs include detailed information on the model used for simulating new alignments in the file _sowhat.model.txt_, information on the null distribution in _sowhat.distribution.txt_, the trace file for the run is printed to _sowhat.trace.txt_, and all program files printed to a directory _sowhat_scratch_. Within this directory, the files ending in _i.0.0_ represent the initial search of the empirical alignment file. Results can be printed to a file _sowhat.results.json_ using the option 
-
-    _--json_.
-
-## MORE COMPLEX SOWHAT OPTIONS
-
-### PARALLELIZATION OPTIONS
-
-sowhat can take a long time to run, especially on datasets where a single tree search can take many hours. Threads can be incorporated into raxml as described above with the --rax options, which can speed up the tree searches considerably.
-
-In some cases, though, the user may want to further parallelize the sowhat test. The --print_tree_scripts option allows the user to execute the tree searches to generate the null distribution outside of sowhat - this could be useful, for example, if a user wanted to run many tree searches simultaneously on a server.
-
-To use this option, the user must specify the following options:
-
-  _--print_tree_scripts_
-  _--reps=[your desired sample size, default is 1000] 
-
-The initial two tree searches on the observed data will be performed. Subsequently sowhat will generate simulated alignments and print a series of scripts to execute the tree searches to the folder [--dir]/sowhat_scratch/tree_scripts/. Each of these scripts must be executed externally. After they have all been completed, the user reruns sowhat with the following options:
-
-  _--print_tree_scripts_
-  _--reps=[same number of reps]
-  _--restart_
-
-One note: if the inital sample size is too low (ie the confidence interval around the p-value indicates that the results are not definitive), the user can generate additional tree scripts by rerunning the sowhat command with the following options:
-
-  _--print_tree_scripts_
-  _--reps=[some higher number of reps]
-  _--restart_
-
-sowhat will not calculate the statistics until the number of tree scripts specified in the number of reps have been executed successfully.
-
-### MODEL OPTIONS
-
-Parametric bootstrap tests rely heavily on the model used for data simulation. sowhat provides a number of options for exploring models and examining the results.
-
-#### Using PhyloBayes CAT-GTR model
-
-When using sowhat with RAxML, the user can specify that data be simulated using parameters estimated with the CAT-GTR model in a posterior probability framework in PhyloBayes. This model allows for more parameters free to vary. The likelihood scoring will still be performed using the RAxML model specified. The option is
-
-  _--usepb_
-
-#### Using the maximum parameters
-
-Using both RAxML and GARLI, the user can specify that parameter estimation and data simulation be performed using the maximum number of free parameters. For example, in RAxML with nucleotide data, the model GTRGAMMAIX would be used for data simulation, which allows rates, frequencies, alpha value, and invariant sites to all be estimated using likelihood. This option is
-
- _--max_
-
-#### Using a specified model
-
-The user can additionally specify a model for data simulation. The format for this model is demonstrated in the files _examples/simulation..._. For nucleotide data, rates and frequencies must be specified. For aminoacid data, a matrix may be provided, or if the GTR model is speicified, a rate file can be provided which includes a symmetrical 20 by 20 matrix of aminoacid rates. Alpha and invariant site parameters may also be included. This option is
-
- _--usegenmodel_
-
-### SOME RECIPES
-
-#### The classic Goldman+Susko SOWH test
-
-This test evaluates whether a null hypothesis can be rejected, given the data. Data is simulated using parameters estimated under the null hypothesis. The generating topology uses a polytomy for the conflicting clades of interest, as recommended by Susko et al 2014. No additional options need be specified.
-
-#### Testing two trees
-
-This test evaluates whether the data, assuming a specific topology, provides significant support to reject a second topology. Use the options _--constraint=... --treetwo=... --resolved_
-
-#### Testing the SOWH test
-
-There are a number of options for verifying the results of the SOWH test. Multiple simultaneous SOWH tests can be performed and the mean and the ratio of the means can be plotted and examined (files ending in .eps in the specified directory). Use the options _--runs=(number of tests) --plot_
-
-#### Specifying an evolutionary hypothesis
-
-The user can simulated data under very specific models, including specifying abnormal rate matrices and a specific generating topology. This test evaluates whether, assuming evolution under these conditions, can the null hypothesis be rejected. Use the options _--usegenmodel=... --usegentree=..._
-
-#### Evaluating sensitivities
-
-The most thorough approach to parametric bootstrapping is one in which the user changes the model options, evaluates the effects on the resulting p-value, and reports any indication that the null hypothesis cannot be rejected. To accomplish this, the user can perform a series of SOWH tests changing the model, using each of the following options:
-
- _--usepb_ 
-
- which uses a model with a high number of free parameters to simulated the data
-
- _--rerun_
-
- which recalculates the test statistic and parameters each iteration, to marginalize over any effects resulting from the likelihood software failing to find the optimal topology
-
- _nogaps_
-
- which simulates data without any gaps; more information will be present in simulated data than in empirical data, which can affect the null distribution
-
-## RUN
-
-
-   sowhat \ 
-   --constraint=NEWICK_CONSTRAINT_TREE \ 
-   --aln=PHYLIP_ALIGNMENT \ 
-   --name=NAME_FOR_REPORT \ 
-   --dir=DIR \ 
-   [--debug] \ 
-   [--garli=GARLI_BINARY_OR_PATH_PLUS_OPTIONS] \ 
-   [--garli_conf=PATH_TO_GARLI_CONF_FILE] \ 
-   [--help] \ 
-   [--initial] \ 
-   [--json] \ 
-   [--max] \ 
-   [--raxml_model=MODEL_FOR_RAXML] \ 
-   [--nogaps] \ 
-   [--partition=PARTITION_FILE] \ 
-   [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS]
-   [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] \ 
-   [--plot] \ 
-   [--ppred=PPRED_BINARY_OR_PATH_PLUS_OPTIONS] \ 
-   [--print_tree_scripts] \
-   [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] \ 
-   [--reps=NUMBER_OF_REPLICATES] \ 
-   [--resolved] \ 
-   [--rerun] \ 
-   [--restart] \
-   [--runs=NUMBER_OF_TESTS_TO_RUN] \ 
-   [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] \ 
-   [--treetwo=NEWICK_ALTERNATIVE_TO_CONST_TREE] \ 
-   [--usepb] \ 
-   [--usegarli] \ 
-   [--usegentree=NEWICK_TREE_FOR_SIMULATING_DATA] \ 
-   [--version] \ 
-
-## DOCUMENTATION
-
-
-Extensive documentation is embedded inside of `sowhat` in POD format and
-can be viewed by running any of the following:
-
-        sowhat --help
-        perldoc sowhat
-        man sowhat  # available after installation
-
-## CITING
-
-
-A peer-reviewed manuscript describing `sowhat` is available at Systematic Biology:
-
-Church, Samuel H., Joseph F. Ryan, and Casey W. Dunn. "Automation and Evaluation of the SOWH Test with SOWHAT"
-Systematic Biology 2015 Nov;64(6):1048-58.
-doi: 10.1093/sysbio/syv055
-
-Also see the file sowhat.bibtex
-
-## FURTHER READING
-
-
-Goldman, Nick, Jon P. Anderson, and Allen G. Rodrigo. "Likelihood-based tests of 
-topologies in phylogenetics." Systematic Biology 49.4 (2000): 652-670. 
-[doi:10.1080/106351500750049752](http://dx.doi.org/10.1080/106351500750049752)
-
-Swofford, David L., Gary J. Olsen, Peter J. Waddell, and David M. Hillis. Phylogenetic 
-inference. (1996): 407-514. http://www.sinauer.com/molecular-systematics.html
 
 ## COPYRIGHT AND LICENSE
 
