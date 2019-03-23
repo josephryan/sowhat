@@ -12,7 +12,7 @@
 - [DOCUMENTATION](#documentation)
 - [CITING](#citing)
 - [FURTHER READING](#further-reading)
-- [COPYRIGHT AND LICENSE](#copyright-and-licesne)
+- [COPYRIGHT AND LICENSE](#copyright-and-license)
 
 ## DESCRIPTION
 
@@ -37,7 +37,7 @@ https://github.com/josephryan/sowhat (click the "Download ZIP" button at the bot
 
 ### DOCKER
 
-`sowhat` is available in a docker conatiner, at `XXX`. To load a container with `sowhat` and the required dependencies, use the following:
+`sowhat` is available in a docker conatiner (thanks to @xqua for troublshooting). To load a container with `sowhat` and the required dependencies, use the following:
 
     docker pull shchurch/sowhat
 
@@ -187,39 +187,40 @@ See [this page](additional_options.md) for descriptions of additional options an
 
 ## RUN
 
-
-   `sowhat` \ 
-   --constraint=NEWICK_CONSTRAINT_TREE \ 
-   --aln=PHYLIP_ALIGNMENT \ 
-   --name=NAME_FOR_REPORT \ 
-   --dir=DIR \ 
-   [--debug] \ 
-   [--garli=GARLI_BINARY_OR_PATH_PLUS_OPTIONS] \ 
-   [--garli_conf=PATH_TO_GARLI_CONF_FILE] \ 
-   [--help] \ 
-   [--initial] \ 
-   [--json] \ 
-   [--max] \ 
-   [--raxml_model=MODEL_FOR_RAXML] \ 
-   [--nogaps] \ 
-   [--partition=PARTITION_FILE] \ 
-   [--pb=PB_BINARY_OR_PATH_PLUS_OPTIONS]
-   [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] \ 
-   [--plot] \ 
-   [--ppred=PPRED_BINARY_OR_PATH_PLUS_OPTIONS] \ 
-   [--print_tree_scripts] \
-   [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] \ 
-   [--reps=NUMBER_OF_REPLICATES] \ 
-   [--resolved] \ 
-   [--rerun] \ 
-   [--restart] \
-   [--runs=NUMBER_OF_TESTS_TO_RUN] \ 
-   [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] \ 
-   [--treetwo=NEWICK_ALTERNATIVE_TO_CONST_TREE] \ 
-   [--usepb] \ 
-   [--usegarli] \ 
-   [--usegentree=NEWICK_TREE_FOR_SIMULATING_DATA] \ 
-   [--version] \ 
+```
+   sowhat 
+   --constraint=NEWICK_CONSTRAINT_TREE 
+   --aln=PHYLIP_ALIGNMENT 
+   --name=NAME_FOR_REPORT 
+   --dir=DIR 
+   [--debug] 
+   [--garli=GARLI_BINARY_OR_PATH_PLUS_OPTIONS] 
+   [--garli_conf=PATH_TO_GARLI_CONF_FILE] 
+   [--help] 
+   [--initial] 
+   [--json] 
+   [--max] 
+   [--raxml_model=MODEL_FOR_RAXML] 
+   [--nogaps] 
+   [--partition=PARTITION_FILE] 
+   [--pb=PB_BINARY_OR_PATH_PLUS_OPTION
+   [--pb_burn=BURNIN_TO_USE_FOR_PB_TREE_SIMULATIONS] 
+   [--plot] 
+   [--ppred=PPRED_BINARY_OR_PATH_PLUS_OPTIONS] 
+   [--print_tree_scripts]
+   [--rax=RAXML_BINARY_OR_PATH_PLUS_OPTIONS] 
+   [--reps=NUMBER_OF_REPLICATES] 
+   [--resolved] 
+   [--rerun] 
+   [--restart]
+   [--runs=NUMBER_OF_TESTS_TO_RUN] 
+   [--seqgen=SEQGEN_BINARY_OR_PATH_PLUS_OPTIONS] 
+   [--treetwo=NEWICK_ALTERNATIVE_TO_CONST_TREE] 
+   [--usepb] 
+   [--usegarli] 
+   [--usegentree=NEWICK_TREE_FOR_SIMULATING_DATA] 
+   [--version] 
+```
 
 ## DOCUMENTATION
 
