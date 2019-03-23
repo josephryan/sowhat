@@ -2,6 +2,18 @@
 
 [![Build Status](https://travis-ci.org/josephryan/sowhat.svg?branch=master)](https://travis-ci.org/josephryan/sowhat)
 
+## TABLE OF CONTENTS
+- [DESCRIPTION](#description)
+- [AVAILABILITY](#availability)
+- [INSTALLATION](#installation)
+- [EXAMPLE ANALYSES](#example-analyses)
+- [GETTING STARTED](#getting-started)
+- [RUN](#run)
+- [DOCUMENTATION](#documentation)
+- [CITING](#citing)
+- [FURTHER READING](#further-reading)
+- [COPYRIGHT AND LICENSE](#copyright-and-licesne)
+
 ## DESCRIPTION
 
 `sowhat` automates the SOWH test, a statistical test of  phylogenetic topologies using a parametric bootstrap. It works on amino acid, nucleotide, and binary character state datasets.
@@ -25,13 +37,13 @@ https://github.com/josephryan/sowhat (click the "Download ZIP" button at the bot
 
 ### DOCKER
 
-`sowhat` is available in a docker conatiner, at `XXX`. To load a container for `sowhat`, use the following:
+`sowhat` is available in a docker conatiner, at `XXX`. To load a container with `sowhat` and the required dependencies, use the following:
 
-    XXX
+    docker pull shchurch/sowhat
 
 ### QUICK
 
-To install `sowhat` and documentation, type the following:
+To install `sowhat` and documentation, use the following:
 
     perl Makefile.PL
     make
@@ -45,8 +57,31 @@ To install without root privelages try:
     make test
     sudo make install
 
-Additional installation, system requirements, and dependencies are listed below.
+### INSTALL WITH DEPENDENCIES
 
+You can install SOWHAT and all the required dependencies listed above on a clean Ubuntu 15.04 
+machine with the following commands (executables will be placed in `/usr/local/bin`):
+
+    sudo apt-get update
+    sudo apt-get install -y r-base-core cpanminus unzip gcc git
+    sudo cpanm Statistics::R
+    sudo cpanm JSON
+    sudo Rscript -e "install.packages('ape', dependencies = T, repos='http://cran.rstudio.com/')"
+    cd ~
+    git clone https://github.com/josephryan/sowhat.git
+    cd `sowhat`/
+    # To work on the development branch (not recommended) execute: git checkout -b Development origin/Development
+    sudo ./build_3rd_party.sh
+    perl Makefile.PL
+    make
+    make test
+    sudo make install
+    
+
+Note that `build_3rd_party.sh` installs some dependencies from versions that are cached in 
+this repository. They may be out of date.
+
+Additional information on [system requirements](#system-requirements) and [dependencies](#dependencies) are listed below.
 
 ## EXAMPLE ANALYSES
 
@@ -61,7 +96,7 @@ See `examples.sh` and the resulting `test.output/` directory for more on the spe
 
 __Warning__: Some of the examples take time (especially those that use Garli).  For a quick example run `make test` and see the output in the `test.output` directory.
 
-## GETTING STARTED WITH YOUR OWN ANALYSES
+## GETTING STARTED
 
 ### Preparation
 
@@ -131,29 +166,24 @@ In some cases, though, the user may want to further parallelize the `sowhat` tes
 
 To use this option, the user must specify the following options:
 
-  `--print_tree_scripts`
-  `--reps=[sample size, default=1000]`
+  `--print_tree_scripts --reps=[sample size, default=1000]`
 
 
 The initial two tree searches on the observed data will be performed. Subsequently `sowhat` will generate simulated alignments and print a series of scripts to execute the tree searches to the folder `[--dir]/sowhat_scratch/tree_scripts/`.
 
 Each of these scripts must be executed externally. After they have all been completed, the user reruns `sowhat` with the following options:
 
-  `--print_tree_scripts_`
-  `--reps=[same number of reps]`
-  `--restart`
+  `--print_tree_scripts --reps=[same number of reps] --restart`
 
 One note: if the inital sample size is too low (the confidence interval around the p-value indicates that the results are not definitive), the user can generate additional tree scripts by rerunning the `sowhat` command with the following options:
 
-  `--print_tree_scripts`
-  `--reps=[some higher number of reps]`
-  `--restart`
+  `--print_tree_scripts --reps=[some higher number of reps] --restart`
 
 sowhat will not calculate the statistics until the number of tree scripts specified in the number of reps have been executed successfully.
 
 ### Additional options
 
-Options for more complex models or analyses are described here [xxx].
+See [this page](additional_options.md) for descriptions of additional options and how to use more complex models.
 
 ## RUN
 
@@ -237,7 +267,6 @@ used with caution. These external tools are the result of a considerable amount 
 
 Phylogenetic programs: 
 - [RAxML](https://github.com/stamatak/standard-RAxML), 8.1.20 
-- [GARLI](https://code.google.com/p/garli/), v2.01.1067  (optional)
 - [Seq-Gen](http://tree.bio.ed.ac.uk/software/seqgen/), v1.3.3
 - [ape](http://cran.r-project.org/web/packages/ape/index.html), v3.2
 
@@ -247,33 +276,12 @@ General system tools:
 - The [Statistics::R](http://search.cpan.org/dist/Statistics-R/) Perl module. `Statistics::R` has additional requirements, as described at http://search.cpan.org/dist/Statistics-R/README. Use the `local::lib` option to install `Statistics::R` without `sudo`. Use the boostrap method found at http://search.cpan.org/~haarg/local-lib-2.000004/lib/local/lib.pm for installation information. Once local::lib has been installed, and with R installed,  install the Statistics::R package as you would normally. The use local::lib option must be activated in the program as well.
 - The [IPC::Run](http://search.cpan.org/dist/IPC-Run/) Perl module is currently needed for `make test` to work correctly (optional).
 
-To use more complex models for simulation, you will need to install the following optional dependency:
+To use more alternative models, you will need to install the following optional dependency:
+- [GARLI](https://code.google.com/p/garli/), v2.01.1067  (optional)
 - [PhyloBayes](http://www.phylobayes.org)
 
 To print results to a json file, you will need to install the following optional dependency:
 - The [JSON](http://search.cpan.org/~makamaka/JSON-2.90/) Perl module.
-
-You can install SOWHAT and all the required dependencies listed above on a clean Ubuntu 15.04 
-machine with the following commands (executables will be placed in `/usr/local/bin`):
-
-    sudo apt-get update
-    sudo apt-get install -y r-base-core cpanminus unzip gcc git
-    sudo cpanm Statistics::R
-    sudo cpanm JSON
-    sudo Rscript -e "install.packages('ape', dependencies = T, repos='http://cran.rstudio.com/')"
-    cd ~
-    git clone https://github.com/josephryan/sowhat.git
-    cd `sowhat`/
-    # To work on the development branch (not recommended) execute: git checkout -b Development origin/Development
-    sudo ./build_3rd_party.sh
-    perl Makefile.PL
-    make
-    make test
-    sudo make install
-    
-
-Note that `build_3rd_party.sh` installs some dependencies from versions that are cached in 
-this repository. They may be out of date.
 
 ## COPYRIGHT AND LICENSE
 

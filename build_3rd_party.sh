@@ -121,21 +121,22 @@ else
 	echo "seq-gen is already installed in $PREFIX ...skipping." >&2
 fi
 
-# Garli - https://code.google.com/p/garli/downloads/list
-# URL=""
-FILE="garli-2.01.tar.gz "
-# SHA1=""
-if need_programs Garli
-then
-	echo "Intalling Garli..." >&2
-	# download $URL $SHA1 $FILE
-	tar xzf $FILE
-	cd garli-2.01/
-	./build_garli.sh
-	cp bin/Garli $BINDIR/
-	cd ..
-else
-	echo "Garli is already installed in $PREFIX ...skipping." >&2
-fi
+# install GARLi, optional
+#	# Garli - https://code.google.com/p/garli/downloads/list
+#	# URL=""
+#	FILE="garli-2.01.tar.gz "
+#	# SHA1=""
+#	if need_programs Garli
+#	then
+#		echo "Intalling Garli..." >&2
+#		# download $URL $SHA1 $FILE
+#		tar xzf $FILE
+#		cd garli-2.01/
+#		./build_garli.sh
+#		cp bin/Garli $BINDIR/
+#		cd ..
+#	else
+#		echo "Garli is already installed in $PREFIX ...skipping." >&2
+#	fi
 
 
