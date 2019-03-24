@@ -106,14 +106,14 @@ fi
 
 # Seq-Gen
 # URL="https://github.com/josephryan/sowh.pl/blob/master/dependencies/Seq-Gen.v1.3.3.tgz"
-FILE="Seq-Gen.v1.3.3.tgz"
+FILE="Seq-Gen-1.3.4.tar.gz"
 # SHA1=""
 if need_programs seq-gen
 then
 	echo "Intalling seq-gen..." >&2
 	# download $URL $SHA1 $FILE
 	tar xzf $FILE
-	cd Seq-Gen.v1.3.3/source
+	cd Seq-Gen-1.3.4/source
 	make
 	cp seq-gen $BINDIR/
 	cd ../..

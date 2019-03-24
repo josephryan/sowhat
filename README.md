@@ -267,8 +267,8 @@ with the indicated dependency versions. Other versions may be incompatible, and 
 used with caution. These external tools are the result of a considerable amount of work by other investigators, please also cite them when you cite `sowhat`.
 
 Phylogenetic programs: 
-- [RAxML](https://github.com/stamatak/standard-RAxML), 8.1.20 
-- [Seq-Gen](http://tree.bio.ed.ac.uk/software/seqgen/), v1.3.3
+- [RAxML](https://github.com/stamatak/standard-RAxML), 8.2.12 
+- [Seq-Gen](http://tree.bio.ed.ac.uk/software/seqgen/), v1.3.4
 - [ape](http://cran.r-project.org/web/packages/ape/index.html), v3.2
 
 General system tools:
