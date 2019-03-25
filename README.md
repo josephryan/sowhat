@@ -104,13 +104,13 @@ __Warning__: Some of the examples take time (especially those that use Garli).  
 
 __Format:__ non-interleaved PHYLIP format
 
-Description: This can be DNA, amino acid, or binary characters. Often, you would have performed phylogenetic analyses on this alignment and recovered a result that was in conflict with an _a priori_ hypothesis.
+This can be DNA, amino acid, or binary characters. Often, you would have performed phylogenetic analyses on this alignment and recovered a result that was in conflict with an _a priori_ hypothesis.
 
 #### 2. Constraint tree
 
 __Format:__ Newick format
 
-The constraint tree represents a hypothesis that you would like to compare to the ML tree or some alternative hypothesis. In most cases you will want a tree that is mostly unresolved but includes the clade being tested. 
+The constraint tree represents a hypothesis that you would like to compare to the ML tree or some alternative hypothesis. In most cases you will want a tree that is mostly unresolved except for the clade being tested. 
 
 For example if your ML tree showed a sister relationship between two taxa 'A' and 'B' and you want to compare this result to topology with a sister relationship between 'A' and 'C,' you would create the following constraint tree:
 
@@ -152,26 +152,25 @@ Additional outputs include
 - detailed information on the model used for simulating new alignments in the file `sowhat.model.txt`
 - information on the null distribution in `sowhat.distribution.txt`
 - the trace file for the run is printed to `sowhat.trace.txt`
-- program files printed to a directory _sowhat_scratch_. Within this directory, the files ending in `...i.0.0` represent the initial search of the empirical alignment file. 
+- program files printed to a directory `sowhat_scratch`. Within this directory, the files ending in `...i.0.0` represent the initial search of the empirical alignment file. 
 
 Results can be printed to a file `sowhat.results.json` using the option 
 
-    `--json`.
+  `--json`
 
 ### Running large analyses
 
 The SOWH test can take a lot of time, especially on datasets where a single tree search can take many hours. Threads can be incorporated into raxml as described above with the `--rax options`, which can speed up the tree searches considerably.
 
-In some cases, though, the user may want to further parallelize the `sowhat` test. The following option allows a user to run many tree searches simultaneously, for example on a cluster.
+In some cases, though, the user may want to further parallelize the `sowhat` test. The following option allows a user to run the tree searches on simulated datasets simultaneously, for example on a cluster.
 
-To use this option, the user must specify the following options:
+To use this option, you must specify the following options:
 
   `--print_tree_scripts --reps=[sample size, default=1000]`
 
-
 The initial two tree searches on the observed data will be performed. Subsequently `sowhat` will generate simulated alignments and print a series of scripts to execute the tree searches to the folder `[--dir]/sowhat_scratch/tree_scripts/`.
 
-Each of these scripts must be executed externally. After they have all been completed, the user reruns `sowhat` with the following options:
+Each of these scripts must be executed externally, and can be run simultaneously. After they have all been completed, the user reruns `sowhat` with the following options:
 
   `--print_tree_scripts --reps=[same number of reps] --restart`
 
