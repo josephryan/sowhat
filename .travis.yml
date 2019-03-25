@@ -40,6 +40,6 @@ deploy:
     on:
        branch: Development
   - provider: script
-    script: docker push shchurch/sowhat:latest
+    script: docker push shchurch/sowhat
     on:
        branch: master
