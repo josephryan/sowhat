@@ -48,7 +48,6 @@ Create a conda environment called sowhat
 conda create sowhat
 conda activate sowhat
 conda install -c conda-forge perl-app-cpanminus
-conda install -c anaconda wget
 conda install -c bioconda seq-gen
 cpanm Statistics::R
 ```
