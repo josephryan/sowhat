@@ -41,6 +41,28 @@ https://github.com/josephryan/sowhat (click the "Download ZIP" button at the bot
 
     docker pull shchurch/sowhat
 
+### CONDA
+
+Create a conda environment called sowhat
+```bash
+conda create sowhat
+conda activate sowhat
+conda install -c conda-forge perl-app-cpanminus
+conda install -c anaconda wget
+conda install -c bioconda seq-gen
+cpanm Statistics::R
+```
+
+Download a fresh distribution and cd to the directory (eg. sowhat-1.0) and install sowhat.
+```bash
+cd sowhat-1.0/
+perl Makefile.PL
+make
+make test
+make install
+```
+You will need to activate this environment whenever you want to run sowhat
+
 ### QUICK
 
 To install `sowhat` and documentation, use the following:
